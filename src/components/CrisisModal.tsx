@@ -19,6 +19,7 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
     selectedActionButton,
     showDefenseTextbox,
     isLoading,
+    testMode,
   } = useArceStore();
 
   const [defenseText, setDefenseText] = useState("");
@@ -48,7 +49,8 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
   const handleDefenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (defenseText.trim().length < 20) {
+    // In test mode, allow empty defense; otherwise require 20 chars
+    if (!testMode && defenseText.trim().length < 20) {
       alert("Please provide a more detailed defense (at least 20 characters).");
       return;
     }
@@ -157,26 +159,26 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
             <div className="defense-box-inline w-full animate-slideDown">
               <form onSubmit={handleDefenseSubmit} className="flex flex-col gap-3 sm:gap-4">
                 <label className="defense-label text-center text-base sm:text-lg font-bold text-slate-900">
-                  Defend Your Logic
+                  Defend Your Logic {testMode && <span className="text-xs bg-yellow-200 px-2 py-1 rounded ml-2">🧪 TEST MODE</span>}
                 </label>
                 <textarea
                   ref={textareaRef}
                   value={defenseText}
                   onChange={(e) => setDefenseText(e.target.value)}
-                  placeholder="Explain your reasoning... (min 20 chars)"
+                  placeholder={testMode ? "TEST MODE: Type anything or leave blank (will auto-pass)..." : "Explain your reasoning... (min 20 chars)"}
                   className="defense-textarea w-full p-3 sm:p-4 border-1.5 border-blue-200 rounded-xl text-slate-800 bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 transition-all duration-250"
                   disabled={isLoading || isEvaluating}
                   autoFocus
                 />
                 <div className="text-center text-xs sm:text-sm text-slate-500 font-medium">
-                  {defenseText.length} / 20 characters minimum
+                  {defenseText.length} / {testMode ? "optional" : "20"} characters {!testMode && "minimum"}
                 </div>
                 <button
                   type="submit"
-                  disabled={isLoading || defenseText.trim().length < 20 || isEvaluating}
+                  disabled={isLoading || (!testMode && defenseText.trim().length < 20) || isEvaluating}
                   className="button-primary w-full py-3 sm:py-4 px-4 sm:px-6 font-bold text-sm sm:text-base rounded-xl hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-250"
                 >
-                  {isEvaluating ? "Evaluating..." : "Submit Defense"}
+                  {isEvaluating ? "Evaluating..." : testMode ? "Submit (TEST MODE)" : "Submit Defense"}
                 </button>
               </form>
             </div>

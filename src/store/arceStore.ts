@@ -32,6 +32,8 @@ interface ArceStore {
   currentPhase: "input" | "playing" | "results"; // input = textarea, playing = action/defense, results = mastery cards
   selectedActionButton: string | null;
   showDefenseTextbox: boolean;
+  testMode: boolean; // Enable test mode to skip defenses
+  correctButton: string | null; // Which button is correct in test mode
 
   // Actions
   startGame: (sourceContent: string, sourceTitle?: string) => Promise<void>;
@@ -42,6 +44,7 @@ interface ArceStore {
   nextCluster: () => void;
   resetGame: () => void;
   endGame: () => void;
+  toggleTestMode: () => void;
 }
 
 export const useArceStore = create<ArceStore>((set, get) => ({
@@ -55,6 +58,8 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   currentPhase: "input",
   selectedActionButton: null,
   showDefenseTextbox: false,
+  testMode: false,
+  correctButton: null,
 
   // Start a new game
   startGame: async (sourceContent: string, sourceTitle?: string) => {
@@ -117,8 +122,16 @@ export const useArceStore = create<ArceStore>((set, get) => ({
 
   // Submit the defense text
   submitDefense: async (defense: string) => {
-    const { gameSession, currentScenario, selectedActionButton } = get();
+    const { gameSession, currentScenario, selectedActionButton, testMode } = get();
     if (!gameSession || !currentScenario) return;
+
+    // In test mode, allow empty defense
+    if (!testMode && defense.length < 20) {
+      set({
+        error: "Defense must be at least 20 characters",
+      });
+      return;
+    }
 
     set({ isLoading: true });
 
@@ -126,18 +139,29 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       // Mock API call for evaluation
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Get evaluation based on scenario + button + defense
-      const evaluation = getDefenseEvaluation(
-        currentScenario.id,
-        selectedActionButton || "",
-        defense.length
-      );
+      // In test mode, always return ignition (correct answer)
+      let evaluation;
+      if (testMode) {
+        evaluation = {
+          thermalState: "ignition" as ThermalState,
+          feedback: "🔥 TEST MODE: This answer is marked correct for testing!",
+          keywords: ["test-mode", "testing"],
+          formalDefinition: "Test mode allows rapid feature testing without defense requirements.",
+        };
+      } else {
+        // Get evaluation based on scenario + button + defense
+        evaluation = getDefenseEvaluation(
+          currentScenario.id,
+          selectedActionButton || "",
+          defense.length
+        );
+      }
 
       // Create response record
       const response: UserResponse = {
         id: `response-${Date.now()}`,
         scenarioId: currentScenario.id,
-        defense,
+        defense: defense || "[TEST MODE - NO DEFENSE]",
         timestamp: Date.now(),
         thermalResult: evaluation.thermalState,
         feedback: evaluation.feedback,
@@ -285,6 +309,13 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       selectedActionButton: null,
       showDefenseTextbox: false,
     });
+  },
+
+  // Toggle test mode
+  toggleTestMode: () => {
+    set((state) => ({
+      testMode: !state.testMode,
+    }));
   },
 }));
 
