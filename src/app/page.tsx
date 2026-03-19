@@ -21,7 +21,7 @@ export default function Home() {
             : "bg-slate-200 text-slate-700 hover:bg-slate-300"
         }`}
       >
-        {testMode ? "🧪 TEST ON" : "🧪 TEST OFF"}
+        {testMode ? "TEST ON" : "TEST OFF"}
       </button>
 
       {/* No more decorative blobs - gradient is the background */}

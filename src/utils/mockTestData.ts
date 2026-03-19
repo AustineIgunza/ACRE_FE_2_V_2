@@ -185,7 +185,7 @@ export const getDefenseEvaluation = (
     // Button B: Always FROST (wrong answer - RED heat)
     return {
       thermalState: "frost",
-      feedback: "❄️ FROST - This answer misses the key concept. Review the core mechanism.",
+      feedback: "FROST - This answer misses the key concept. Review the core mechanism.",
       keywords: ["incomplete", "missing-concept", "reconsider"],
       formalDefinition:
         "Test mode: Button B is incorrect. Button A gives low heat (GOOD), Button C gives high heat (BAD) - review the heatmap to see the difference!",
@@ -196,7 +196,7 @@ export const getDefenseEvaluation = (
     // Button A: Correct answer with LOW HEAT (BLUE - Good performance)
     return {
       thermalState: "ignition",
-      feedback: "🔥 IGNITION - Excellent! You identified the correct mechanism with clear reasoning.",
+      feedback: "IGNITION - Excellent! You identified the correct mechanism with clear reasoning.",
       keywords: ["correct-answer", "good-heat", "low-risk"],
       formalDefinition:
         "Button A is correct and shows LOW HEAT (blue bar) in the heatmap - this means good performance with low risk.",
@@ -207,7 +207,7 @@ export const getDefenseEvaluation = (
     // Button C: Also correct answer but HIGH HEAT (RED - Bad performance)
     return {
       thermalState: "ignition",
-      feedback: "🔥 IGNITION - Correct answer! However, notice HIGH HEAT in the heatmap - this solution works but has high risk.",
+      feedback: "IGNITION - Correct answer! However, notice HIGH HEAT in the heatmap - this solution works but has high risk.",
       keywords: ["correct-risky", "high-heat", "high-risk"],
       formalDefinition:
         "Button C is correct but shows HIGH HEAT (red bar) in the heatmap - this means correct logic but risky implementation.",
@@ -217,7 +217,7 @@ export const getDefenseEvaluation = (
   // Fallback
   return {
     thermalState: "warning",
-    feedback: "⚠️ WARNING - Please select A, B, or C to continue.",
+    feedback: "WARNING - Please select A, B, or C to continue.",
     keywords: ["test-mode"],
     formalDefinition: "Select one of the answer options.",
   };

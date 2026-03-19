@@ -160,7 +160,7 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
             <div className="defense-box-inline w-full animate-slideDown">
               <form onSubmit={handleDefenseSubmit} className="flex flex-col gap-3 sm:gap-4">
                 <label className="defense-label text-center text-base sm:text-lg font-bold text-slate-900">
-                  Defend Your Logic {testMode && <span className="text-xs bg-yellow-200 px-2 py-1 rounded ml-2">🧪 TEST MODE</span>}
+                  Defend Your Logic {testMode && <span className="text-xs bg-yellow-200 px-2 py-1 rounded ml-2">TEST MODE</span>}
                 </label>
                 <textarea
                   ref={textareaRef}

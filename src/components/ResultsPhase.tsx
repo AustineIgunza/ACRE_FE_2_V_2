@@ -42,7 +42,7 @@ Who can beat this? #ARCÉ #Mastery`;
           ARCÉ
         </h1>
         <h2 className="text-3xl sm:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-          {session.globalHeat >= 80 ? "🔥 IGNITION ACHIEVED!" : "Session Complete"}
+          {session.globalHeat >= 80 ? "IGNITION ACHIEVED!" : "Session Complete"}
         </h2>
         <p className="text-lg sm:text-xl font-medium text-slate-600">
           {session.sourceTitle}
@@ -132,9 +132,9 @@ Who can beat this? #ARCÉ #Mastery`;
                             ? "bg-yellow-200 text-yellow-900"
                             : "bg-emerald-200 text-emerald-900"
                       }`}>
-                        {response.thermalResult === "frost" && "❄️ Frost"}
-                        {response.thermalResult === "warning" && "⚠️ Warning"}
-                        {response.thermalResult === "ignition" && "🔥 Ignition"}
+                        {response.thermalResult === "frost" && "Frost"}
+                        {response.thermalResult === "warning" && "Warning"}
+                        {response.thermalResult === "ignition" && "Ignition"}
                       </span>
                     </div>
                     <span className="text-xs sm:text-sm text-slate-600 font-medium ml-2">{response.defense.length} chars</span>
@@ -148,7 +148,7 @@ Who can beat this? #ARCÉ #Mastery`;
         {/* Mastery Cards Display */}
         {session.masteryCards.length > 0 && (
           <div className="mb-8 sm:mb-12">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6 text-center">🔥 Your Mastery Cards</h3>
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6 text-center">Your Mastery Cards</h3>
             <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
               {session.masteryCards.map((card) => (
                 <div
@@ -184,15 +184,15 @@ Who can beat this? #ARCÉ #Mastery`;
           <h4 className="font-bold text-slate-900 mb-3 sm:mb-4 text-center sm:text-left">✨ Key Insights</h4>
           <ul className="text-sm sm:text-base text-slate-700 space-y-2">
             <li className="flex items-start gap-3">
-              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">✓</span>
+              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">-</span>
               <span>You identified <strong>{session.responses.filter((r) => r.thermalResult === "ignition").length}</strong> deep causal chains (Ignition level)</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">✓</span>
+              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">-</span>
               <span>You provided <strong>{session.responses.length}</strong> thoughtful responses</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">✓</span>
+              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">-</span>
               <span>Review warning-level responses to deepen your mastery</span>
             </li>
           </ul>
