@@ -232,6 +232,17 @@ export const getDefenseEvaluation = (
   actionButtonId: string,
   defenseLength: number
 ): DefenseResult => {
+  // TEST MODE: If button ends in "-a", always return ignition
+  if (actionButtonId.endsWith("-a")) {
+    return {
+      thermalState: "ignition",
+      feedback: "🔥 IGNITION - Excellent reasoning! This demonstrates deep understanding of the concept.",
+      keywords: ["test-mode-a", "correct-answer", "mastery"],
+      formalDefinition:
+        "Test mode: All 'A' options are marked correct for rapid feature testing.",
+    };
+  }
+
   // Map: scenario + button + defense length → thermal state
   // This simulates AI evaluation
 
