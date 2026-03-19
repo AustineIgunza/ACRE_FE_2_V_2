@@ -92,20 +92,28 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
       {/* Mini Loading Overlay during evaluation */}
       {isEvaluating && <MiniLoadingOverlay />}
 
-      <div className="min-h-screen bg-white text-black px-4 py-8 flex flex-col">
-        {/* Crisis Text */}
-        <div className="max-w-3xl mx-auto w-full mb-12">
-          <div className="mb-8">
-            <h2 className="text-4xl font-black mb-6 text-black">CRISIS</h2>
-            <p className="text-2xl font-light leading-relaxed text-black bg-gray-50 p-8 rounded-lg border-2 border-black">
-              {scenario.crisisText}
-            </p>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 text-black px-4 py-8 flex flex-col relative">
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob"></div>
+          <div className="absolute -bottom-8 left-1/4 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-2000"></div>
+        </div>
 
-          {/* Action Buttons for Multiple Choice */}
-          {scenario.questionType === "multiple-choice" &&
-            scenario.actionButtons &&
-            !showDefenseTextbox && (
+        {/* Content */}
+        <div className="relative z-10 max-w-3xl mx-auto w-full">
+          {/* Crisis Text */}
+          <div className="mb-12">
+            <div className="mb-8">
+              <h2 className="text-4xl font-black mb-6 text-blue-900 bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">CRISIS</h2>
+              <p className="text-2xl font-light leading-relaxed text-slate-800 bg-white/60 backdrop-blur-md p-8 rounded-2xl border-2 border-blue-300 shadow-lg hover:shadow-xl transition-all">
+                {scenario.crisisText}
+              </p>
+            </div>
+
+            {/* Action Buttons for Multiple Choice */}
+            {scenario.questionType === "multiple-choice" &&
+              scenario.actionButtons &&
+              !showDefenseTextbox && (
               <div className="space-y-4 mb-8">
                 <p className="text-sm font-bold text-gray-600 uppercase tracking-wide">
                   Choose your move:
@@ -165,6 +173,7 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
             <div className="text-sm text-gray-600">Advancing to next scenario...</div>
           </div>
         )}
+        </div>
       </div>
     </>
   );
