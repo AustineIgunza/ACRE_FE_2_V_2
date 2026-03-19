@@ -7,24 +7,24 @@ export default function DemoPage() {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className="min-h-screen bg-gradient-subtle text-slate-900">
       {/* Navigation */}
-      <nav className="sticky top-0 bg-white border-b-2 border-blue-200 z-50 shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-3xl font-black bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+      <nav className="sticky top-0 bg-white border-b-1.5 border-blue-200 z-50 shadow-xs backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-5 flex justify-between items-center">
+          <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
             ARCÉ Component Demo
           </h1>
-          <p className="text-sm text-gray-600">MVC Architecture Showcase</p>
+          <p className="text-sm font-medium text-slate-600">Modern Design System</p>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-12">
+      <main className="container mx-auto px-4 py-16">
         {/* Heading */}
-        <section className="mb-16">
-          <h2 className="text-4xl font-black mb-4">Design System</h2>
-          <p className="text-xl text-gray-600">
-            Modern light blue, grey, black and white palette with smooth hover effects
+        <section className="mb-20">
+          <h2 className="text-5xl font-black mb-6 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Design System</h2>
+          <p className="text-xl font-medium text-slate-600 max-w-3xl">
+            Premium, minimalist design inspired by Apple. Modern blue, white, and slate palette with refined typography and smooth interactions.
           </p>
         </section>
 
