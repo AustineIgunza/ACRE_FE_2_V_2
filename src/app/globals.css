@@ -1,26 +1,425 @@
 @import "tailwindcss";
 
+/* ========================================
+   ARCÉ: The Iteration Engine - Thermal CSS
+   ======================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Modern palette: White & Black with Rainbow accents */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f5f5f5;
+  --color-text-primary: #000000;
+  --color-text-secondary: #666666;
+  --color-border: #e0e0e0;
+
+  /* Thermal states */
+  --color-frost: #ff0000;
+  --color-warning: #ffa500;
+  --color-ignition: #00cc00;
+
+  /* Rainbow hover palette (AWS-inspired) */
+  --color-red: #ff4444;
+  --color-orange: #ff9900;
+  --color-yellow: #ffcc00;
+  --color-green: #00cc00;
+  --color-blue: #0099ff;
+  --color-purple: #9966ff;
+  --color-pink: #ff6699;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  transition: background-color 0.3s ease;
+}
+
+/* ========================================
+   THERMAL STATE ANIMATIONS
+   ======================================== */
+
+/* THE RED GLITCH (FROST) ❄️ */
+.state-frost {
+  animation: shake 0.4s linear;
+  background-color: rgba(255, 0, 0, 0.05) !important;
+  border: 2px solid var(--color-frost) !important;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+}
+
+/* THE ORANGE PULSE (WARNING) ⚠️ */
+.state-warning {
+  animation: pulse-orange 1.5s infinite;
+  border: 2px solid var(--color-warning) !important;
+}
+
+/* THE GREEN FLASH (IGNITION) 🔥 */
+.state-ignition {
+  animation: flash-green 0.8s ease-out;
+  border: 2px solid var(--color-ignition) !important;
+  background-color: rgba(0, 204, 0, 0.05) !important;
+}
+
+/* KEYFRAME ANIMATIONS */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes pulse-orange {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(255, 165, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 165, 0, 0);
+  }
+}
+
+@keyframes flash-green {
+  0% {
+    background-color: rgba(0, 204, 0, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* ========================================
+   RAINBOW HOVER EFFECTS (AWS-INSPIRED)
+   ======================================== */
+
+.button-rainbow {
+  position: relative;
+  transition: all 0.3s ease;
+  border: 2px solid var(--color-border);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.button-rainbow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--color-red),
+    var(--color-orange),
+    var(--color-yellow),
+    var(--color-green),
+    var(--color-blue),
+    var(--color-purple),
+    var(--color-pink)
+  );
+  background-size: 200% 100%;
+  transition: left 0.5s ease;
+  z-index: -1;
+  opacity: 0.1;
+}
+
+.button-rainbow:hover::before {
+  left: 0;
+  opacity: 0.2;
+}
+
+.button-rainbow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  border-color: var(--color-text-primary);
+}
+
+/* ========================================
+   INTERACTIVE ELEMENTS
+   ======================================== */
+
+input,
+textarea {
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-text-primary);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid var(--color-border);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   ACTION BUTTONS (LARGE, CHUNKY, TOUCH-FRIENDLY)
+   ======================================== */
+
+.action-button {
+  width: 100%;
+  padding: 20px 24px;
+  margin: 12px 0;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: left;
+  border: 2px solid var(--color-border);
+  border-radius: 12px;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+}
+
+.action-button:hover {
+  background-color: var(--color-bg-primary);
+  border-color: var(--color-text-primary);
+  transform: translateX(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.action-button.selected {
+  background-color: var(--color-text-primary);
+  color: var(--color-bg-primary);
+  border-color: var(--color-text-primary);
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   MASTERY CANVAS (ELASTIC GRID)
+   ======================================== */
+
+.mastery-canvas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin: 40px 0;
+}
+
+.node-card {
+  padding: 24px;
+  border-radius: 12px;
+  border: 2px solid var(--color-border);
+  background-color: var(--color-bg-secondary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.node-card.unlocked {
+  background-color: var(--color-bg-primary);
+  border-color: var(--color-text-primary);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.node-card.unlocked:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 68, 68, 0.05),
+    rgba(0, 204, 0, 0.05)
+  );
+}
+
+.node-card.locked {
+  opacity: 0.5;
+  filter: grayscale(100%);
+  cursor: not-allowed;
+  position: relative;
+}
+
+.node-card.locked::after {
+  content: "🔒";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  opacity: 0.6;
+}
+
+.node-card.locked:active {
+  animation: shake 0.4s linear;
+}
+
+/* ========================================
+   DEFENSE TEXTBOX (SLIDE UP FROM BOTTOM)
+   ======================================== */
+
+.defense-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--color-bg-primary);
+  border-top: 3px solid var(--color-text-primary);
+  padding: 24px;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slideUp 0.4s ease-out;
+  z-index: 100;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.defense-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.defense-label::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 20px;
+  background-color: var(--color-text-primary);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.defense-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: none;
+  font-size: 16px;
+  padding: 16px;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-family: inherit;
+}
+
+.defense-textarea::placeholder {
+  color: var(--color-text-secondary);
+}
+
+/* ========================================
+   FEEDBACK DISPLAY
+   ======================================== */
+
+.feedback-container {
+  padding: 24px;
+  border-radius: 12px;
+  margin: 20px 0;
+  border: 2px solid var(--color-border);
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  animation: slideDown 0.4s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.spinner {
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-text-primary);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
