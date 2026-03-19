@@ -34,160 +34,164 @@ Who can beat this? #ARCÉ #Mastery`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 text-black px-4 py-8 flex flex-col items-center justify-center relative">
-      {/* Decorative Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="min-h-screen bg-gradient-subtle text-slate-900 px-4 sm:px-6 py-8 sm:py-16 flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Premium Decorative Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob"></div>
         <div className="absolute -bottom-8 left-1/4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-2000"></div>
       </div>
 
-      {/* Logo - at end */}
-      <div className="mb-12 text-center animate-fadeIn relative z-10">
-        <h1 className="text-7xl font-black mb-4 tracking-tight bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">ARCÉ</h1>
-        <p className="text-2xl font-light text-slate-600">Session Complete</p>
+      {/* Header Section */}
+      <div className="mb-12 sm:mb-16 text-center animate-fadeIn relative z-10 max-w-3xl">
+        <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black mb-4 sm:mb-6 tracking-tight bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
+          ARCÉ
+        </h1>
+        <h2 className="text-3xl sm:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+          {session.globalHeat >= 80 ? "🔥 IGNITION ACHIEVED!" : "Session Complete"}
+        </h2>
+        <p className="text-lg sm:text-xl font-medium text-slate-600">
+          {session.sourceTitle}
+        </p>
       </div>
 
-      {/* Results Card */}
-      <div className="max-w-2xl w-full bg-white/80 backdrop-blur-md border-2 border-blue-300 rounded-2xl p-12 shadow-xl relative z-10">
-        {/* Title */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-black bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-2">
-            {session.globalHeat >= 80 ? "IGNITION ACHIEVED" : "Mastery Report"}
-          </h2>
-          <p className="text-xl text-slate-600">{session.sourceTitle}</p>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-6 mb-12">
-          <div className="border-2 border-blue-300 rounded-xl p-6 text-center bg-gradient-to-br from-blue-50 to-slate-50">
-            <div className="text-sm font-bold text-blue-600 uppercase mb-2">
+      {/* Results Container */}
+      <div className="max-w-3xl w-full bg-white/90 backdrop-blur-lg border-1.5 border-blue-200 rounded-3xl p-6 sm:p-8 lg:p-12 shadow-sm hover:shadow-md transition-all duration-300 relative z-10">
+        {/* Stats Grid - Premium Card Design */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+          {/* Final Heat */}
+          <div className="bg-gradient-to-br from-orange-50 to-red-50 border-1.5 border-orange-200 rounded-2xl p-4 sm:p-6 text-center group hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer">
+            <div className="text-xs sm:text-sm font-bold text-orange-600 uppercase tracking-widest mb-2 sm:mb-3">
               Final Heat
             </div>
-            <div className="text-5xl font-black text-slate-900">
+            <div className="text-4xl sm:text-5xl font-black text-slate-900 mb-3">
               {session.globalHeat}%
             </div>
-            <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-orange-400 transition-all duration-500"
+                className="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-700"
                 style={{ width: `${session.globalHeat}%` }}
               ></div>
             </div>
           </div>
 
-          <div className="border-2 border-blue-300 rounded-xl p-6 text-center bg-gradient-to-br from-blue-50 to-slate-50">
-            <div className="text-sm font-bold text-blue-600 uppercase mb-2">
+          {/* Integrity */}
+          <div className="bg-gradient-to-br from-emerald-50 to-green-50 border-1.5 border-emerald-200 rounded-2xl p-4 sm:p-6 text-center group hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer">
+            <div className="text-xs sm:text-sm font-bold text-emerald-600 uppercase tracking-widest mb-2 sm:mb-3">
               Integrity
             </div>
-            <div className="text-5xl font-black text-slate-900">
+            <div className="text-4xl sm:text-5xl font-black text-slate-900 mb-3">
               {session.globalIntegrity}%
             </div>
-            <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-400 transition-all duration-500"
+                className="h-full bg-gradient-to-r from-emerald-400 to-green-500 transition-all duration-700"
                 style={{ width: `${session.globalIntegrity}%` }}
               ></div>
             </div>
           </div>
 
-          <div className="border-2 border-blue-300 rounded-xl p-6 text-center bg-gradient-to-br from-blue-50 to-slate-50">
-            <div className="text-sm font-bold text-blue-600 uppercase mb-2">
+          {/* Responses */}
+          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-1.5 border-blue-200 rounded-2xl p-4 sm:p-6 text-center group hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer">
+            <div className="text-xs sm:text-sm font-bold text-blue-600 uppercase tracking-widest mb-2 sm:mb-3">
               Responses
             </div>
-            <div className="text-5xl font-black text-slate-900">
+            <div className="text-4xl sm:text-5xl font-black text-slate-900">
               {session.responses.length}
             </div>
           </div>
 
-          <div className="border-2 border-blue-300 rounded-xl p-6 text-center bg-gradient-to-br from-blue-50 to-slate-50">
-            <div className="text-sm font-bold text-blue-600 uppercase mb-2">
+          {/* Mastery Cards */}
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-1.5 border-purple-200 rounded-2xl p-4 sm:p-6 text-center group hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer">
+            <div className="text-xs sm:text-sm font-bold text-purple-600 uppercase tracking-widest mb-2 sm:mb-3">
               Mastery Cards
             </div>
-            <div className="text-5xl font-black text-slate-900">
+            <div className="text-4xl sm:text-5xl font-black text-slate-900">
               {session.masteryCards.length}
             </div>
           </div>
         </div>
 
-        {/* Response Summary Table */}
+        {/* Response Summary */}
         {session.responses.length > 0 && (
-          <div className="mb-12">
-            <h3 className="text-lg font-black text-slate-900 mb-4">Response Log</h3>
-            <div className="overflow-x-auto border-2 border-blue-300 rounded-xl">
-              <table className="w-full">
-                <thead className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-                  <tr>
-                    <th className="p-3 text-left font-bold">#</th>
-                    <th className="p-3 text-left font-bold">Thermal State</th>
-                    <th className="p-3 text-left font-bold">Defense Length</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {session.responses.map((response, idx) => (
-                    <tr
-                      key={response.id}
-                      className={`border-t border-blue-200 ${
+          <div className="mb-8 sm:mb-12">
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6 text-center">Response Journey</h3>
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {session.responses.map((response, idx) => (
+                <div
+                  key={response.id}
+                  className={`p-3 sm:p-4 rounded-xl border-1.5 transition-all duration-300 group hover:scale-102 ${
+                    response.thermalResult === "frost"
+                      ? "bg-orange-50 border-orange-200 hover:bg-orange-100"
+                      : response.thermalResult === "warning"
+                        ? "bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
+                        : "bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="font-bold text-sm sm:text-base text-slate-700 whitespace-nowrap">Response {idx + 1}</span>
+                      <span className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap ${
                         response.thermalResult === "frost"
-                          ? "bg-orange-50 hover:bg-orange-100"
+                          ? "bg-orange-200 text-orange-900"
                           : response.thermalResult === "warning"
-                            ? "bg-yellow-50 hover:bg-yellow-100"
-                            : "bg-emerald-50 hover:bg-emerald-100"
-                      } transition-colors`}
-                    >
-                      <td className="p-3 font-bold text-slate-900">{idx + 1}</td>
-                      <td className="p-3 text-slate-800">
-                        {response.thermalResult === "frost" && "Frost"}
-                        {response.thermalResult === "warning" && "Warning"}
-                        {response.thermalResult === "ignition" && "Ignition"}
-                      </td>
-                      <td className="p-3 text-slate-800">{response.defense.length} chars</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            ? "bg-yellow-200 text-yellow-900"
+                            : "bg-emerald-200 text-emerald-900"
+                      }`}>
+                        {response.thermalResult === "frost" && "❄️ Frost"}
+                        {response.thermalResult === "warning" && "⚠️ Warning"}
+                        {response.thermalResult === "ignition" && "🔥 Ignition"}
+                      </span>
+                    </div>
+                    <span className="text-xs sm:text-sm text-slate-600 font-medium ml-2">{response.defense.length} chars</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Sharing Buttons */}
-        <div className="space-y-3 mb-8">
-          <button
-            onClick={shareToWhatsApp}
-            className="w-full py-4 px-6 font-bold rounded-lg border-2 border-blue-400 bg-gradient-to-r from-blue-50 to-slate-50 text-blue-700 hover:from-blue-100 hover:to-slate-100 transition-all shadow-md"
-          >
-            Share to WhatsApp
-          </button>
-          <button
-            onClick={shareToTwitter}
-            className="w-full py-4 px-6 font-bold rounded-lg border-2 border-blue-400 bg-gradient-to-r from-blue-50 to-slate-50 text-blue-700 hover:from-blue-100 hover:to-slate-100 transition-all shadow-md"
-          >
-            Share to Twitter
-          </button>
-        </div>
-
-        {/* Recommendations */}
-        <div className="bg-gradient-to-br from-blue-50 to-slate-50 border-2 border-blue-300 rounded-xl p-6 mb-8">
-          <h4 className="font-bold text-slate-900 mb-3">Key Insights</h4>
-          <ul className="text-sm text-slate-700 space-y-2">
-            <li>
-              • You identified {session.responses.filter((r) => r.thermalResult === "ignition").length} deep causal chains
+        {/* Key Insights */}
+        <div className="bg-gradient-to-r from-blue-50 to-slate-50 border-1.5 border-blue-200 rounded-2xl p-5 sm:p-6 mb-8 sm:mb-10">
+          <h4 className="font-bold text-slate-900 mb-3 sm:mb-4 text-center sm:text-left">✨ Key Insights</h4>
+          <ul className="text-sm sm:text-base text-slate-700 space-y-2">
+            <li className="flex items-start gap-3">
+              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">✓</span>
+              <span>You identified <strong>{session.responses.filter((r) => r.thermalResult === "ignition").length}</strong> deep causal chains (Ignition level)</span>
             </li>
-            <li>
-              • Your highest integrity moment was at response{" "}
-              {Math.ceil(session.responses.length / 2)}
+            <li className="flex items-start gap-3">
+              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">✓</span>
+              <span>You provided <strong>{session.responses.length}</strong> thoughtful responses</span>
             </li>
-            <li>• Review warning-level responses to deepen your understanding</li>
+            <li className="flex items-start gap-3">
+              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">✓</span>
+              <span>Review warning-level responses to deepen your mastery</span>
+            </li>
           </ul>
         </div>
 
-        {/* Action Buttons */}
-        <div className="space-y-3">
+        {/* Sharing Buttons */}
+        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <button
-            onClick={onNewGame}
-            className="w-full py-4 px-6 font-bold text-lg rounded-lg border-2 border-blue-600 bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 transition-all shadow-lg"
+            onClick={shareToWhatsApp}
+            className="py-3 sm:py-4 px-4 sm:px-6 font-bold text-sm sm:text-base rounded-2xl border-1.5 border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 hover:shadow-md hover:scale-105 transition-all duration-300 active:scale-95"
           >
-            Start New Session
+            📱 Share to WhatsApp
+          </button>
+          <button
+            onClick={shareToTwitter}
+            className="py-3 sm:py-4 px-4 sm:px-6 font-bold text-sm sm:text-base rounded-2xl border-1.5 border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 hover:shadow-md hover:scale-105 transition-all duration-300 active:scale-95"
+          >
+            𝕏 Share to Twitter
           </button>
         </div>
+
+        {/* Start New Session Button */}
+        <button
+          onClick={onNewGame}
+          className="w-full py-4 sm:py-5 px-6 font-bold text-base sm:text-lg rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          🚀 Start New Session
+        </button>
       </div>
     </div>
   );

@@ -92,88 +92,103 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
       {/* Mini Loading Overlay during evaluation */}
       {isEvaluating && <MiniLoadingOverlay />}
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 text-black px-4 py-8 flex flex-col relative">
-        {/* Decorative Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 right-0 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob"></div>
-          <div className="absolute -bottom-8 left-1/4 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-2000"></div>
+      <div className="min-h-screen bg-gradient-subtle text-slate-900 px-4 sm:px-6 py-8 sm:py-12 flex flex-col relative overflow-hidden">
+        {/* Premium Decorative Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob"></div>
+          <div className="absolute -bottom-8 left-1/4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-2000"></div>
         </div>
 
         {/* Content */}
-        <div className="relative z-10 max-w-3xl mx-auto w-full">
-          {/* Crisis Text */}
-          <div className="mb-12">
-            <div className="mb-8">
-              <h2 className="text-4xl font-black mb-6 text-blue-900 bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">CRISIS</h2>
-              <p className="text-2xl font-light leading-relaxed text-slate-800 bg-white/60 backdrop-blur-md p-8 rounded-2xl border-2 border-blue-300 shadow-lg hover:shadow-xl transition-all">
+        <div className="relative z-10 max-w-3xl mx-auto w-full flex flex-col items-center justify-center flex-1">
+          {/* Crisis Section - Centered */}
+          <div className="w-full mb-8 sm:mb-12 text-center">
+            {/* Crisis Heading */}
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-black mb-4 sm:mb-6 bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
+                CRISIS
+              </h2>
+              <p className="text-lg sm:text-xl lg:text-2xl font-medium text-slate-600">
+                Make your critical decision
+              </p>
+            </div>
+
+            {/* Crisis Text Box - Premium styling */}
+            <div className="mb-8 sm:mb-12 text-center">
+              <p className="text-lg sm:text-xl lg:text-2xl font-semibold leading-relaxed text-slate-800 bg-white/80 backdrop-blur-lg border-1.5 border-blue-200 rounded-3xl p-6 sm:p-8 lg:p-10 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300">
                 {scenario.crisisText}
               </p>
             </div>
 
-            {/* Action Buttons for Multiple Choice */}
+            {/* Action Buttons for Multiple Choice - Centered */}
             {scenario.questionType === "multiple-choice" &&
               scenario.actionButtons &&
               !showDefenseTextbox && (
-              <div className="space-y-4 mb-8">
-                <p className="text-sm font-bold text-gray-600 uppercase tracking-wide">
-                  Choose your move:
+              <div className="w-full max-w-2xl mx-auto space-y-3 sm:space-y-4 mb-8 sm:mb-12">
+                <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-widest text-center mb-4 sm:mb-6">
+                  Select Your Response:
                 </p>
                 {scenario.actionButtons.map((button) => (
                   <button
                     key={button.id}
                     onClick={() => handleActionClick(button.id)}
                     disabled={isLoading}
-                    className={`action-button ${
-                      selectedActionButton === button.id ? "selected" : ""
-                    } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                    className={`action-button w-full transition-all duration-300 ${
+                      selectedActionButton === button.id ? "selected ring-2 ring-blue-500 scale-105" : "hover:scale-102"
+                    } ${isLoading ? "opacity-50 cursor-not-allowed" : "hover:shadow-lg"}`}
                   >
-                    <span className="text-xl font-bold mr-4">
+                    <span className="action-button-index text-lg sm:text-xl font-bold">
                       {String.fromCharCode(65 + (button.order - 1))}
                     </span>
-                    <span className="flex-1 text-left">{button.label}</span>
+                    <span className="action-button-label flex-1 text-left text-sm sm:text-base">{button.label}</span>
+                    <span className="text-xs text-slate-500 hidden sm:inline">Click to select</span>
                   </button>
                 ))}
               </div>
             )}
+          </div>
         </div>
 
-        {/* Defense Textbox - Slides up from bottom */}
+        {/* Defense Textbox - Centered slide-up */}
         {showDefenseTextbox && !defenseSubmitted && (
-          <div className="defense-container">
-            <form onSubmit={handleDefenseSubmit} className="flex flex-col gap-4">
-              <label className="defense-label">
-                Defend your logic. Why does this move work?
+          <div className="defense-container relative z-20">
+            <form onSubmit={handleDefenseSubmit} className="flex flex-col gap-4 sm:gap-6 w-full max-w-2xl mx-auto">
+              <label className="defense-label text-center text-lg sm:text-xl font-bold text-slate-900">
+                Defend Your Logic
               </label>
+              <p className="text-center text-sm sm:text-base text-slate-600 font-medium">
+                Why does this move work? Explain the causal chain and consequences...
+              </p>
               <textarea
                 ref={textareaRef}
                 value={defenseText}
                 onChange={(e) => setDefenseText(e.target.value)}
-                placeholder="Explain the causal chain. Why is this your best move? Think deeply about the consequences..."
-                className="defense-textarea"
+                placeholder="Explain your reasoning in detail... (minimum 20 characters)"
+                className="defense-textarea w-full h-40 sm:h-48 p-4 sm:p-5 border-1.5 border-blue-200 rounded-2xl text-slate-800 bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 transition-all duration-250"
                 disabled={isLoading || isEvaluating}
                 autoFocus
               />
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={isLoading || defenseText.trim().length < 20 || isEvaluating}
-                  className="button-rainbow flex-1 py-3 px-6 font-bold rounded-lg border-2 border-black bg-white text-black hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {isEvaluating ? "Evaluating..." : "Submit Defense"}
-                </button>
+              <div className="text-center text-xs sm:text-sm text-slate-500 font-medium">
+                {defenseText.length} / 20 characters minimum
               </div>
+              <button
+                type="submit"
+                disabled={isLoading || defenseText.trim().length < 20 || isEvaluating}
+                className="button-primary w-full py-4 sm:py-5 px-6 font-bold text-base sm:text-lg rounded-2xl hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-250"
+              >
+                {isEvaluating ? "Evaluating..." : "Submit Defense"}
+              </button>
             </form>
           </div>
         )}
 
-        {/* Feedback Display - Shows thermal result */}
+        {/* Feedback Display - Centered with thermal styling */}
         {defenseSubmitted && (
-          <div className={`feedback-container max-w-3xl mx-auto w-full state-${thermalState}`}>
-            <div className="text-3xl font-black mb-4">{feedback}</div>
-            <div className="text-sm text-gray-600">Advancing to next scenario...</div>
+          <div className={`feedback-container max-w-2xl mx-auto w-full text-center relative z-20 ${thermalState ? `state-${thermalState}` : ""}`}>
+            <div className="text-2xl sm:text-3xl lg:text-4xl font-black mb-3 sm:mb-4 text-slate-900">{feedback}</div>
+            <div className="text-sm sm:text-base text-slate-600 font-medium">Advancing to next scenario...</div>
           </div>
         )}
-        </div>
       </div>
     </>
   );
