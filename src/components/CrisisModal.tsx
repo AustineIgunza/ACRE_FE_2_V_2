@@ -92,11 +92,11 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
       {/* Mini Loading Overlay during evaluation */}
       {isEvaluating && <MiniLoadingOverlay />}
 
-      <div className="min-h-screen-gradient bg-gradient-blue-white text-slate-900 px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 pb-80 flex flex-col items-center justify-start relative transition-all duration-300">
-        {/* Content - Fully Centered */}
-        <div className="w-full max-w-2xl flex flex-col items-center justify-center">
+      <div className="min-h-screen-gradient bg-gradient-blue-white text-slate-900 px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 flex flex-col items-center justify-start relative">
+        {/* Content Container - Fully Centered and Scrollable */}
+        <div className="w-full max-w-2xl flex flex-col items-center justify-center gap-8 sm:gap-12">
           {/* Crisis Section - Centered */}
-          <div className="w-full mb-8 sm:mb-12 text-center">
+          <div className="w-full text-center">
             {/* Crisis Heading */}
             <div className="mb-6 sm:mb-8">
               <h2 className="text-5xl sm:text-6xl lg:text-7xl font-black mb-4 sm:mb-6 bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
@@ -108,7 +108,7 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
             </div>
 
             {/* Crisis Text Box - Premium styling */}
-            <div className="mb-8 sm:mb-12 text-center">
+            <div className="text-center mb-8 sm:mb-10">
               <p className="text-lg sm:text-xl lg:text-2xl font-semibold leading-relaxed text-slate-800 bg-white/80 backdrop-blur-lg border-1.5 border-blue-200 rounded-3xl p-6 sm:p-8 lg:p-10 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300">
                 {scenario.crisisText}
               </p>
@@ -118,7 +118,7 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
             {scenario.questionType === "multiple-choice" &&
               scenario.actionButtons &&
               !showDefenseTextbox && (
-              <div className="w-full space-y-3 sm:space-y-4 mb-8 sm:mb-12 lg:mb-16">
+              <div className="w-full space-y-3 sm:space-y-4">
                 <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-widest text-center mb-4 sm:mb-6">
                   Select Your Response:
                 </p>
@@ -141,45 +141,48 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
               </div>
             )}
           </div>
+
+          {/* Defense Textbox - Inline, not fixed position */}
+          {showDefenseTextbox && !defenseSubmitted && (
+            <div className="defense-box-inline w-full animate-slideDown">
+              <form onSubmit={handleDefenseSubmit} className="flex flex-col gap-3 sm:gap-4">
+                <label className="defense-label text-center text-base sm:text-lg font-bold text-slate-900">
+                  Defend Your Logic
+                </label>
+                <textarea
+                  ref={textareaRef}
+                  value={defenseText}
+                  onChange={(e) => setDefenseText(e.target.value)}
+                  placeholder="Explain your reasoning... (min 20 chars)"
+                  className="defense-textarea w-full p-3 sm:p-4 border-1.5 border-blue-200 rounded-xl text-slate-800 bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 transition-all duration-250"
+                  disabled={isLoading || isEvaluating}
+                  autoFocus
+                />
+                <div className="text-center text-xs sm:text-sm text-slate-500 font-medium">
+                  {defenseText.length} / 20 characters minimum
+                </div>
+                <button
+                  type="submit"
+                  disabled={isLoading || defenseText.trim().length < 20 || isEvaluating}
+                  className="button-primary w-full py-3 sm:py-4 px-4 sm:px-6 font-bold text-sm sm:text-base rounded-xl hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-250"
+                >
+                  {isEvaluating ? "Evaluating..." : "Submit Defense"}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Feedback Display - Centered with thermal styling */}
+          {defenseSubmitted && (
+            <div className={`feedback-container w-full text-center ${thermalState ? `state-${thermalState}` : ""} animate-slideDown`}>
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-black mb-3 sm:mb-4 text-slate-900">{feedback}</div>
+              <div className="text-sm sm:text-base text-slate-600 font-medium">Advancing to next scenario...</div>
+            </div>
+          )}
+
+          {/* Spacer to allow scrolling room */}
+          <div className="h-4 sm:h-8" />
         </div>
-
-        {/* Defense Textbox - Centered slide-up */}
-        {showDefenseTextbox && !defenseSubmitted && (
-          <div className="defense-container w-full max-w-2xl">
-            <form onSubmit={handleDefenseSubmit} className="flex flex-col gap-3 sm:gap-4">
-              <label className="defense-label text-center text-base sm:text-lg font-bold text-slate-900">
-                Defend Your Logic
-              </label>
-              <textarea
-                ref={textareaRef}
-                value={defenseText}
-                onChange={(e) => setDefenseText(e.target.value)}
-                placeholder="Explain your reasoning... (min 20 chars)"
-                className="defense-textarea w-full p-3 sm:p-4 border-1.5 border-blue-200 rounded-xl text-slate-800 bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 transition-all duration-250"
-                disabled={isLoading || isEvaluating}
-                autoFocus
-              />
-              <div className="text-center text-xs sm:text-sm text-slate-500 font-medium">
-                {defenseText.length} / 20 characters minimum
-              </div>
-              <button
-                type="submit"
-                disabled={isLoading || defenseText.trim().length < 20 || isEvaluating}
-                className="button-primary w-full py-3 sm:py-4 px-4 sm:px-6 font-bold text-sm sm:text-base rounded-xl hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-250"
-              >
-                {isEvaluating ? "Evaluating..." : "Submit Defense"}
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* Feedback Display - Centered with thermal styling */}
-        {defenseSubmitted && (
-          <div className={`feedback-container w-full max-w-2xl text-center ${thermalState ? `state-${thermalState}` : ""}`}>
-            <div className="text-2xl sm:text-3xl lg:text-4xl font-black mb-3 sm:mb-4 text-slate-900">{feedback}</div>
-            <div className="text-sm sm:text-base text-slate-600 font-medium">Advancing to next scenario...</div>
-          </div>
-        )}
       </div>
     </>
   );
