@@ -1,6 +1,7 @@
 "use client";
 
-import { GameSession } from "@/types/arce";
+import { GameSession, Cluster } from "@/types/arce";
+import MasteryCanvas from "./MasteryCanvas";
 
 interface ResultsPhaseProps {
   session: GameSession;
@@ -220,6 +221,11 @@ Who can beat this? #ARCÉ #Mastery`;
         >
           🚀 Start New Session
         </button>
+      </div>
+
+      {/* Mastery Canvas - Elastic Grid of Nodes */}
+      <div className="w-full mt-12 sm:mt-16 relative z-10">
+        <MasteryCanvas clusters={session.clusters} />
       </div>
     </div>
   );
