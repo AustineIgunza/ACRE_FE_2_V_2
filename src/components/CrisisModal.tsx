@@ -5,6 +5,7 @@ import { useArceStore } from "@/store/arceStore";
 import { CrisisScenario, ThermalState } from "@/types/arce";
 import { getDefenseEvaluation } from "@/utils/mockTestData";
 import MiniLoadingOverlay from "./MiniLoadingOverlay";
+import FeedbackModal from "./FeedbackModal";
 
 interface CrisisModalProps {
   scenario: CrisisScenario;
@@ -184,42 +185,40 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
             </div>
           )}
 
-          {/* Feedback Display - Centered with thermal styling + Keywords */}
-          {defenseSubmitted && (
-            <div className={`feedback-container w-full text-center ${thermalState ? `state-${thermalState}` : ""} animate-slideDown`}>
-              <div className="text-2xl sm:text-3xl lg:text-4xl font-black mb-3 sm:mb-4 text-slate-900">{feedback}</div>
-              
-              {/* Keywords Display */}
-              {keywords.length > 0 && (
-                <div className="my-4 sm:my-6 flex flex-wrap gap-2 justify-center">
-                  {keywords.map((keyword, idx) => (
-                    <span
-                      key={idx}
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm font-semibold"
-                    >
-                      {keyword}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Formal Definition */}
-              {formalDef && (
-                <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-white/50 backdrop-blur rounded-lg border-1.5 border-blue-200 text-left">
-                  <p className="text-xs sm:text-sm text-slate-700 italic">
-                    <strong>Core Concept:</strong> {formalDef}
-                  </p>
-                </div>
-              )}
-
-              <div className="text-sm sm:text-base text-slate-600 font-medium mt-4">Advancing to next scenario...</div>
-            </div>
-          )}
+          {/* Feedback is now in modal - removed inline display */}
 
           {/* Spacer to allow scrolling room */}
           <div className="h-4 sm:h-8" />
         </div>
       </div>
+
+      {/* Feedback Modal - Popup instead of inline */}
+      <FeedbackModal
+        isOpen={defenseSubmitted}
+        thermalState={thermalState}
+        feedback={feedback}
+        keywords={keywords}
+        formalDefinition={formalDef}
+        onClose={() => {
+          setDefenseSubmitted(false);
+          setDefenseText("");
+          setThermalState("neutral");
+          setFeedback("");
+          setKeywords([]);
+          setFormalDef("");
+          
+          // Move to next scenario
+          const { nextNode, gameSession } = useArceStore.getState();
+          
+          // Check if we should end game (5 scenarios completed)
+          if (gameSession && gameSession.responses.length >= 5) {
+            useArceStore.getState().endGame();
+          } else {
+            nextNode();
+          }
+        }}
+        autoCloseSeconds={3.5}
+      />
     </>
   );
 }
