@@ -20,32 +20,32 @@ export const MOCK_CLUSTERS: Cluster[] = [
   {
     id: "cluster-1",
     clusterIndex: 0,
-    title: "Systems Thinking Fundamentals",
-    description: "Learn how causal chains build resilient systems",
+    title: "Cell Biology Fundamentals",
+    description: "Understand the basic unit of life and its essential functions",
     status: "unlocked",
     nodes: [
       {
         id: "node-1",
-        title: "Feedback Loops",
+        title: "Cell Structure & Organization",
         description:
-          "Understand positive and negative feedback mechanisms in complex systems",
+          "Learn how cells contain specialized structures like nucleus, mitochondria, and membrane",
         thermalState: "neutral",
         heat: 0,
         integrity: 0,
       },
       {
         id: "node-2",
-        title: "Bottleneck Detection",
-        description: "Identify the single point of failure in a system",
+        title: "Metabolic Processes",
+        description: "Understand how cells obtain and convert energy for survival",
         thermalState: "neutral",
         heat: 0,
         integrity: 0,
       },
       {
         id: "node-3",
-        title: "Leverage Points",
+        title: "Cell Communication",
         description:
-          "Find where small changes have disproportionate effects on outcomes",
+          "Discover how cells signal and coordinate with neighboring cells",
         thermalState: "neutral",
         heat: 0,
         integrity: 0,
@@ -55,22 +55,22 @@ export const MOCK_CLUSTERS: Cluster[] = [
   {
     id: "cluster-2",
     clusterIndex: 1,
-    title: "Strategic Decision-Making",
-    description: "Master crisis scenarios through deep causal analysis",
+    title: "Advanced Cell Functions",
+    description: "Master complex cellular processes and organism integration",
     status: "locked",
     nodes: [
       {
         id: "node-4",
-        title: "Root Cause Analysis",
-        description: "Trace problems back to their fundamental origins",
+        title: "Growth & Reproduction",
+        description: "Understand cellular division and organism development",
         thermalState: "neutral",
         heat: 0,
         integrity: 0,
       },
       {
         id: "node-5",
-        title: "Trade-off Evaluation",
-        description: "Weigh competing priorities in constrained situations",
+        title: "Environmental Adaptation",
+        description: "Learn how cells respond and adapt to environmental changes",
         thermalState: "neutral",
         heat: 0,
         integrity: 0,
@@ -88,22 +88,22 @@ export const MOCK_CRISIS_SCENARIOS: CrisisScenario[] = [
     id: "scenario-1",
     nodeId: "node-1",
     crisisText:
-      "A company's revenue stream depends entirely on a single major client. When the client threatens to leave, the company considers offering a massive discount. How should they respond?",
+      "A researcher observes that a cell is unable to produce energy despite having food molecules available. The nucleus is intact and the cell membrane appears normal. What is the critical structure likely malfunctioning?",
     questionType: "multiple-choice",
     actionButtons: [
       {
         id: "btn-1-a",
-        label: "Offer a 30% discount to retain the client",
+        label: "The cell nucleus is damaged and needs replacement",
         order: 1,
       },
       {
         id: "btn-1-b",
-        label: "Diversify clients to reduce dependency risk",
+        label: "The mitochondria are dysfunctional - they cannot convert nutrients to ATP",
         order: 2,
       },
       {
         id: "btn-1-c",
-        label: "Increase prices to compensate for volatility",
+        label: "The cell membrane is blocking energy absorption",
         order: 3,
       },
     ],
@@ -114,22 +114,22 @@ export const MOCK_CRISIS_SCENARIOS: CrisisScenario[] = [
     id: "scenario-2",
     nodeId: "node-2",
     crisisText:
-      "A manufacturer's factory is the only production facility. A regulatory shutdown becomes imminent. What is the immediate move?",
+      "During cell division, a daughter cell receives no mitochondria. What immediate consequence will occur to this new cell's survival?",
     questionType: "multiple-choice",
     actionButtons: [
       {
         id: "btn-2-a",
-        label: "Find an alternative supplier immediately",
+        label: "The cell will quickly die due to inability to generate ATP energy",
         order: 1,
       },
       {
         id: "btn-2-b",
-        label: "Negotiate with regulators to delay closure",
+        label: "The nucleus will compensate by producing its own energy",
         order: 2,
       },
       {
         id: "btn-2-c",
-        label: "Pivot to a different product that's compliant",
+        label: "It will survive indefinitely by absorbing energy from nearby cells",
         order: 3,
       },
     ],
@@ -140,22 +140,22 @@ export const MOCK_CRISIS_SCENARIOS: CrisisScenario[] = [
     id: "scenario-3",
     nodeId: "node-3",
     crisisText:
-      "A software company is losing users. Leadership debates: build new features, improve performance, or fix critical bugs?",
+      "Cells in different tissues need to coordinate their growth. They receive chemical signals from neighboring cells indicating growth has slowed. What process is enabling this coordination?",
     questionType: "multiple-choice",
     actionButtons: [
       {
         id: "btn-3-a",
-        label: "Fix critical bugs that crash the app",
+        label: "Cell membranes are directly fusing to share information",
         order: 1,
       },
       {
         id: "btn-3-b",
-        label: "Build 5 new trendy features",
+        label: "Cells are communicating through chemical signaling molecules binding to surface receptors",
         order: 2,
       },
       {
         id: "btn-3-c",
-        label: "Run marketing campaign to attract new users",
+        label: "The nucleus is broadcasting control signals to all cells",
         order: 3,
       },
     ],
@@ -166,23 +166,23 @@ export const MOCK_CRISIS_SCENARIOS: CrisisScenario[] = [
     id: "scenario-4",
     nodeId: "node-4",
     crisisText:
-      "A team's project is 3 weeks from deadline but only 40% complete. Resources are maxed out. What's the root cause?",
+      "A cell has successfully replicated its DNA and is preparing to divide. Growth phase has completed and cell size doubled. What is the most critical factor preventing uncontrolled division?",
     questionType: "multiple-choice",
     actionButtons: [
       {
         id: "btn-4-a",
-        label: "Everyone is working too slowly",
+        label: "The mitochondria refuse to divide with the nucleus",
         order: 1,
       },
       {
         id: "btn-4-b",
         label:
-          "Project scope was unrealistic from the start - requirements changed mid-way",
+          "Cells possess regulatory checkpoints that verify proper DNA replication and stop division if errors exist",
         order: 2,
       },
       {
         id: "btn-4-c",
-        label: "We need better time-tracking tools",
+        label: "The cell membrane hardens and prevents cell division entirely",
         order: 3,
       },
     ],
@@ -193,26 +193,26 @@ export const MOCK_CRISIS_SCENARIOS: CrisisScenario[] = [
     id: "scenario-5",
     nodeId: "node-5",
     crisisText:
-      "Your company can either invest $1M in automation (reduces costs by $200k/year) or hire 10 people (increases capacity by 30%). Budget only allows one. Which?",
+      "A cell is placed in an environment with extreme salinity (high salt concentration). The cell's internal salt concentration is much lower. How does the cell adapt to survive?",
     questionType: "multiple-choice",
     actionButtons: [
       {
         id: "btn-5-a",
-        label: "Automation - long-term ROI is better",
+        label: "Water flows out of the cell due to osmotic pressure - the cell shrivels and dies unless it actively pumps salt OUT",
         order: 1,
       },
       {
         id: "btn-5-b",
-        label: "Hire people - faster revenue growth",
+        label: "The nucleus expands to dilute the external salt concentration",
         order: 2,
       },
       {
         id: "btn-5-c",
-        label: "Wait and do neither until cash flow improves",
+        label: "The cell membrane becomes impermeable and blocks all osmotic pressure",
         order: 3,
       },
     ],
-    difficulty: "level-2",
+    difficulty: "level-1",
   },
 ];
 
