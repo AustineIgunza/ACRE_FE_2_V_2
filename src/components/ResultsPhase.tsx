@@ -144,6 +144,40 @@ Who can beat this? #ARCÉ #Mastery`;
           </div>
         )}
 
+        {/* Mastery Cards Display */}
+        {session.masteryCards.length > 0 && (
+          <div className="mb-8 sm:mb-12">
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6 text-center">🔥 Your Mastery Cards</h3>
+            <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+              {session.masteryCards.map((card) => (
+                <div
+                  key={card.id}
+                  className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-slate-50 border-1.5 border-blue-200 rounded-2xl shadow-sm hover:shadow-lg hover:scale-105 transition-all duration-300"
+                >
+                  <div className="mb-3">
+                    <h4 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">{card.nodeId.replace("node-", "Concept ")} - Unlocked</h4>
+                    <p className="text-xs sm:text-sm text-slate-600 italic leading-relaxed">
+                      {card.formalDefinition}
+                    </p>
+                  </div>
+                  
+                  {/* Keywords */}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {card.keywords.map((keyword, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold"
+                      >
+                        #{keyword}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Key Insights */}
         <div className="bg-gradient-to-r from-blue-50 to-slate-50 border-1.5 border-blue-200 rounded-2xl p-5 sm:p-6 mb-8 sm:mb-10">
           <h4 className="font-bold text-slate-900 mb-3 sm:mb-4 text-center sm:text-left">✨ Key Insights</h4>

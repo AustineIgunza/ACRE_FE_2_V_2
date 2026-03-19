@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useArceStore } from "@/store/arceStore";
 import { CrisisScenario, ThermalState } from "@/types/arce";
+import { getDefenseEvaluation } from "@/utils/mockTestData";
 import MiniLoadingOverlay from "./MiniLoadingOverlay";
 
 interface CrisisModalProps {
@@ -24,6 +25,8 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
   const [defenseSubmitted, setDefenseSubmitted] = useState(false);
   const [thermalState, setThermalState] = useState<ThermalState>("neutral");
   const [feedback, setFeedback] = useState("");
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [formalDef, setFormalDef] = useState("");
   const [isEvaluating, setIsEvaluating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -52,22 +55,17 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
 
     setIsEvaluating(true);
 
-    // Simulate thermal feedback
-    const thermalResults: ThermalState[] = ["frost", "warning", "ignition"];
-    const randomThermal =
-      thermalResults[Math.floor(Math.random() * thermalResults.length)];
-    setThermalState(randomThermal);
+    // Get evaluation based on actual button + defense
+    const evaluation = getDefenseEvaluation(
+      scenario.id,
+      selectedActionButton || "",
+      defenseText.length
+    );
 
-    const feedbackMap: Record<ThermalState, string> = {
-      frost: "Your logic is shallow. This exposes a critical gap. Try again with deeper causality.",
-      warning:
-        "You are on the right track, but your defense is incomplete. Why does this truly work?",
-      ignition:
-        "Deep causality detected! You have grasped the leverage point. This node is Ignited.",
-      neutral: "Evaluating...",
-    };
-
-    setFeedback(feedbackMap[randomThermal]);
+    setThermalState(evaluation.thermalState);
+    setFeedback(evaluation.feedback);
+    setKeywords(evaluation.keywords);
+    setFormalDef(evaluation.formalDefinition);
 
     // Simulate API delay (1.5 seconds)
     await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -78,13 +76,25 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
     // Submit to store
     await submitDefense(defenseText);
 
-    // Show feedback for 2 seconds, then move to next
+    // Show feedback for 3.5 seconds, then move to next
     setTimeout(() => {
       setDefenseSubmitted(false);
       setDefenseText("");
       setThermalState("neutral");
       setFeedback("");
-    }, 3000);
+      setKeywords([]);
+      setFormalDef("");
+      
+      // Move to next scenario
+      const { nextNode, gameSession, currentPhase } = useArceStore.getState();
+      
+      // Check if we should end game (5 scenarios completed)
+      if (gameSession && gameSession.responses.length >= 5) {
+        useArceStore.getState().endGame();
+      } else {
+        nextNode();
+      }
+    }, 3500);
   };
 
   return (
@@ -172,11 +182,35 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
             </div>
           )}
 
-          {/* Feedback Display - Centered with thermal styling */}
+          {/* Feedback Display - Centered with thermal styling + Keywords */}
           {defenseSubmitted && (
             <div className={`feedback-container w-full text-center ${thermalState ? `state-${thermalState}` : ""} animate-slideDown`}>
               <div className="text-2xl sm:text-3xl lg:text-4xl font-black mb-3 sm:mb-4 text-slate-900">{feedback}</div>
-              <div className="text-sm sm:text-base text-slate-600 font-medium">Advancing to next scenario...</div>
+              
+              {/* Keywords Display */}
+              {keywords.length > 0 && (
+                <div className="my-4 sm:my-6 flex flex-wrap gap-2 justify-center">
+                  {keywords.map((keyword, idx) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm font-semibold"
+                    >
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Formal Definition */}
+              {formalDef && (
+                <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-white/50 backdrop-blur rounded-lg border-1.5 border-blue-200 text-left">
+                  <p className="text-xs sm:text-sm text-slate-700 italic">
+                    <strong>Core Concept:</strong> {formalDef}
+                  </p>
+                </div>
+              )}
+
+              <div className="text-sm sm:text-base text-slate-600 font-medium mt-4">Advancing to next scenario...</div>
             </div>
           )}
 

@@ -17,6 +17,9 @@ export interface CausalAnchor {
   thermalState: ThermalState;
   heat: number; // 0-100
   integrity: number; // 0-100
+  formalDefinition?: string; // Academic definition of the concept
+  keywords?: string[]; // Key terms associated with the concept
+  userDefense?: string; // User's original defense response
 }
 
 // Cluster: Group of 3-4 nodes for cognitive load management
