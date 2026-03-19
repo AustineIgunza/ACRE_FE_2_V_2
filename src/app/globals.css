@@ -615,12 +615,12 @@ button:disabled {
   right: 0;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 250, 0.98));
   border-top: 2.5px solid var(--color-blue-primary);
-  padding: 24px 20px;
-  max-height: 480px;
+  padding: 16px 16px 20px;
+  max-height: 55vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 100;
   backdrop-filter: blur(16px);
@@ -629,20 +629,20 @@ button:disabled {
 
 @media (min-width: 640px) {
   .defense-container {
-    padding: 32px 28px;
-    gap: 20px;
+    padding: 20px 24px 24px;
+    gap: 14px;
   }
 }
 
 .defense-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--color-blue-primary);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   text-transform: uppercase;
-  letter-spacing: 1.4px;
+  letter-spacing: 1.2px;
   animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -672,14 +672,14 @@ button:disabled {
 
 .defense-textarea {
   width: 100%;
-  min-height: 120px;
-  max-height: 200px;
+  min-height: 80px;
+  max-height: 140px;
   resize: none;
-  font-size: 15px;
-  line-height: 1.6;
-  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 10px 12px;
   border: 1.5px solid var(--color-border-subtle);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--color-white);
   color: var(--color-text-primary);
   font-family: inherit;
@@ -691,6 +691,7 @@ button:disabled {
 .defense-textarea::placeholder {
   color: var(--color-text-secondary);
   font-weight: 400;
+  font-size: 13px;
 }
 
 .defense-textarea:focus {
