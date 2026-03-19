@@ -92,15 +92,9 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
       {/* Mini Loading Overlay during evaluation */}
       {isEvaluating && <MiniLoadingOverlay />}
 
-      <div className="min-h-screen bg-gradient-subtle text-slate-900 px-4 sm:px-6 py-8 sm:py-12 flex flex-col relative overflow-hidden">
-        {/* Premium Decorative Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob"></div>
-          <div className="absolute -bottom-8 left-1/4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-2000"></div>
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 max-w-3xl mx-auto w-full flex flex-col items-center justify-center flex-1">
+      <div className="min-h-screen-gradient bg-gradient-blue-white text-slate-900 px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 flex flex-col items-center justify-center relative">
+        {/* Content - Fully Centered */}
+        <div className="w-full max-w-2xl flex flex-col items-center justify-center">
           {/* Crisis Section - Centered */}
           <div className="w-full mb-8 sm:mb-12 text-center">
             {/* Crisis Heading */}
@@ -124,7 +118,7 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
             {scenario.questionType === "multiple-choice" &&
               scenario.actionButtons &&
               !showDefenseTextbox && (
-              <div className="w-full max-w-2xl mx-auto space-y-3 sm:space-y-4 mb-8 sm:mb-12">
+              <div className="w-full space-y-3 sm:space-y-4 mb-8 sm:mb-12 lg:mb-16">
                 <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-widest text-center mb-4 sm:mb-6">
                   Select Your Response:
                 </p>
@@ -151,8 +145,8 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
 
         {/* Defense Textbox - Centered slide-up */}
         {showDefenseTextbox && !defenseSubmitted && (
-          <div className="defense-container relative z-20">
-            <form onSubmit={handleDefenseSubmit} className="flex flex-col gap-4 sm:gap-6 w-full max-w-2xl mx-auto">
+          <div className="defense-container w-full max-w-2xl">
+            <form onSubmit={handleDefenseSubmit} className="flex flex-col gap-4 sm:gap-6">
               <label className="defense-label text-center text-lg sm:text-xl font-bold text-slate-900">
                 Defend Your Logic
               </label>
@@ -184,7 +178,7 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
 
         {/* Feedback Display - Centered with thermal styling */}
         {defenseSubmitted && (
-          <div className={`feedback-container max-w-2xl mx-auto w-full text-center relative z-20 ${thermalState ? `state-${thermalState}` : ""}`}>
+          <div className={`feedback-container w-full max-w-2xl text-center ${thermalState ? `state-${thermalState}` : ""}`}>
             <div className="text-2xl sm:text-3xl lg:text-4xl font-black mb-3 sm:mb-4 text-slate-900">{feedback}</div>
             <div className="text-sm sm:text-base text-slate-600 font-medium">Advancing to next scenario...</div>
           </div>

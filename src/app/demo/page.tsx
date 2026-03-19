@@ -7,33 +7,33 @@ export default function DemoPage() {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen bg-gradient-subtle text-slate-900">
+    <div className="min-h-screen bg-gradient-blue-white text-slate-900">
       {/* Navigation */}
-      <nav className="sticky top-0 bg-white border-b-1.5 border-blue-200 z-50 shadow-xs backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-5 flex justify-between items-center">
-          <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
-            ARCÉ Component Demo
+      <nav className="sticky top-0 bg-white/95 border-b-1.5 border-blue-200 z-50 shadow-xs backdrop-blur-sm">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex justify-between items-center">
+          <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+            ARCÉ
           </h1>
-          <p className="text-sm font-medium text-slate-600">Modern Design System</p>
+          <p className="text-xs sm:text-sm font-medium text-slate-600">Design System</p>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-16">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
         {/* Heading */}
-        <section className="mb-24 text-center max-w-4xl mx-auto">
-          <h2 className="text-5xl sm:text-6xl font-black mb-6 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent leading-tight">
+        <section className="mb-20 sm:mb-24 lg:mb-32 text-center max-w-4xl mx-auto">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 sm:mb-6 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent leading-tight">
             Design System
           </h2>
-          <p className="text-lg sm:text-xl font-medium text-slate-600 leading-relaxed">
+          <p className="text-base sm:text-lg lg:text-xl font-medium text-slate-600 leading-relaxed">
             Premium, minimalist design inspired by Apple. Modern blue, white, and slate palette with refined typography and smooth interactions.
           </p>
         </section>
 
         {/* Colors */}
-        <section className="mb-24">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Color Palette</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-5xl mx-auto">
+        <section className="mb-20 sm:mb-24 lg:mb-32">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-10 sm:mb-12 lg:mb-16 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Color Palette</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 max-w-5xl mx-auto">
             <div className="flex flex-col text-center group cursor-pointer">
               <div className="w-full h-32 sm:h-40 bg-blue-600 rounded-2xl shadow-sm mb-4 transition-all duration-300 group-hover:shadow-lg group-hover:scale-105 group-hover:rounded-3xl"></div>
               <p className="font-bold text-slate-900">Primary Blue</p>
@@ -78,9 +78,9 @@ export default function DemoPage() {
         </section>
 
         {/* Buttons */}
-        <section className="mb-24">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Buttons</h3>
-          <div className="space-y-8 max-w-2xl mx-auto">
+        <section className="mb-20 sm:mb-24 lg:mb-32">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-10 sm:mb-12 lg:mb-16 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Buttons</h3>
+          <div className="space-y-6 sm:space-y-8 max-w-2xl mx-auto">
             {/* Primary Button */}
             <div className="text-center">
               <p className="text-sm font-bold text-slate-600 mb-4 uppercase tracking-wide">Primary Button</p>
@@ -116,9 +116,9 @@ export default function DemoPage() {
         </section>
 
         {/* Action Buttons */}
-        <section className="mb-24">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Action Buttons (Touch-Friendly)</h3>
-          <div className="space-y-3 max-w-2xl mx-auto">
+        <section className="mb-20 sm:mb-24 lg:mb-32">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-10 sm:mb-12 lg:mb-16 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Action Buttons (Touch-Friendly)</h3>
+          <div className="space-y-2 sm:space-y-3 max-w-2xl mx-auto">
             {["Option A", "Option B", "Option C"].map((option, idx) => (
               <button
                 key={idx}
@@ -134,9 +134,9 @@ export default function DemoPage() {
         </section>
 
         {/* Cards */}
-        <section className="mb-24">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Card Components</h3>
-          <div className="grid md:grid-cols-3 gap-6 mb-8 max-w-5xl mx-auto">
+        <section className="mb-20 sm:mb-24 lg:mb-32">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-10 sm:mb-12 lg:mb-16 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Card Components</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-5xl mx-auto">
             {[1, 2, 3].map((i) => (
               <div key={i} className="card group hover:scale-105 transition-transform duration-300">
                 <div className="card-header">
@@ -160,9 +160,9 @@ export default function DemoPage() {
         </section>
 
         {/* Stats Grid */}
-        <section className="mb-24">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Statistics Display</h3>
-          <div className="stats-grid max-w-4xl mx-auto">
+        <section className="mb-20 sm:mb-24 lg:mb-32">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-10 sm:mb-12 lg:mb-16 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Statistics Display</h3>
+          <div className="stats-grid max-w-5xl mx-auto">
             <div className="stat-card">
               <div className="stat-label">Final Heat</div>
               <div className="stat-value">72</div>
@@ -187,9 +187,9 @@ export default function DemoPage() {
         </section>
 
         {/* Form Elements */}
-        <section className="mb-24">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Form Elements</h3>
-          <div className="max-w-2xl mx-auto space-y-6">
+        <section className="mb-20 sm:mb-24 lg:mb-32">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-10 sm:mb-12 lg:mb-16 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Form Elements</h3>
+          <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6">
             <div className="text-center">
               <label className="block text-sm sm:text-base font-bold text-blue-900 mb-3">Text Input</label>
               <input
@@ -209,9 +209,9 @@ export default function DemoPage() {
         </section>
 
         {/* Thermal States */}
-        <section className="mb-24">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Thermal States</h3>
-          <div className="space-y-4 max-w-2xl mx-auto">
+        <section className="mb-20 sm:mb-24 lg:mb-32">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-10 sm:mb-12 lg:mb-16 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Thermal States</h3>
+          <div className="space-y-3 sm:space-y-4 max-w-2xl mx-auto">
             <div className="feedback-container feedback-frost hover:shadow-lg transition-all duration-300">
               [FROST] Your logic is shallow. This exposes a critical gap in your reasoning about causality.
             </div>
@@ -225,9 +225,9 @@ export default function DemoPage() {
         </section>
 
         {/* Animations Demo */}
-        <section className="mb-24">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Animations</h3>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <section className="mb-20 sm:mb-24 lg:mb-32">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-10 sm:mb-12 lg:mb-16 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Animations</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-5xl mx-auto">
             <div className="flex flex-col items-center justify-center h-32 bg-blue-50 rounded-2xl border-1.5 border-blue-200 hover:shadow-lg hover:scale-105 transition-all duration-300">
               <div className="spinner mb-4"></div>
               <p className="text-sm font-bold text-slate-600">Loading</p>
@@ -256,9 +256,9 @@ export default function DemoPage() {
         </section>
 
         {/* Defense Textbox Preview */}
-        <section className="mb-24">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Defense Textbox (Slide-Up)</h3>
-          <div className="text-center">
+        <section className="mb-20 sm:mb-24 lg:mb-32">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-10 sm:mb-12 lg:mb-16 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">Defense Textbox (Slide-Up)</h3>
+          <div className="text-center max-w-2xl mx-auto">
             <button
               onClick={() => setShowDefense(!showDefense)}
               className="button-primary mb-8 hover:shadow-lg active:scale-95 transition-all"
@@ -281,9 +281,9 @@ export default function DemoPage() {
         </section>
 
         {/* Footer */}
-        <section className="border-t-1.5 border-blue-200 pt-12 sm:pt-16 mb-8 sm:mb-12">
-          <h3 className="text-3xl sm:text-4xl font-bold mb-8 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">MVC Architecture</h3>
-          <div className="grid md:grid-cols-3 gap-6 sm:gap-8 mb-12 max-w-5xl mx-auto">
+        <section className="border-t-1.5 border-blue-200 pt-16 sm:pt-20 lg:pt-24 pb-8 sm:pb-12 lg:pb-16">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-8 sm:mb-10 lg:mb-12 text-center bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">MVC Architecture</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-5xl mx-auto">
             <div className="card group hover:scale-105 transition-transform duration-300">
               <div className="card-header">
                 <h4 className="card-title text-center">Model Layer</h4>

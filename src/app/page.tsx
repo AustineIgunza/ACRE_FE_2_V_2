@@ -11,16 +11,11 @@ export default function Home() {
     useArceStore();
 
   return (
-    <div className="min-h-screen bg-gradient-subtle text-slate-900 transition-all duration-300">
-      {/* Premium Decorative Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob"></div>
-        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-slate-200 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-4000"></div>
-      </div>
+    <div className="min-h-screen-gradient bg-gradient-blue-white flex flex-col items-center justify-center transition-all duration-300">
+      {/* No more decorative blobs - gradient is the background */}
 
       {/* Content */}
-      <div className="relative z-10">
+      <div className="relative z-10 w-full flex flex-col items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8">
         {/* Input Phase: Logo + Textarea */}
         {currentPhase === "input" && <ArceInputPhase />}
 
