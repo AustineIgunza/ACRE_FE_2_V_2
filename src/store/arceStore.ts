@@ -17,6 +17,7 @@ interface ArceStore {
   gameSession: GameSession | null;
   currentScenario: CrisisScenario | null;
   isLoading: boolean;
+  loadingProgress: number; // 0-100 for progress bars
   error: string | null;
 
   // UI state
@@ -41,6 +42,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   gameSession: null,
   currentScenario: null,
   isLoading: false,
+  loadingProgress: 0,
   error: null,
   showLogo: true, // Show logo at start
   currentPhase: "input",
