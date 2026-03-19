@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useArceStore } from "@/store/arceStore";
 import { CrisisScenario, ThermalState } from "@/types/arce";
-import { getDefenseEvaluation } from "@/utils/mockTestData";
 import MiniLoadingOverlay from "./MiniLoadingOverlay";
 import FeedbackModal from "./FeedbackModal";
 
@@ -58,46 +57,18 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
 
     setIsEvaluating(true);
 
-    // Get evaluation based on actual button + defense
-    const evaluation = getDefenseEvaluation(
-      scenario.id,
-      selectedActionButton || "",
-      defenseText.length
-    );
-
-    setThermalState(evaluation.thermalState);
-    setFeedback(evaluation.feedback);
-    setKeywords(evaluation.keywords);
-    setFormalDef(evaluation.formalDefinition);
-
-    // Simulate API delay (1.5 seconds)
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Submit to store (which calls the backend API)
+    const result = await submitDefense(defenseText);
 
     setIsEvaluating(false);
-    setDefenseSubmitted(true);
 
-    // Submit to store
-    await submitDefense(defenseText);
-
-    // Show feedback for 3.5 seconds, then move to next
-    setTimeout(() => {
-      setDefenseSubmitted(false);
-      setDefenseText("");
-      setThermalState("neutral");
-      setFeedback("");
-      setKeywords([]);
-      setFormalDef("");
-      
-      // Move to next scenario
-      const { nextNode, gameSession, currentPhase } = useArceStore.getState();
-      
-      // Check if we should end game (5 scenarios completed)
-      if (gameSession && gameSession.responses.length >= 5) {
-        useArceStore.getState().endGame();
-      } else {
-        nextNode();
-      }
-    }, 3500);
+    if (result) {
+      setThermalState(result.thermalState);
+      setFeedback(result.feedback);
+      setKeywords(result.keywords || []);
+      setFormalDef(result.formalDefinition || "");
+      setDefenseSubmitted(true);
+    }
   };
 
   return (
@@ -210,8 +181,8 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
           // Move to next scenario
           const { nextNode, gameSession } = useArceStore.getState();
           
-          // Check if we should end game (5 scenarios completed)
-          if (gameSession && gameSession.responses.length >= 5) {
+          // Check if we should end game (3 scenarios completed)
+          if (gameSession && gameSession.responses.length >= 3) {
             useArceStore.getState().endGame();
           } else {
             nextNode();

@@ -30,12 +30,14 @@ export default function FeedbackModal({
     setTimeLeft(autoCloseSeconds);
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 1) {
+        const next = prev - 0.1;
+        if (next <= 0) {
           clearInterval(interval);
-          onClose();
+          // Defer onClose to avoid setState-during-render conflict
+          setTimeout(() => onClose(), 0);
           return 0;
         }
-        return prev - 0.1;
+        return next;
       });
     }, 100);
 

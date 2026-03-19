@@ -14,14 +14,13 @@ import {
 } from "@/types/arce";
 import {
   MOCK_CLUSTERS,
-  MOCK_CRISIS_SCENARIOS,
-  getDefenseEvaluation,
   generateMockMasteryCard,
 } from "@/utils/mockTestData";
 
 interface ArceStore {
   // Session state
   gameSession: GameSession | null;
+  scenarios: CrisisScenario[];
   currentScenario: CrisisScenario | null;
   isLoading: boolean;
   loadingProgress: number; // 0-100 for progress bars
@@ -39,7 +38,7 @@ interface ArceStore {
   startGame: (sourceContent: string, sourceTitle?: string) => Promise<void>;
   selectAction: (buttonId: string) => void;
   showDefense: () => void;
-  submitDefense: (defense: string) => Promise<void>;
+  submitDefense: (defense: string) => Promise<{ thermalState: ThermalState, feedback: string, keywords: string[], formalDefinition: string } | undefined>;
   nextNode: () => void;
   nextCluster: () => void;
   resetGame: () => void;
@@ -50,6 +49,7 @@ interface ArceStore {
 export const useArceStore = create<ArceStore>((set, get) => ({
   // Initial state
   gameSession: null,
+  scenarios: [],
   currentScenario: null,
   isLoading: false,
   loadingProgress: 0,
@@ -61,23 +61,36 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   testMode: false,
   correctButton: null,
 
-  // Start a new game
   startGame: async (sourceContent: string, sourceTitle?: string) => {
     set({ isLoading: true, error: null, showLogo: true });
 
     try {
-      // Mock API call for extraction
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-scenarios`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ text_material: sourceContent })
+      });
+      if (!res.ok) throw new Error("Failed to generate scenarios from backend.");
+      const data = await res.json();
+      
+      const mappedScenarios: CrisisScenario[] = data.scenarios.map((s: any, index: number) => ({
+        id: s.id || `scenario-${index}`,
+        nodeId: `node-${index}`,
+        crisisText: `${s.title}\n\n${s.context}\n${s.question}`,
+        questionType: 'multiple-choice',
+        actionButtons: s.options?.map((opt: any, i: number) => ({
+          id: opt.id || `btn-${i}`,
+          label: opt.text || opt.action,
+          order: i + 1
+        })) || [],
+        difficulty: 'level-2'
+      }));
 
-      // Use mock clusters and get first scenario
-      const firstScenario = MOCK_CRISIS_SCENARIOS[0];
-
-      // Generate mock game session with FULL test data
       const mockSession: GameSession = {
         id: `session-${Date.now()}`,
         sourceContent,
         sourceTitle: sourceTitle || "Learning Session",
-        clusters: MOCK_CLUSTERS,
+        clusters: MOCK_CLUSTERS, // We retain local MOCK_CLUSTERS for mapping requirements
         currentClusterIndex: 0,
         currentNodeIndex: 0,
         globalHeat: 0,
@@ -89,24 +102,18 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         completed: false,
       };
 
-      // Save to localStorage
-      localStorage.setItem(
-        `arce-session-${mockSession.id}`,
-        JSON.stringify(mockSession)
-      );
+      localStorage.setItem(`arce-session-${mockSession.id}`, JSON.stringify(mockSession));
 
       set({
         gameSession: mockSession,
-        currentScenario: firstScenario,
+        scenarios: mappedScenarios,
+        currentScenario: mappedScenarios[0],
         isLoading: false,
         currentPhase: "playing",
-        showLogo: false, // Hide logo after start
+        showLogo: false, 
       });
     } catch (err) {
-      set({
-        error: err instanceof Error ? err.message : "Failed to start game",
-        isLoading: false,
-      });
+      set({ error: err instanceof Error ? err.message : "Failed to start game", isLoading: false });
     }
   },
 
@@ -120,44 +127,48 @@ export const useArceStore = create<ArceStore>((set, get) => ({
     set({ showDefenseTextbox: true });
   },
 
-  // Submit the defense text
   submitDefense: async (defense: string) => {
-    const { gameSession, currentScenario, selectedActionButton, testMode } = get();
+    const { gameSession, currentScenario, selectedActionButton, testMode, scenarios } = get();
     if (!gameSession || !currentScenario) return;
 
-    // In test mode, allow empty defense
     if (!testMode && defense.length < 20) {
-      set({
-        error: "Defense must be at least 20 characters",
-      });
+      set({ error: "Defense must be at least 20 characters" });
       return;
     }
 
     set({ isLoading: true });
 
     try {
-      // Mock API call for evaluation
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // In test mode, always return ignition (correct answer)
       let evaluation;
       if (testMode) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         evaluation = {
           thermalState: "ignition" as ThermalState,
           feedback: "🔥 TEST MODE: This answer is marked correct for testing!",
-          keywords: ["test-mode", "testing"],
-          formalDefinition: "Test mode allows rapid feature testing without defense requirements.",
+          heatDelta: 25,
         };
       } else {
-        // Get evaluation based on scenario + button + defense
-        evaluation = getDefenseEvaluation(
-          currentScenario.id,
-          selectedActionButton || "",
-          defense.length
-        );
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/evaluate`, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ 
+             scenarioId: currentScenario.id, 
+             userChoice: selectedActionButton, 
+             userDefense: defense,
+             userId: "" // Can implement fully later
+           })
+         });
+         if (!res.ok) throw new Error("Evaluation request failed.");
+         const data = await res.json();
+         evaluation = {
+           thermalState: data.evaluation.state.toLowerCase() as ThermalState,
+           feedback: data.evaluation.feedback,
+           heatDelta: data.evaluation.heatScoreDelta || 0,
+           keywords: data.evaluation.keywords || [],
+           formalDefinition: data.evaluation.formalDefinition || ""
+         }
       }
 
-      // Create response record
       const response: UserResponse = {
         id: `response-${Date.now()}`,
         scenarioId: currentScenario.id,
@@ -168,11 +179,9 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         actionChoice: selectedActionButton || undefined,
       };
 
-      // Update game session
       const updatedSession = { ...gameSession };
       updatedSession.responses.push(response);
 
-      // Generate mastery card if ignition
       if (evaluation.thermalState === "ignition") {
         const masteryCard = generateMockMasteryCard(
           currentScenario.nodeId,
@@ -182,58 +191,47 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         updatedSession.masteryCards.push(masteryCard);
       }
 
-      // Update thermal values based on result
+      const delta = evaluation.heatDelta || 0;
       if (evaluation.thermalState === "frost") {
-        updatedSession.globalHeat = Math.max(0, updatedSession.globalHeat - 10);
-        updatedSession.globalIntegrity = Math.max(
-          0,
-          updatedSession.globalIntegrity - 5
-        );
+        updatedSession.globalHeat = Math.max(0, updatedSession.globalHeat - Math.abs(delta));
+        updatedSession.globalIntegrity = Math.max(0, updatedSession.globalIntegrity - 5);
       } else if (evaluation.thermalState === "warning") {
-        updatedSession.globalHeat += 5;
+        updatedSession.globalHeat = Math.min(100, updatedSession.globalHeat + Math.abs(delta));
         updatedSession.globalIntegrity += 3;
       } else if (evaluation.thermalState === "ignition") {
-        updatedSession.globalHeat = Math.min(100, updatedSession.globalHeat + 25);
-        updatedSession.globalIntegrity = Math.min(
-          100,
-          updatedSession.globalIntegrity + 15
-        );
+        updatedSession.globalHeat = Math.min(100, updatedSession.globalHeat + Math.abs(delta));
+        updatedSession.globalIntegrity = Math.min(100, updatedSession.globalIntegrity + 15);
       }
 
       updatedSession.updatedAt = Date.now();
-      localStorage.setItem(
-        `arce-session-${updatedSession.id}`,
-        JSON.stringify(updatedSession)
-      );
+      localStorage.setItem(`arce-session-${updatedSession.id}`, JSON.stringify(updatedSession));
 
       set({
         gameSession: updatedSession,
         isLoading: false,
         showDefenseTextbox: false,
         selectedActionButton: null,
-        currentPhase: "playing", // Stay in playing for next scenario
+        currentPhase: "playing", 
       });
+
+      return {
+        thermalState: evaluation.thermalState,
+        feedback: evaluation.feedback,
+        keywords: evaluation.keywords || [],
+        formalDefinition: evaluation.formalDefinition || "",
+      };
     } catch (err) {
-      set({
-        error: err instanceof Error ? err.message : "Failed to submit defense",
-        isLoading: false,
-      });
+      set({ error: err instanceof Error ? err.message : "Failed to submit defense", isLoading: false });
     }
   },
 
-  // Move to next node in cluster
   nextNode: () => {
-    const { gameSession, currentScenario } = get();
+    const { gameSession, currentScenario, scenarios } = get();
     if (!gameSession || !currentScenario) return;
 
-    // Find next scenario based on current response count
     const responseCount = gameSession.responses.length;
-    const nextScenarioIndex = Math.min(
-      responseCount,
-      MOCK_CRISIS_SCENARIOS.length - 1
-    );
-
-    const nextScenario = MOCK_CRISIS_SCENARIOS[nextScenarioIndex];
+    const nextScenarioIndex = Math.min(responseCount, scenarios.length - 1);
+    const nextScenario = scenarios[nextScenarioIndex];
 
     set((state) => ({
       gameSession: {
@@ -250,18 +248,13 @@ export const useArceStore = create<ArceStore>((set, get) => ({
     }));
   },
 
-  // Move to next cluster
   nextCluster: () => {
-    const { gameSession } = get();
+    const { gameSession, scenarios } = get();
     if (!gameSession) return;
 
     if (gameSession.currentClusterIndex < gameSession.clusters.length - 1) {
-      // Get next scenario
       const responseCount = gameSession.responses.length;
-      const nextScenarioIndex = Math.min(
-        responseCount,
-        MOCK_CRISIS_SCENARIOS.length - 1
-      );
+      const nextScenarioIndex = Math.min(responseCount, scenarios.length - 1);
 
       set((state) => ({
         gameSession: {
@@ -269,7 +262,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
           currentClusterIndex: state.gameSession!.currentClusterIndex + 1,
           currentNodeIndex: 0,
         },
-        currentScenario: MOCK_CRISIS_SCENARIOS[nextScenarioIndex],
+        currentScenario: scenarios[nextScenarioIndex],
         showDefenseTextbox: false,
         selectedActionButton: null,
       }));
