@@ -59,11 +59,11 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
     setThermalState(randomThermal);
 
     const feedbackMap: Record<ThermalState, string> = {
-      frost: "❄️ Your logic is shallow. This exposes a critical gap. Try again with deeper causality.",
+      frost: "Your logic is shallow. This exposes a critical gap. Try again with deeper causality.",
       warning:
-        "⚠️ You are on the right track, but your defense is incomplete. Why does this truly work?",
+        "You are on the right track, but your defense is incomplete. Why does this truly work?",
       ignition:
-        "🔥 Deep causality detected! You have grasped the leverage point. This node is Ignited.",
+        "Deep causality detected! You have grasped the leverage point. This node is Ignited.",
       neutral: "Evaluating...",
     };
 

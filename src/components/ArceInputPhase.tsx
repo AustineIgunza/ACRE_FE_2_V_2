@@ -104,7 +104,7 @@ export default function InputPhase() {
 
         {/* Footer */}
         <div className="mt-12 text-center text-gray-600 text-sm">
-          <p>💡 Tip: The more detailed your material, the richer your learning experience.</p>
+          <p>Tip: The more detailed your material, the richer your learning experience.</p>
         </div>
       </div>
     </>

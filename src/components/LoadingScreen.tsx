@@ -36,13 +36,13 @@ export default function LoadingScreen({
   const getIcon = () => {
     switch (phase) {
       case "extracting":
-        return "🧠";
+        return "[BRAIN]";
       case "evaluating":
-        return "⚖️";
+        return "[SCALE]";
       case "transitioning":
-        return "⏳";
+        return "[TIMER]";
       default:
-        return "⚙️";
+        return "[GEAR]";
     }
   };
 
@@ -86,12 +86,12 @@ export default function LoadingScreen({
         {/* Tips */}
         <div className="mt-12 max-w-md mx-auto text-left">
           <p className="text-xs font-bold text-gray-600 uppercase mb-3">
-            💡 While you wait:
+            While you wait:
           </p>
           <ul className="space-y-2 text-sm text-gray-700">
-            <li>✓ Think about the consequences of each move</li>
-            <li>✓ Consider all stakeholders affected</li>
-            <li>✓ Depth of reasoning matters more than speed</li>
+            <li>- Think about the consequences of each move</li>
+            <li>- Consider all stakeholders affected</li>
+            <li>- Depth of reasoning matters more than speed</li>
           </ul>
         </div>
       </div>

@@ -68,16 +68,16 @@ export default function MasteryCanvas({
                   <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200">
                     <div className="flex gap-2">
                       {node.thermalState === "neutral" && (
-                        <span className="text-2xl">❄️</span>
+                        <span className="text-sm font-bold text-gray-600">[NEUTRAL]</span>
                       )}
                       {node.thermalState === "frost" && (
-                        <span className="text-2xl animate-pulse">❄️❄️</span>
+                        <span className="text-sm font-bold text-red-600 animate-pulse">[FROST]</span>
                       )}
                       {node.thermalState === "warning" && (
-                        <span className="text-2xl animate-bounce">⚠️</span>
+                        <span className="text-sm font-bold text-yellow-600 animate-bounce">[WARNING]</span>
                       )}
                       {node.thermalState === "ignition" && (
-                        <span className="text-2xl animate-pulse">🔥🔥</span>
+                        <span className="text-sm font-bold text-green-600 animate-pulse">[IGNITION]</span>
                       )}
                     </div>
                     <div className="text-right">

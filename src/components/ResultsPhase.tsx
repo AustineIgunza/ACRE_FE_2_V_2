@@ -9,7 +9,7 @@ interface ResultsPhaseProps {
 
 export default function ResultsPhase({ session, onNewGame }: ResultsPhaseProps) {
   const shareToWhatsApp = () => {
-    const text = `🔥 I just mastered "${session.sourceTitle}" on ARCÉ!
+    const text = `I just mastered "${session.sourceTitle}" on ARCÉ!
 
 Heat: ${session.globalHeat}%
 Integrity: ${session.globalIntegrity}%
@@ -22,7 +22,7 @@ Can you beat my score? Try ARCÉ now!`;
   };
 
   const shareToTwitter = () => {
-    const text = `🔥 Just crushed "${session.sourceTitle}" on ARCÉ - The Iteration Engine!
+    const text = `Just crushed "${session.sourceTitle}" on ARCÉ - The Iteration Engine!
 
 Final Heat: ${session.globalHeat}%
 Mastered ${session.masteryCards.length} concepts through crisis scenarios.
@@ -46,7 +46,7 @@ Who can beat this? #ARCÉ #Mastery`;
         {/* Title */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-black text-black mb-2">
-            {session.globalHeat >= 80 ? "🔥 IGNITION ACHIEVED" : "Mastery Report"}
+            {session.globalHeat >= 80 ? "IGNITION ACHIEVED" : "Mastery Report"}
           </h2>
           <p className="text-xl text-gray-600">{session.sourceTitle}</p>
         </div>
@@ -129,9 +129,9 @@ Who can beat this? #ARCÉ #Mastery`;
                     >
                       <td className="p-3 font-bold">{idx + 1}</td>
                       <td className="p-3">
-                        {response.thermalResult === "frost" && "❄️ Frost"}
-                        {response.thermalResult === "warning" && "⚠️ Warning"}
-                        {response.thermalResult === "ignition" && "🔥 Ignition"}
+                        {response.thermalResult === "frost" && "Frost"}
+                        {response.thermalResult === "warning" && "Warning"}
+                        {response.thermalResult === "ignition" && "Ignition"}
                       </td>
                       <td className="p-3">{response.defense.length} chars</td>
                     </tr>
@@ -148,28 +148,28 @@ Who can beat this? #ARCÉ #Mastery`;
             onClick={shareToWhatsApp}
             className="button-rainbow w-full py-4 px-6 font-bold rounded-lg border-2 border-black bg-white text-black hover:bg-gray-100 transition-all flex items-center justify-center gap-3"
           >
-            💬 Share to WhatsApp
+            Share to WhatsApp
           </button>
           <button
             onClick={shareToTwitter}
             className="button-rainbow w-full py-4 px-6 font-bold rounded-lg border-2 border-black bg-white text-black hover:bg-gray-100 transition-all flex items-center justify-center gap-3"
           >
-            𝕏 Share to Twitter
+            Share to Twitter
           </button>
         </div>
 
         {/* Recommendations */}
         <div className="bg-gray-50 border-2 border-black rounded-lg p-6 mb-8">
-          <h4 className="font-bold text-black mb-3">📚 Key Insights</h4>
+          <h4 className="font-bold text-black mb-3">Key Insights</h4>
           <ul className="text-sm text-gray-700 space-y-2">
             <li>
-              ✓ You identified {session.responses.filter((r) => r.thermalResult === "ignition").length} deep causal chains
+              • You identified {session.responses.filter((r) => r.thermalResult === "ignition").length} deep causal chains
             </li>
             <li>
-              ✓ Your highest integrity moment was at response{" "}
+              • Your highest integrity moment was at response{" "}
               {Math.ceil(session.responses.length / 2)}
             </li>
-            <li>✓ Review warning-level responses to deepen your understanding</li>
+            <li>• Review warning-level responses to deepen your understanding</li>
           </ul>
         </div>
 
@@ -179,7 +179,7 @@ Who can beat this? #ARCÉ #Mastery`;
             onClick={onNewGame}
             className="button-rainbow w-full py-4 px-6 font-bold text-lg rounded-lg border-2 border-black bg-black text-white hover:bg-gray-800 transition-all"
           >
-            🔥 Start New Session
+            Start New Session
           </button>
         </div>
       </div>
