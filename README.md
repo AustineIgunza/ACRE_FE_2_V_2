@@ -2,12 +2,31 @@
 
 > A modern learning platform that transforms crisis scenarios into mastery through interactive thermal feedback.
 
+## 🧬 Current Test Content: Cell Biology
+
+**Study Material:**
+> "The cell is the basic unit of life, capable of carrying out essential functions such as metabolism, growth, and reproduction. It contains specialized structures like the nucleus, mitochondria, and membrane, which coordinate activities. Cells communicate, adapt to their environment, and work together to form tissues, organs, and complex living organisms."
+
+**5 Crisis Scenarios** covering:
+1. **Cell Structure & Organization** - Identify mitochondria as the energy powerhouse
+2. **Metabolic Processes** - Understand ATP dependency for cell survival
+3. **Cell Communication** - Learn chemical signaling through receptors
+4. **Growth & Reproduction** - Master cell cycle checkpoints and DNA verification
+5. **Environmental Adaptation** - Discover osmosis and active transport
+
+**Thermal Feedback System:**
+- 🔴 **FROST**: Wrong answer (-10 heat, -5 integrity)
+- 🟠 **WARNING**: Partial answer (+5 heat, +3 integrity)
+- 🟢 **IGNITION**: Correct answer (+25 heat, +15 integrity) → Unlocks mastery card
+
+---
+
 ## 🚀 Quick Links
 
 | Link | Purpose |
 |------|---------|
-| **Main App** | http://localhost:3001 |
-| **Component Demo** | http://localhost:3001/demo |
+| **Main App** | http://localhost:3000 |
+| **Component Demo** | http://localhost:3000/demo |
 | **GitHub Repo** | https://github.com/AustineIgunza/acre_frontend |
 
 ---
