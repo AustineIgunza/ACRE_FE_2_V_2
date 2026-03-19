@@ -75,9 +75,9 @@ export default function MasteryCanvas({
                     </p>
                   </div>
 
-                  {/* Thermal Indicator */}
+                  {/* Thermal Indicator with Heat Bar */}
                   <div className="flex items-center justify-between pt-4 border-t border-blue-200">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-1">
                       {node.thermalState === "neutral" && (
                         <span className="text-sm font-bold text-slate-600">[NEUTRAL]</span>
                       )}
@@ -92,7 +92,20 @@ export default function MasteryCanvas({
                       )}
                     </div>
                     <div className="text-right">
-                      <div className="text-xs font-bold text-slate-500">Heat</div>
+                      <div className="text-xs font-bold text-slate-500 mb-1">Heat</div>
+                      {/* Heat Bar with Color */}
+                      <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden mb-1">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            node.heat <= 35
+                              ? "bg-blue-500"
+                              : node.heat <= 65
+                                ? "bg-orange-500"
+                                : "bg-red-500"
+                          }`}
+                          style={{ width: `${node.heat}%` }}
+                        ></div>
+                      </div>
                       <div className="text-lg font-black text-slate-900">
                         {node.heat}%
                       </div>

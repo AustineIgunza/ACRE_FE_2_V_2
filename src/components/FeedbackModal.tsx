@@ -84,40 +84,40 @@ export default function FeedbackModal({
       <div className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" />
 
       {/* Modal */}
-      <div className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl mx-4 ${styles.animation}`}>
+      <div className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md mx-4 ${styles.animation}`}>
         <div
           className={`
             bg-gradient-to-br ${styles.bg}
             border-2 ${styles.border}
-            rounded-3xl p-8 sm:p-12
-            shadow-2xl ${styles.glow}
+            rounded-2xl p-4 sm:p-6
+            shadow-xl ${styles.glow}
             relative overflow-hidden
           `}
         >
-          {/* Close Button */}
+          {/* Close Button - Positioned outside top-right */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/80 hover:bg-white text-slate-600 font-bold transition-all duration-200 hover:scale-110 flex items-center justify-center"
+            className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-slate-700 font-bold transition-all duration-200 hover:scale-110 flex items-center justify-center shadow-lg z-50"
           >
             ✕
           </button>
 
           {/* Feedback Text */}
-          <div className="text-center mb-6 sm:mb-8">
-            <p className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 leading-tight">
+          <div className="text-center mb-3 sm:mb-4 pr-2">
+            <p className="text-lg sm:text-2xl font-black text-slate-900 leading-tight">
               {feedback}
             </p>
           </div>
 
           {/* Keywords */}
           {keywords.length > 0 && (
-            <div className="mb-6 sm:mb-8">
-              <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-widest mb-3">Key Concepts</p>
-              <div className="flex flex-wrap gap-2 justify-center">
+            <div className="mb-3 sm:mb-4">
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">Key Concepts</p>
+              <div className="flex flex-wrap gap-1.5 justify-center">
                 {keywords.map((keyword, idx) => (
                   <span
                     key={idx}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm font-semibold"
+                    className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold"
                   >
                     #{keyword}
                   </span>
@@ -127,9 +127,9 @@ export default function FeedbackModal({
           )}
 
           {/* Formal Definition */}
-          <div className="mb-8 sm:mb-10">
-            <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-widest mb-3">Definition</p>
-            <p className="text-sm sm:text-base text-slate-700 italic leading-relaxed bg-white/50 rounded-xl p-4">
+          <div className="mb-3 sm:mb-4">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">Definition</p>
+            <p className="text-xs sm:text-sm text-slate-700 italic leading-relaxed bg-white/50 rounded-lg p-2.5">
               {formalDefinition}
             </p>
           </div>
