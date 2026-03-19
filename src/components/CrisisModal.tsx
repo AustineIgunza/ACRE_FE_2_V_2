@@ -92,7 +92,7 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
       {/* Mini Loading Overlay during evaluation */}
       {isEvaluating && <MiniLoadingOverlay />}
 
-      <div className="min-h-screen-gradient bg-gradient-blue-white text-slate-900 px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 flex flex-col items-center justify-center relative">
+      <div className="min-h-screen-gradient bg-gradient-blue-white text-slate-900 px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 pb-96 sm:pb-96 flex flex-col items-center justify-start relative transition-all duration-300">
         {/* Content - Fully Centered */}
         <div className="w-full max-w-2xl flex flex-col items-center justify-center">
           {/* Crisis Section - Centered */}

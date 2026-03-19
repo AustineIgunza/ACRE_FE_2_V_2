@@ -1,6 +1,28 @@
 @import "tailwindcss";
 
 /* ========================================
+   CUSTOM UTILITY CLASSES
+   ======================================== */
+
+@layer utilities {
+  .animate-slideUp {
+    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  .animate-slideDown {
+    animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-in-out forwards;
+  }
+  
+  .animate-scaleIn {
+    animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+}
+
+/* ========================================
    ARCÉ: Modern Premium Design System
    Apple-Inspired: Minimalist, Elegant, Premium
    Colors: White, Light Blue, Blue, Dark Blue
@@ -190,6 +212,17 @@ p {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes spin {
@@ -580,64 +613,91 @@ button:disabled {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 250, 0.95));
-  border-top: 2px solid var(--color-blue-primary);
-  padding: 28px;
-  max-height: 420px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 250, 0.98));
+  border-top: 2.5px solid var(--color-blue-primary);
+  padding: 24px 20px;
+  max-height: 480px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 18px;
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 100;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 -12px 48px rgba(15, 23, 42, 0.15), 0 -4px 16px rgba(37, 99, 235, 0.1);
+}
+
+@media (min-width: 640px) {
+  .defense-container {
+    padding: 32px 28px;
+    gap: 20px;
+  }
 }
 
 .defense-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-blue-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.4px;
+  animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .defense-label::before {
   content: "";
   display: inline-block;
-  width: 3px;
-  height: 18px;
-  background: var(--gradient-primary);
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  width: 2.5px;
+  height: 16px;
+  background: linear-gradient(to bottom, #2563eb, #3b82f6);
+  animation: pulse-vertical 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   border-radius: 2px;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scaleY(1); }
-  50% { opacity: 0.4; transform: scaleY(0.8); }
+@keyframes pulse-vertical {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scaleY(1);
+    box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
+  }
+  50% { 
+    opacity: 0.5; 
+    transform: scaleY(0.7);
+    box-shadow: 0 0 4px rgba(37, 99, 235, 0.2);
+  }
 }
 
 .defense-textarea {
   width: 100%;
-  min-height: 140px;
+  min-height: 120px;
+  max-height: 200px;
   resize: none;
-  font-size: 16px;
-  padding: 16px;
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 14px 16px;
   border: 1.5px solid var(--color-border-subtle);
   border-radius: 12px;
   background: var(--color-white);
   color: var(--color-text-primary);
   font-family: inherit;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-weight: 400;
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+.defense-textarea::placeholder {
+  color: var(--color-text-secondary);
   font-weight: 400;
 }
 
 .defense-textarea:focus {
   border-color: var(--color-blue-primary);
-  background: var(--color-blue-lighter);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.02), rgba(227, 242, 253, 0.3));
+  box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.12), 0 4px 12px rgba(37, 99, 235, 0.15);
+  outline: none;
 }
 
 /* ========================================
