@@ -4,7 +4,7 @@ import DemoPage from '@/app/demo/page'
 describe('Demo Page', () => {
   it('renders the demo page with navigation', () => {
     render(<DemoPage />)
-    const heading = screen.getByText('ARCÉ Component Demo')
+    const heading = screen.getByText('Folio Component Demo')
     expect(heading).toBeInTheDocument()
   })
 
@@ -51,7 +51,7 @@ describe('Demo Page', () => {
     expect(actionButtons[0]).toHaveClass('selected')
   })
 
-  it('renders thermal states feedback', () => {
+  it('renders feedback states', () => {
     render(<DemoPage />)
     expect(screen.getByText(/FROST/)).toBeInTheDocument()
     expect(screen.getByText(/WARNING/)).toBeInTheDocument()

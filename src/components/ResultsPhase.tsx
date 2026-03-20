@@ -1,175 +1,142 @@
 "use client";
 
-import { GameSession, Cluster } from "@/types/arce";
+import { GameSession } from "@/types/arce";
 import MasteryCanvas from "./MasteryCanvas";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface ResultsPhaseProps {
   session: GameSession;
   onNewGame?: () => void;
 }
 
+// Custom hook to animate numbers
+function useCountUp(end: number, duration: number = 2000) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      
+      // Easing out cubic
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(easeOut * end));
+
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      }
+    };
+    window.requestAnimationFrame(step);
+  }, [end, duration]);
+
+  return count;
+}
+
 export default function ResultsPhase({ session, onNewGame }: ResultsPhaseProps) {
+  const animatedHeat = useCountUp(session.globalHeat, 2500);
+  const totalXPNum = session.globalHeat * 10 + session.masteryCards.length * 50;
+  const animatedXP = useCountUp(totalXPNum, 3000);
+
   const shareToWhatsApp = () => {
-    const text = `I just mastered "${session.sourceTitle}" on ARCÉ!
-
-Heat: ${session.globalHeat}%
-Integrity: ${session.globalIntegrity}%
-Responses: ${session.responses.length}
-
-Can you beat my score? Try ARCÉ now!`;
-
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(whatsappUrl, "_blank");
+    const text = `I just earned ${totalXPNum} XP on Learn Forge!\n\nTopic: ${session.sourceTitle}\nMastery Rate: ${session.globalHeat}%\n\nCan you beat my score?`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const shareToTwitter = () => {
-    const text = `Just crushed "${session.sourceTitle}" on ARCÉ - The Iteration Engine!
-
-Final Heat: ${session.globalHeat}%
-Mastered ${session.masteryCards.length} concepts through crisis scenarios.
-
-Who can beat this? #ARCÉ #Mastery`;
-
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-    window.open(twitterUrl, "_blank");
+    const text = `Just crushed "${session.sourceTitle}" on Learn Forge — earned ${totalXPNum} XP!\n\nMastered ${session.masteryCards.length} concepts through critical thinking challenges.\n\nWho can beat this? #LearnForge #Learning`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   return (
-    <div className="min-h-screen-gradient bg-gradient-blue-white text-slate-900 px-4 sm:px-6 lg:px-8 py-8 sm:py-16 flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Header Section */}
-      <div className="mb-12 sm:mb-16 text-center animate-fadeIn relative z-10 max-w-3xl">
-        <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black mb-4 sm:mb-6 tracking-tight bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
-          ARCÉ
+    <div style={{
+      minHeight: "100vh",
+      backgroundColor: "var(--p-white)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      padding: "48px 24px 80px",
+    }}>
+      {/* ── HEADER ENTRY ── */}
+      <div style={{ textAlign: "center", marginBottom: "64px", animation: "slideUp 0.6s ease-out" }}>
+        <div style={{
+          width: "64px",
+          height: "64px",
+          borderRadius: "50%",
+          backgroundColor: "var(--xp)",
+          color: "white",
+          fontSize: "32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto 24px",
+          animation: "scaleBounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+        }}>
+          ⚡
+        </div>
+        <span className="eyebrow" style={{ marginBottom: "16px", display: "inline-block" }}>SESSION COMPLETE</span>
+        <h1 style={{
+          fontSize: "48px",
+          letterSpacing: "-1px",
+          marginBottom: "16px",
+          color: "var(--t-primary)",
+        }}>
+          Lesson Complete!
         </h1>
-        <h2 className="text-3xl sm:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-          {session.globalHeat >= 80 ? "IGNITION ACHIEVED!" : "Session Complete"}
-        </h2>
-        <p className="text-lg sm:text-xl font-medium text-slate-600">
+        <p style={{ fontSize: "18px", color: "var(--t-secondary)" }}>
           {session.sourceTitle}
         </p>
       </div>
 
-      {/* Results Container */}
-      <div className="max-w-3xl w-full bg-white/90 backdrop-blur-lg border-1.5 border-blue-200 rounded-3xl p-6 sm:p-8 lg:p-12 shadow-sm hover:shadow-md transition-all duration-300 relative z-10">
-        {/* Stats Grid - Premium Card Design */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
-          {/* Final Heat */}
-          <div className="bg-gradient-to-br from-orange-50 to-red-50 border-1.5 border-orange-200 rounded-2xl p-4 sm:p-6 text-center group hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <div className="text-xs sm:text-sm font-bold text-orange-600 uppercase tracking-widest mb-2 sm:mb-3">
-              Final Heat
+      <div style={{ display: "flex", flexDirection: "column", gap: "32px", width: "100%", maxWidth: "800px" }}>
+        
+        {/* ── XP & STREAK (Hero Stats) ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", animation: "slideUp 0.8s ease-out" }}>
+          <div className="folio-card" style={{ textAlign: "center", padding: "40px 24px" }}>
+            <span className="eyebrow" style={{ marginBottom: "12px" }}>XP Earned</span>
+            <div className="stat-xp" style={{ fontSize: "48px", marginBottom: "8px" }}>
+              +{animatedXP}
             </div>
-            <div className="text-4xl sm:text-5xl font-black text-slate-900 mb-3">
-              {session.globalHeat}%
-            </div>
-            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-700"
-                style={{ width: `${session.globalHeat}%` }}
-              ></div>
-            </div>
+            <p style={{ fontSize: "14px", color: "var(--t-secondary)", margin: 0, fontWeight: 500 }}>
+              Total Experience
+            </p>
           </div>
-
-          {/* Integrity */}
-          <div className="bg-gradient-to-br from-emerald-50 to-green-50 border-1.5 border-emerald-200 rounded-2xl p-4 sm:p-6 text-center group hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <div className="text-xs sm:text-sm font-bold text-emerald-600 uppercase tracking-widest mb-2 sm:mb-3">
-              Integrity
+          
+          <div className="folio-card" style={{ textAlign: "center", padding: "40px 24px" }}>
+            <span className="eyebrow" style={{ marginBottom: "12px" }}>Mastery Heat</span>
+            <div className="stat-primary" style={{ fontSize: "48px", marginBottom: "8px" }}>
+              {animatedHeat}%
             </div>
-            <div className="text-4xl sm:text-5xl font-black text-slate-900 mb-3">
-              {session.globalIntegrity}%
-            </div>
-            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-400 to-green-500 transition-all duration-700"
-                style={{ width: `${session.globalIntegrity}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Responses */}
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-1.5 border-blue-200 rounded-2xl p-4 sm:p-6 text-center group hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <div className="text-xs sm:text-sm font-bold text-blue-600 uppercase tracking-widest mb-2 sm:mb-3">
-              Responses
-            </div>
-            <div className="text-4xl sm:text-5xl font-black text-slate-900">
-              {session.responses.length}
-            </div>
-          </div>
-
-          {/* Mastery Cards */}
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-1.5 border-purple-200 rounded-2xl p-4 sm:p-6 text-center group hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <div className="text-xs sm:text-sm font-bold text-purple-600 uppercase tracking-widest mb-2 sm:mb-3">
-              Mastery Cards
-            </div>
-            <div className="text-4xl sm:text-5xl font-black text-slate-900">
-              {session.masteryCards.length}
-            </div>
+            <p style={{ fontSize: "14px", color: "var(--t-secondary)", margin: 0, fontWeight: 500 }}>
+              Accuracy & Depth
+            </p>
           </div>
         </div>
 
-        {/* Response Summary */}
-        {session.responses.length > 0 && (
-          <div className="mb-8 sm:mb-12">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6 text-center">Response Journey</h3>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {session.responses.map((response, idx) => (
-                <div
-                  key={response.id}
-                  className={`p-3 sm:p-4 rounded-xl border-1.5 transition-all duration-300 group hover:scale-102 ${
-                    response.thermalResult === "frost"
-                      ? "bg-orange-50 border-orange-200 hover:bg-orange-100"
-                      : response.thermalResult === "warning"
-                        ? "bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
-                        : "bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <span className="font-bold text-sm sm:text-base text-slate-700 whitespace-nowrap">Response {idx + 1}</span>
-                      <span className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap ${
-                        response.thermalResult === "frost"
-                          ? "bg-orange-200 text-orange-900"
-                          : response.thermalResult === "warning"
-                            ? "bg-yellow-200 text-yellow-900"
-                            : "bg-emerald-200 text-emerald-900"
-                      }`}>
-                        {response.thermalResult === "frost" && "Frost"}
-                        {response.thermalResult === "warning" && "Warning"}
-                        {response.thermalResult === "ignition" && "Ignition"}
-                      </span>
-                    </div>
-                    <span className="text-xs sm:text-sm text-slate-600 font-medium ml-2">{response.defense.length} chars</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Mastery Cards Display */}
+        {/* ── MASTERY CARDS LIST ── */}
         {session.masteryCards.length > 0 && (
-          <div className="mb-8 sm:mb-12">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6 text-center">Your Mastery Cards</h3>
-            <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+          <div style={{ animation: "slideUp 1s ease-out" }}>
+            <h3 style={{ fontSize: "20px", marginBottom: "20px", fontWeight: 700, color: "var(--t-primary)" }}>Concepts Mastered</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {session.masteryCards.map((card) => (
-                <div
-                  key={card.id}
-                  className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-slate-50 border-1.5 border-blue-200 rounded-2xl shadow-sm hover:shadow-lg hover:scale-105 transition-all duration-300"
-                >
-                  <div className="mb-3">
-                    <h4 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">{card.nodeId.replace("node-", "Concept ")} - Unlocked</h4>
-                    <p className="text-xs sm:text-sm text-slate-600 italic leading-relaxed">
-                      {card.formalDefinition}
-                    </p>
-                  </div>
-                  
-                  {/* Keywords */}
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {card.keywords.map((keyword, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold"
-                      >
-                        #{keyword}
+                <div key={card.id} className="folio-card" style={{ borderLeft: "4px solid var(--xp)", padding: "24px" }}>
+                  <h4 style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>
+                    {(() => {
+                      // Find the node title from session clusters
+                      const foundNode = session.clusters
+                        .flatMap(c => c.nodes)
+                        .find(n => n.id === card.nodeId);
+                      return foundNode?.title || card.nodeId;
+                    })()}
+                  </h4>
+                  <p style={{ fontSize: "14px", color: "var(--t-mid)", lineHeight: 1.6, marginBottom: "16px" }}>
+                    {card.formalDefinition}
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {card.keywords.map((kw, i) => (
+                      <span key={i} style={{ fontSize: "12px", fontWeight: 600, background: "var(--p-surface)", padding: "4px 10px", borderRadius: "100px", color: "var(--t-secondary)" }}>
+                        {kw}
                       </span>
                     ))}
                   </div>
@@ -179,52 +146,63 @@ Who can beat this? #ARCÉ #Mastery`;
           </div>
         )}
 
-        {/* Key Insights */}
-        <div className="bg-gradient-to-r from-blue-50 to-slate-50 border-1.5 border-blue-200 rounded-2xl p-5 sm:p-6 mb-8 sm:mb-10">
-          <h4 className="font-bold text-slate-900 mb-3 sm:mb-4 text-center sm:text-left">✨ Key Insights</h4>
-          <ul className="text-sm sm:text-base text-slate-700 space-y-2">
-            <li className="flex items-start gap-3">
-              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">-</span>
-              <span>You identified <strong>{session.responses.filter((r) => r.thermalResult === "ignition").length}</strong> deep causal chains (Ignition level)</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">-</span>
-              <span>You provided <strong>{session.responses.length}</strong> thoughtful responses</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">-</span>
-              <span>Review warning-level responses to deepen your mastery</span>
-            </li>
-          </ul>
+        {/* ── RESPONSE JOURNEY ── */}
+        {session.responses.length > 0 && (
+          <div style={{ animation: "slideUp 1.2s ease-out" }}>
+            <h3 style={{ fontSize: "20px", marginBottom: "20px", fontWeight: 700, color: "var(--t-primary)" }}>Your Journey</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "var(--p-surface)", padding: "24px", borderRadius: "16px" }}>
+              {session.responses.map((res, i) => {
+                const isIce = res.thermalResult === "frost";
+                const isWarn = res.thermalResult === "warning";
+                const isFire = res.thermalResult === "ignition";
+                return (
+                  <div key={res.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--p-white)", padding: "16px", borderRadius: "10px", border: "1px solid var(--p-border)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                      <div style={{ 
+                        width: "32px", height: "32px", borderRadius: "8px", 
+                        display: "flex", alignItems: "center", justifyContent: "center", 
+                        background: isFire ? "var(--success-bg)" : isWarn ? "var(--warning-bg)" : "var(--error-bg)",
+                        color: isFire ? "var(--success)" : isWarn ? "var(--warning)" : "var(--error)",
+                        fontWeight: 700
+                      }}>
+                        {i + 1}
+                      </div>
+                      <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--t-deep)" }}>
+                        Scenario Depth: {res.defense.length} chars
+                      </span>
+                    </div>
+                    <span style={{ 
+                      fontSize: "12px", fontWeight: 700, textTransform: "uppercase",
+                      color: isFire ? "var(--success)" : isWarn ? "var(--warning)" : "var(--error)"
+                    }}>
+                      {isFire ? "Mastered" : isWarn ? "Needs Review" : "Missed"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── ACTIONS ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginTop: "24px", animation: "slideUp 1.4s ease-out" }}>
+          <Link href="/dashboard">
+            <button className="btn-ghost" style={{ textAlign: "center", width: "100%" }}>
+              ← Dashboard
+            </button>
+          </Link>
+          <button onClick={shareToTwitter} className="btn-ghost" style={{ textAlign: "center" }}>
+            𝕏 Share Results
+          </button>
+          <button onClick={onNewGame} className="btn-primary" style={{ textAlign: "center" }}>
+            Continue Learning
+          </button>
         </div>
 
-        {/* Sharing Buttons */}
-        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <button
-            onClick={shareToWhatsApp}
-            className="py-3 sm:py-4 px-4 sm:px-6 font-bold text-sm sm:text-base rounded-2xl border-1.5 border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 hover:shadow-md hover:scale-105 transition-all duration-300 active:scale-95"
-          >
-            📱 Share to WhatsApp
-          </button>
-          <button
-            onClick={shareToTwitter}
-            className="py-3 sm:py-4 px-4 sm:px-6 font-bold text-sm sm:text-base rounded-2xl border-1.5 border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 hover:shadow-md hover:scale-105 transition-all duration-300 active:scale-95"
-          >
-            𝕏 Share to Twitter
-          </button>
-        </div>
-
-        {/* Start New Session Button */}
-        <button
-          onClick={onNewGame}
-          className="w-full py-4 sm:py-5 px-6 font-bold text-base sm:text-lg rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          🚀 Start New Session
-        </button>
       </div>
 
-      {/* Mastery Canvas - Elastic Grid of Nodes */}
-      <div className="w-full mt-12 sm:mt-16 relative z-10">
+      {/* Mastery Canvas */}
+      <div style={{ width: "100%", marginTop: "64px", opacity: 0.8, filter: "grayscale(0.5)" }}>
         <MasteryCanvas clusters={session.clusters} />
       </div>
     </div>

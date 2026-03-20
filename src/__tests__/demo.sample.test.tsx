@@ -1,8 +1,7 @@
-import { render, screen, fireEvent, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, fireEvent } from '@testing-library/react'
 import DemoPage from '@/app/demo/page'
 
-describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
+describe('Folio Demo Page - Comprehensive Test Samples', () => {
   
   // ============================================
   // SAMPLE 1: Basic Rendering Tests
@@ -10,7 +9,7 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
   describe('Page Rendering', () => {
     it('renders without crashing', () => {
       render(<DemoPage />)
-      expect(screen.getByText('ARCÉ Component Demo')).toBeInTheDocument()
+      expect(screen.getByText('Folio Component Demo')).toBeInTheDocument()
     })
 
     it('renders all major sections', () => {
@@ -29,7 +28,7 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
   describe('Color Palette Section', () => {
     it('renders all color boxes', () => {
       render(<DemoPage />)
-      const colorNames = ['Primary Blue', 'Light Blue', 'Slate', 'Dark Slate', 'Frost', 'Warning', 'Ignition', 'Gradient']
+      const colorNames = ['Snap', 'Focus Blue', 'XP Gold', 'Sheet', 'Surface', 'Border', 'Success Green', 'Error Red']
       colorNames.forEach(color => {
         expect(screen.getByText(color)).toBeInTheDocument()
       })
@@ -37,16 +36,10 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
 
     it('displays hex codes for each color', () => {
       render(<DemoPage />)
-      expect(screen.getByText('#2563eb')).toBeInTheDocument() // Primary Blue
-      expect(screen.getByText('#e3f2fd')).toBeInTheDocument() // Light Blue
-      expect(screen.getByText('#94a3b8')).toBeInTheDocument() // Slate
-      expect(screen.getByText('#0f172a')).toBeInTheDocument() // Dark Slate
-    })
-
-    it('renders color boxes with hover-friendly styling', () => {
-      render(<DemoPage />)
-      const colorBoxes = screen.getAllByText('Primary Blue')[0].closest('.flex')?.querySelectorAll('div')
-      expect(colorBoxes).toBeDefined()
+      expect(screen.getByText('#ff5c35')).toBeInTheDocument()
+      expect(screen.getByText('#2e5be8')).toBeInTheDocument()
+      expect(screen.getByText('#e8a800')).toBeInTheDocument()
+      expect(screen.getByText('#f4f3ef')).toBeInTheDocument()
     })
   })
 
@@ -65,7 +58,6 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
       render(<DemoPage />)
       const button = screen.getByRole('button', { name: /Begin Crisis Scenario/ })
       fireEvent.click(button)
-      // Button should remain clickable
       expect(button).toBeEnabled()
     })
 
@@ -93,7 +85,6 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
       const optionA = optionButtons.find(btn => btn.textContent?.includes('Option A'))
       
       fireEvent.click(optionA!)
-      // Check selected state is applied
       expect(optionA).toHaveClass('selected')
     })
 
@@ -103,11 +94,9 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
       const optionA = buttons.find(btn => btn.textContent?.includes('Option A'))
       const optionB = buttons.find(btn => btn.textContent?.includes('Option B'))
       
-      // Select Option A
       fireEvent.click(optionA!)
       expect(optionA).toHaveClass('selected')
       
-      // Select Option B
       fireEvent.click(optionB!)
       expect(optionB).toHaveClass('selected')
     })
@@ -151,11 +140,10 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
 
     it('displays correct stat values', () => {
       render(<DemoPage />)
-      // Check values are present (may need adjustment based on actual DOM structure)
-      expect(screen.getByText('72')).toBeInTheDocument() // Final Heat
-      expect(screen.getByText('85')).toBeInTheDocument() // Integrity
-      expect(screen.getByText('8')).toBeInTheDocument()  // Responses
-      expect(screen.getByText('5')).toBeInTheDocument()  // Mastery Cards
+      expect(screen.getByText('72')).toBeInTheDocument()
+      expect(screen.getByText('85')).toBeInTheDocument()
+      expect(screen.getByText('8')).toBeInTheDocument()
+      expect(screen.getByText('5')).toBeInTheDocument()
     })
 
     it('displays stat units', () => {
@@ -187,19 +175,19 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
       expect(textarea).toBeInTheDocument()
     })
 
-    it('allows typing in text input', async () => {
+    it('allows typing in text input', () => {
       render(<DemoPage />)
       const input = screen.getByPlaceholderText(/Enter your text here/)
       
-      await userEvent.type(input, 'Test input')
+      fireEvent.change(input, { target: { value: 'Test input' } })
       expect(input).toHaveValue('Test input')
     })
 
-    it('allows typing in textarea', async () => {
+    it('allows typing in textarea', () => {
       render(<DemoPage />)
       const textarea = screen.getByPlaceholderText(/The app will analyze/)
       
-      await userEvent.type(textarea, 'This is a test defense')
+      fireEvent.change(textarea, { target: { value: 'This is a test defense' } })
       expect(textarea).toHaveValue('This is a test defense')
     })
 
@@ -211,10 +199,10 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
   })
 
   // ============================================
-  // SAMPLE 8: Thermal States Tests
+  // SAMPLE 8: Feedback States Tests
   // ============================================
-  describe('Thermal States Feedback', () => {
-    it('renders all three thermal states', () => {
+  describe('Feedback States', () => {
+    it('renders all three feedback states', () => {
       render(<DemoPage />)
       expect(screen.getByText(/FROST/)).toBeInTheDocument()
       expect(screen.getByText(/WARNING/)).toBeInTheDocument()
@@ -247,14 +235,6 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
       expect(screen.getByText('Bounce')).toBeInTheDocument()
       expect(screen.getByText('Success')).toBeInTheDocument()
     })
-
-    it('displays animation labels', () => {
-      render(<DemoPage />)
-      const animationLabels = ['Loading', 'Bounce', 'Success']
-      animationLabels.forEach(label => {
-        expect(screen.getByText(label)).toBeInTheDocument()
-      })
-    })
   })
 
   // ============================================
@@ -285,11 +265,9 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
       render(<DemoPage />)
       const toggleButton = screen.getByRole('button', { name: /Show Defense Box/ })
       
-      // Show
       fireEvent.click(toggleButton)
       expect(screen.getByPlaceholderText(/Explain your choice/)).toBeInTheDocument()
       
-      // Hide
       fireEvent.click(toggleButton)
       expect(screen.queryByPlaceholderText(/Explain your choice/)).not.toBeInTheDocument()
     })
@@ -384,25 +362,28 @@ describe('ARCÉ Demo Page - Comprehensive Test Samples', () => {
   })
 
   // ============================================
-  // SAMPLE 13: Responsive Design Tests
+  // SAMPLE 13: Gamification UI Tests
   // ============================================
-  describe('Responsive Design', () => {
-    it('renders with mobile-friendly viewport', () => {
+  describe('Gamification', () => {
+    it('displays XP counter in nav', () => {
       render(<DemoPage />)
-      const nav = screen.getByRole('navigation')
-      expect(nav).toHaveClass('sticky')
+      expect(screen.getByText(/245 XP/)).toBeInTheDocument()
     })
 
-    it('page is scrollable on mobile', () => {
+    it('displays streak counter', () => {
       render(<DemoPage />)
-      const main = screen.getByRole('main')
-      expect(main).toBeInTheDocument()
+      expect(screen.getByText(/5 day streak/)).toBeInTheDocument()
     })
 
-    it('content sections have responsive spacing', () => {
+    it('renders question card with answer options', () => {
       render(<DemoPage />)
-      const heading = screen.getByText('Design System')
-      expect(heading.className).toMatch(/sm:|lg:|responsive/)
+      expect(screen.getByText(/What is the primary purpose/)).toBeInTheDocument()
+    })
+
+    it('renders daily goal progress', () => {
+      render(<DemoPage />)
+      expect(screen.getByText('Daily Goal')).toBeInTheDocument()
+      expect(screen.getByText('65%')).toBeInTheDocument()
     })
   })
 })

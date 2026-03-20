@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 interface LoadingScreenProps {
   phase: "extracting" | "evaluating" | "transitioning";
-  progress?: number; // 0-100 for progress bars
+  progress?: number;
 }
 
 export default function LoadingScreen({
@@ -27,7 +27,7 @@ export default function LoadingScreen({
       case "evaluating":
         return "Evaluating your logic depth";
       case "transitioning":
-        return "Preparing next crisis";
+        return "Preparing next challenge";
       default:
         return "Processing";
     }
@@ -47,28 +47,49 @@ export default function LoadingScreen({
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-blue-white backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
-      <div className="text-center max-w-md mx-auto px-4">
-        {/* Animated Icon with Brain Effect */}
-        <div className="mb-10 flex justify-center">
-          <div 
-            className="text-7xl sm:text-8xl animate-bounce"
-            style={{ animationDuration: "2s" }}
-          >
-            {getIcon()}
-          </div>
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      backgroundColor: "var(--p-white)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 50,
+      animation: "fadeIn 0.3s ease-out",
+    }}>
+      <div style={{ textAlign: "center", maxWidth: "400px", padding: "0 24px" }}>
+        {/* Icon */}
+        <div style={{
+          fontSize: "56px",
+          marginBottom: "32px",
+          animation: "bounce-light 2s infinite",
+        }}>
+          {getIcon()}
         </div>
 
-        {/* Message with gradient text */}
-        <h2 className="text-3xl sm:text-4xl font-black mb-2 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent leading-tight animate-slideDown">
+        {/* Message */}
+        <h2 style={{
+          fontFamily: "Georgia, serif",
+          fontWeight: 400,
+          fontSize: "24px",
+          color: "var(--t-primary)",
+          letterSpacing: "-0.8px",
+          marginBottom: "8px",
+          lineHeight: 1.3,
+        }}>
           {getMessage()}
-          <span className="inline-block w-8">
+          <span style={{ display: "inline-block", width: "24px" }}>
             {".".repeat(dotCount)}
           </span>
         </h2>
 
         {/* Subtext */}
-        <p className="text-base sm:text-lg text-slate-600 mb-10 font-medium animate-slideDown" style={{ animationDelay: "0.1s" }}>
+        <p style={{
+          color: "var(--t-secondary)",
+          fontSize: "14px",
+          marginBottom: "32px",
+          lineHeight: 1.6,
+        }}>
           {phase === "extracting" &&
             "Breaking down your material into logical frameworks"}
           {phase === "evaluating" &&
@@ -77,38 +98,36 @@ export default function LoadingScreen({
             "Setting up the next challenge"}
         </p>
 
-        {/* Premium Gradient Progress Bar */}
-        <div className="mb-8 animate-slideDown" style={{ animationDelay: "0.2s" }}>
-          <div className="w-full sm:w-80 h-2.5 bg-slate-200 rounded-full overflow-hidden mx-auto mb-4 border-1.5 border-slate-300 shadow-sm">
-            <div
-              className="h-full bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-500 transition-all duration-500 ease-out rounded-full"
-              style={{
-                width: `${progress}%`,
-                boxShadow: "0 0 20px rgba(37, 99, 235, 0.4)",
-              }}
-            ></div>
+        {/* Progress Bar */}
+        <div style={{ marginBottom: "24px" }}>
+          <div className="progress-container" style={{ height: "6px", marginBottom: "12px" }}>
+            <div className="progress-fill" style={{ width: `${progress}%` }} />
           </div>
-          <p className="text-sm font-bold text-slate-700">{progress}%</p>
+          <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--t-secondary)" }}>
+            {Math.round(progress)}%
+          </p>
         </div>
 
-        {/* Tips Section */}
-        <div className="mt-12 max-w-md mx-auto text-left bg-gradient-to-br from-blue-50 to-slate-50 border-1.5 border-blue-200 p-6 rounded-xl shadow-sm animate-slideDown" style={{ animationDelay: "0.3s" }}>
-          <p className="text-xs font-bold text-blue-900 uppercase mb-4 tracking-wide">
-            💡 While you wait:
-          </p>
-          <ul className="space-y-2.5 text-sm text-slate-700 font-medium">
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 mt-1">•</span>
-              <span>Think about the consequences of each move</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 mt-1">•</span>
-              <span>Consider all stakeholders affected</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 mt-1">•</span>
-              <span>Depth of reasoning matters more than speed</span>
-            </li>
+        {/* Tips */}
+        <div className="folio-card" style={{
+          textAlign: "left",
+          padding: "20px",
+          marginTop: "32px",
+        }}>
+          <span className="eyebrow" style={{ marginBottom: "12px" }}>
+            💡 While you wait
+          </span>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[
+              "Think about the consequences of each move",
+              "Consider all stakeholders affected",
+              "Depth of reasoning matters more than speed",
+            ].map((tip, i) => (
+              <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "13px", color: "var(--t-mid)" }}>
+                <span style={{ color: "var(--snap)", marginTop: "2px", flexShrink: 0 }}>•</span>
+                <span>{tip}</span>
+              </li>
+            ))}
           </ul>
         </div>
       </div>

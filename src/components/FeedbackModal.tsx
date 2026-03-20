@@ -20,7 +20,7 @@ export default function FeedbackModal({
   keywords,
   formalDefinition,
   onClose,
-  autoCloseSeconds = 3.5,
+  autoCloseSeconds = 4.5,
 }: FeedbackModalProps) {
   const [timeLeft, setTimeLeft] = useState(autoCloseSeconds);
 
@@ -33,7 +33,6 @@ export default function FeedbackModal({
         const next = prev - 0.1;
         if (next <= 0) {
           clearInterval(interval);
-          // Defer onClose to avoid setState-during-render conflict
           setTimeout(() => onClose(), 0);
           return 0;
         }
@@ -46,115 +45,148 @@ export default function FeedbackModal({
 
   if (!isOpen) return null;
 
-  // Get thermal color and animation
-  const getThermalStyles = () => {
-    const styles: Record<string, { bg: string; border: string; animation: string; glow: string }> = {
-      frost: {
-        bg: "from-red-50 to-orange-50",
-        border: "border-red-300",
-        animation: "animate-shake",
-        glow: "shadow-[0_0_30px_rgba(239,68,68,0.4)]",
-      },
-      warning: {
-        bg: "from-yellow-50 to-orange-50",
-        border: "border-yellow-300",
-        animation: "animate-pulse",
-        glow: "shadow-[0_0_30px_rgba(234,179,8,0.4)]",
-      },
-      ignition: {
-        bg: "from-green-50 to-emerald-50",
-        border: "border-green-300",
-        animation: "animate-pulse",
-        glow: "shadow-[0_0_30px_rgba(34,197,94,0.4)]",
-      },
-      neutral: {
-        bg: "from-slate-50 to-blue-50",
-        border: "border-blue-300",
-        animation: "",
-        glow: "",
-      },
-    };
-    return styles[thermalState] || styles.neutral;
-  };
+  const isSuccess = thermalState === "ignition";
+  const isWarning = thermalState === "warning";
+  const isError = thermalState === "frost";
 
-  const styles = getThermalStyles();
+  const bannerClass = isSuccess || isWarning
+    ? "feedback-banner-correct"
+    : "feedback-banner-wrong";
+
   const progressPercent = (timeLeft / autoCloseSeconds) * 100;
 
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" />
+      <div 
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "rgba(22, 20, 16, 0.4)",
+          backdropFilter: "blur(2px)",
+          zIndex: 40,
+        }} 
+      />
 
-      {/* Modal */}
-      <div className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm mx-3 ${styles.animation}`}>
-        <div
-          className={`
-            bg-gradient-to-br ${styles.bg}
-            border-2 ${styles.border}
-            rounded-xl p-5 sm:p-6
-            shadow-xl ${styles.glow}
-            relative overflow-hidden
-          `}
+      <div style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        display: "flex",
+        justifyContent: "center",
+        padding: "24px",
+      }}>
+        <div 
+          className={bannerClass}
+          style={{ 
+            width: "100%", 
+            maxWidth: "600px", 
+            borderRadius: "16px",
+            boxShadow: "0 10px 40px rgba(22, 20, 16, 0.15)",
+            padding: "24px",
+            position: "relative",
+            overflow: "hidden",
+            backgroundColor: isWarning ? "var(--warning-bg)" : undefined,
+            color: isWarning ? "var(--warning)" : undefined,
+            borderTopColor: isWarning ? "var(--warning)" : undefined,
+          }}
         >
-          {/* Close Button - Positioned outside top-right */}
+          {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-700 font-bold transition-all duration-200 hover:scale-110 flex items-center justify-center shadow-lg z-50 text-sm"
+            style={{
+              position: "absolute",
+              top: "16px",
+              right: "16px",
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              background: "white",
+              color: "var(--t-deep)",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
           >
             ✕
           </button>
 
-          {/* Feedback Text - Adjusted for better wrapping */}
-          <div className="text-center mb-3 px-1">
-            <p className="text-base sm:text-lg font-bold text-slate-900 leading-snug break-words">
-              {feedback}
-            </p>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", marginBottom: "16px" }}>
+            <div style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              background: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+              flexShrink: 0,
+            }}>
+              {isSuccess ? "✓" : isWarning ? "!" : "✕"}
+            </div>
+            
+            <div style={{ flex: 1, paddingRight: "32px" }}>
+              <h3 style={{ fontSize: "18px", marginBottom: "8px", fontWeight: 700 }}>
+                {isSuccess ? "Excellent Reasoning" : isWarning ? "Partial Understanding" : "Requires Review"}
+              </h3>
+              <p style={{ fontSize: "15px", lineHeight: 1.5, opacity: 0.9 }}>
+                {feedback}
+              </p>
+            </div>
           </div>
 
-          {/* Keywords - Tighter spacing */}
-          {keywords.length > 0 && (
-            <div className="mb-3 px-1">
-              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Concepts</p>
-              <div className="flex flex-wrap gap-1 justify-center">
-                {keywords.map((keyword, idx) => (
-                  <span
-                    key={idx}
-                    className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold line-clamp-1"
-                  >
-                    #{keyword}
+          {(keywords.length > 0 || formalDefinition) && (
+            <div style={{
+              background: "rgba(255, 255, 255, 0.5)",
+              borderRadius: "10px",
+              padding: "16px",
+              marginTop: "16px",
+            }}>
+              {keywords.length > 0 && (
+                <div style={{ marginBottom: formalDefinition ? "12px" : 0 }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", opacity: 0.7, display: "block", marginBottom: "8px" }}>
+                    Concepts
                   </span>
-                ))}
-              </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {keywords.map((k, i) => (
+                      <span key={i} style={{ background: "white", padding: "4px 10px", borderRadius: "100px", fontSize: "12px", fontWeight: 600 }}>
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {formalDefinition && (
+                <div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", opacity: 0.7, display: "block", marginBottom: "4px" }}>
+                    Definition
+                  </span>
+                  <p style={{ fontSize: "13px", lineHeight: 1.6, fontStyle: "italic", margin: 0 }}>
+                    {formalDefinition}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Formal Definition - Better padding */}
-          <div className="mb-3 px-1">
-            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Definition</p>
-            <p className="text-xs text-slate-700 italic leading-relaxed bg-white/50 rounded-md p-2 max-h-20 overflow-y-auto">
-              {formalDefinition}
-            </p>
-          </div>
-
-          {/* Progress Bar - Compact */}
-          <div className="mb-2.5">
-            <div className="w-full h-1.5 bg-slate-300 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-100 ${
-                  thermalState === "frost"
-                    ? "bg-red-500"
-                    : thermalState === "warning"
-                      ? "bg-yellow-500"
-                      : "bg-green-500"
-                }`}
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Auto-close Timer - Smaller text */}
-          <div className="text-center text-xs text-slate-600 font-medium">
-            Proceeding in {timeLeft.toFixed(1)}s...
+          {/* Progress Timer */}
+          <div style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "4px",
+            background: "rgba(0, 0, 0, 0.1)",
+          }}>
+            <div style={{
+              height: "100%",
+              background: "rgba(0, 0, 0, 0.2)",
+              width: `${progressPercent}%`,
+              transition: "width 100ms linear",
+            }} />
           </div>
         </div>
       </div>

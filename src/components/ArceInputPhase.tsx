@@ -29,18 +29,52 @@ export default function InputPhase() {
         <LoadingScreen phase="extracting" progress={Math.random() * 70 + 30} />
       )}
 
-      <div className="min-h-screen bg-gradient-subtle flex flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-20 relative">
+      <div style={{
+        minHeight: "100vh",
+        backgroundColor: "var(--p-white)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "48px 24px",
+      }}>
         {/* Logo - only at start */}
         {showLogo && (
-          <div className="mb-16 sm:mb-20 text-center animate-fadeIn max-w-3xl">
-            <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black mb-4 sm:mb-6 tracking-tight bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 bg-clip-text text-transparent">
-              ARCÉ
+          <div style={{
+            marginBottom: "64px",
+            textAlign: "center",
+            maxWidth: "600px",
+            animation: "fadeIn 0.5s ease-out",
+          }}>
+            {/* Logo accent square */}
+            <div style={{
+              width: "48px",
+              height: "48px",
+              backgroundColor: "var(--snap)",
+              borderRadius: "10px",
+              margin: "0 auto 24px",
+            }} />
+            <h1 style={{
+              fontFamily: "Georgia, serif",
+              fontWeight: 400,
+              letterSpacing: "-1.3px",
+              marginBottom: "12px",
+            }}>
+              Learn Forge
             </h1>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-800 mb-3 sm:mb-4">
-              The Iteration Engine
+            <p style={{
+              fontSize: "20px",
+              fontWeight: 600,
+              color: "var(--t-deep)",
+              marginBottom: "8px",
+            }}>
+              The Learning Engine
             </p>
-            <p className="text-lg sm:text-xl text-slate-600 font-medium leading-relaxed px-2">
-              Convert passive learning into mastery through crisis scenarios
+            <p style={{
+              color: "var(--t-secondary)",
+              lineHeight: 1.75,
+            }}>
+              Convert passive learning into mastery through challenge scenarios
             </p>
           </div>
         )}
@@ -48,29 +82,49 @@ export default function InputPhase() {
         {/* Input Form */}
         <form
           onSubmit={handleSubmit}
-          className="w-full max-w-2xl bg-white/95 backdrop-blur-lg border-1.5 border-blue-200 rounded-3xl p-6 sm:p-8 lg:p-10 shadow-sm hover:shadow-md transition-all duration-300 space-y-6 sm:space-y-8"
+          className="folio-card"
+          style={{
+            width: "100%",
+            maxWidth: "640px",
+            padding: "32px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "24px",
+          }}
         >
-          <div className="space-y-3">
-            <label className="block text-sm sm:text-base font-bold text-blue-900 text-center">
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <label className="eyebrow" style={{ textAlign: "center" }}>
               Study Material
             </label>
-            <p className="text-center text-sm text-slate-600 font-medium">
+            <p style={{ textAlign: "center", fontSize: "14px", color: "var(--t-secondary)", marginBottom: "8px" }}>
               Paste your notes, lecture transcript, or learning material
             </p>
             <textarea
               value={sourceContent}
               onChange={(e) => setSourceContent(e.target.value)}
               placeholder="Enter your study material here... (minimum 100 characters)"
-              className="w-full h-40 sm:h-48 p-4 sm:p-5 border-1.5 border-blue-200 rounded-2xl font-medium text-slate-800 bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-blue-50 transition-all duration-250 placeholder-slate-400"
+              className="folio-input"
+              style={{
+                width: "100%",
+                minHeight: "160px",
+                resize: "vertical",
+                fontFamily: "inherit",
+                lineHeight: 1.6,
+              }}
               disabled={isLoading}
             />
-            <div className="text-center text-sm font-semibold text-blue-700">
+            <div style={{
+              textAlign: "center",
+              fontSize: "13px",
+              fontWeight: 600,
+              color: sourceContent.length >= 100 ? "var(--success)" : "var(--t-secondary)",
+            }}>
               {sourceContent.length} / 100 characters minimum
             </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="block text-sm sm:text-base font-bold text-blue-900 text-center">
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <label className="eyebrow" style={{ textAlign: "center" }}>
               Title (Optional)
             </label>
             <input
@@ -78,13 +132,23 @@ export default function InputPhase() {
               value={sourceTitle}
               onChange={(e) => setSourceTitle(e.target.value)}
               placeholder="e.g., Biology Chapter 3, Economics Lecture"
-              className="w-full p-4 sm:p-5 border-1.5 border-blue-200 rounded-2xl text-slate-800 bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-blue-50 transition-all duration-250 placeholder-slate-400 text-center font-medium"
+              className="folio-input"
+              style={{ width: "100%", textAlign: "center" }}
               disabled={isLoading}
             />
           </div>
 
           {error && (
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-red-50 to-orange-50 border-1.5 border-red-300 rounded-2xl text-red-700 font-bold text-center text-sm sm:text-base">
+            <div style={{
+              padding: "16px",
+              background: "var(--error-bg)",
+              border: "1px solid var(--error-border)",
+              borderRadius: "8px",
+              color: "var(--error)",
+              fontWeight: 600,
+              textAlign: "center",
+              fontSize: "14px",
+            }}>
               {error}
             </div>
           )}
@@ -92,22 +156,38 @@ export default function InputPhase() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full button-primary py-4 sm:py-5 px-6 text-base sm:text-lg font-bold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:shadow-lg active:scale-95"
+            className="btn-primary"
+            style={{
+              width: "100%",
+              padding: "14px 24px",
+              fontSize: "14px",
+              opacity: isLoading ? 0.5 : 1,
+              cursor: isLoading ? "not-allowed" : "pointer",
+            }}
           >
             {isLoading ? (
-              <span className="flex items-center justify-center gap-3">
-                <span className="spinner"></span>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                <span style={{
+                  width: "16px", height: "16px", borderRadius: "50%",
+                  border: "2px solid var(--p-border)", borderTopColor: "var(--p-white)",
+                  animation: "spin 0.6s linear infinite", display: "inline-block",
+                }} />
                 Extracting Logic...
               </span>
             ) : (
-              "Begin Crisis Scenario"
+              "Begin Learning Session"
             )}
           </button>
         </form>
 
-        {/* Footer */}
-        <div className="mt-12 sm:mt-16 text-center text-slate-600 max-w-2xl px-4">
-          <p className="font-medium text-sm sm:text-base leading-relaxed">
+        {/* Footer Tip */}
+        <div style={{
+          marginTop: "48px",
+          textAlign: "center",
+          color: "var(--t-secondary)",
+          maxWidth: "480px",
+        }}>
+          <p style={{ fontSize: "13px", lineHeight: 1.6 }}>
             💡 Tip: The more detailed your material, the richer your learning experience.
           </p>
         </div>

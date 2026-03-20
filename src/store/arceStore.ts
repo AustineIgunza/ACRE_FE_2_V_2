@@ -8,14 +8,10 @@ import {
   CrisisScenario,
   UserResponse,
   ThermalState,
-  EXAMPLE_CLUSTER,
-  EXAMPLE_CRISIS_SCENARIO,
   MasteryCard,
 } from "@/types/arce";
-import {
-  MOCK_CLUSTERS,
-  generateMockMasteryCard,
-} from "@/utils/mockTestData";
+import { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
 
 interface ArceStore {
   // Session state
@@ -25,6 +21,15 @@ interface ArceStore {
   isLoading: boolean;
   loadingProgress: number; // 0-100 for progress bars
   error: string | null;
+
+  // Progress State
+  userProgress: Record<string, number>; // Maps nodeId -> heatScore
+  progressDetails: { nodeId: string; heatScore: number; isIgnited: boolean; lastAttempt: string }[]; // Full rows
+
+  // Auth State
+  user: User | null;
+  sessionToken: string | null;
+  authInitialized: boolean;
 
   // UI state
   showLogo: boolean; // Logo only at start and end
@@ -44,6 +49,13 @@ interface ArceStore {
   resetGame: () => void;
   endGame: () => void;
   toggleTestMode: () => void;
+  
+  // Auth Actions
+  initAuth: () => void;
+  logout: () => Promise<void>;
+  
+  // Progress Actions
+  fetchProgress: () => Promise<void>;
 }
 
 export const useArceStore = create<ArceStore>((set, get) => ({
@@ -54,6 +66,8 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   isLoading: false,
   loadingProgress: 0,
   error: null,
+  userProgress: {},
+  progressDetails: [],
   showLogo: true, // Show logo at start
   currentPhase: "input",
   selectedActionButton: null,
@@ -61,13 +75,78 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   testMode: false,
   correctButton: null,
 
+  // Auth initial state
+  user: null,
+  sessionToken: null,
+  authInitialized: false,
+
+  // Initialize auth listener
+  initAuth: () => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      set({ 
+        user: session?.user ?? null, 
+        sessionToken: session?.access_token ?? null,
+        authInitialized: true
+      });
+      if (session?.user) get().fetchProgress();
+    });
+
+    // Listen for changes
+    supabase.auth.onAuthStateChange((_event, session) => {
+      set({ 
+        user: session?.user ?? null, 
+        sessionToken: session?.access_token ?? null,
+        authInitialized: true
+      });
+      if (session?.user) get().fetchProgress();
+    });
+  },
+
+  logout: async () => {
+    await supabase.auth.signOut();
+    set({ user: null, sessionToken: null, gameSession: null, userProgress: {} });
+  },
+
+  fetchProgress: async () => {
+    const { user } = get();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('node_id, heat_score, is_ignited, last_attempt');
+      
+    if (error) {
+      console.error("Failed to fetch progress. Supabase explicitly says:", error.message, "Code:", error.code, "Details:", error.details);
+      return;
+    }
+    
+    if (data) {
+      const progressMap: Record<string, number> = {};
+      const details = data.map(row => {
+        progressMap[row.node_id] = row.heat_score;
+        return {
+          nodeId: row.node_id,
+          heatScore: row.heat_score,
+          isIgnited: row.is_ignited,
+          lastAttempt: row.last_attempt,
+        };
+      });
+      set({ userProgress: progressMap, progressDetails: details });
+    }
+  },
+
   startGame: async (sourceContent: string, sourceTitle?: string) => {
     set({ isLoading: true, error: null, showLogo: true });
 
     try {
+      const { sessionToken } = get();
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-scenarios`, {
          method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
+         headers: { 
+           'Content-Type': 'application/json',
+           ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
+         },
          body: JSON.stringify({ text_material: sourceContent })
       });
       if (!res.ok) throw new Error("Failed to generate scenarios from backend.");
@@ -86,11 +165,30 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         difficulty: 'level-2'
       }));
 
-      const mockSession: GameSession = {
+      // Build clusters dynamically from the AI-generated scenarios
+      const aiClusterNodes: CausalAnchor[] = data.scenarios.map((s: any, index: number) => ({
+        id: s.id || `node-${index}`,
+        title: s.title || `Concept ${index + 1}`,
+        description: s.context || "",
+        thermalState: "neutral" as const,
+        heat: 0,
+        integrity: 0,
+      }));
+
+      const aiCluster: Cluster = {
+        id: `cluster-${Date.now()}`,
+        clusterIndex: 0,
+        title: sourceTitle || "Learning Session",
+        description: `${data.scenarios.length} concepts extracted from your study material`,
+        status: "unlocked",
+        nodes: aiClusterNodes,
+      };
+
+      const gameSession: GameSession = {
         id: `session-${Date.now()}`,
         sourceContent,
         sourceTitle: sourceTitle || "Learning Session",
-        clusters: MOCK_CLUSTERS, // We retain local MOCK_CLUSTERS for mapping requirements
+        clusters: [aiCluster],
         currentClusterIndex: 0,
         currentNodeIndex: 0,
         globalHeat: 0,
@@ -102,10 +200,10 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         completed: false,
       };
 
-      localStorage.setItem(`arce-session-${mockSession.id}`, JSON.stringify(mockSession));
+      localStorage.setItem(`arce-session-${gameSession.id}`, JSON.stringify(gameSession));
 
       set({
-        gameSession: mockSession,
+        gameSession,
         scenarios: mappedScenarios,
         currentScenario: mappedScenarios[0],
         isLoading: false,
@@ -148,14 +246,18 @@ export const useArceStore = create<ArceStore>((set, get) => ({
           heatDelta: 25,
         };
       } else {
+        const { sessionToken, user } = get();
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/evaluate`, {
            method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
+           headers: { 
+             'Content-Type': 'application/json',
+             ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
+           },
            body: JSON.stringify({ 
              scenarioId: currentScenario.id, 
              userChoice: selectedActionButton, 
              userDefense: defense,
-             userId: "" // Can implement fully later
+             userId: user?.id || "" 
            })
          });
          if (!res.ok) throw new Error("Evaluation request failed.");
@@ -183,11 +285,13 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       updatedSession.responses.push(response);
 
       if (evaluation.thermalState === "ignition") {
-        const masteryCard = generateMockMasteryCard(
-          currentScenario.nodeId,
-          defense,
-          evaluation.thermalState
-        );
+        const masteryCard: MasteryCard = {
+          id: `mastery-${currentScenario.nodeId}-${Date.now()}`,
+          nodeId: currentScenario.nodeId,
+          formalDefinition: evaluation.formalDefinition || evaluation.feedback,
+          keywords: evaluation.keywords || [],
+          createdAt: Date.now(),
+        };
         updatedSession.masteryCards.push(masteryCard);
       }
 
@@ -213,6 +317,9 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         selectedActionButton: null,
         currentPhase: "playing", 
       });
+
+      // Refresh progress from DB so dashboard stays in sync
+      get().fetchProgress();
 
       return {
         thermalState: evaluation.thermalState,

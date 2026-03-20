@@ -13,6 +13,7 @@ interface CrisisModalProps {
 
 export default function CrisisModal({ scenario }: CrisisModalProps) {
   const {
+    gameSession,
     selectAction,
     showDefense,
     submitDefense,
@@ -31,7 +32,11 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus textarea when it appears
+  // Lesson progress based on responses (assuming 3 is total length)
+  const currentStep = (gameSession?.responses.length || 0) + 1;
+  const totalSteps = 3;
+  const progressPercent = ((currentStep - 1) / totalSteps) * 100;
+
   useEffect(() => {
     if (showDefenseTextbox && textareaRef.current) {
       textareaRef.current.focus();
@@ -40,7 +45,6 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
 
   const handleActionClick = (buttonId: string) => {
     selectAction(buttonId);
-    // For multiple choice, immediately show defense
     if (scenario.questionType === "multiple-choice") {
       setTimeout(() => showDefense(), 300);
     }
@@ -49,17 +53,13 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
   const handleDefenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // In test mode, allow empty defense; otherwise require 20 chars
     if (!testMode && defenseText.trim().length < 20) {
       alert("Please provide a more detailed defense (at least 20 characters).");
       return;
     }
 
     setIsEvaluating(true);
-
-    // Submit to store (which calls the backend API)
     const result = await submitDefense(defenseText);
-
     setIsEvaluating(false);
 
     if (result) {
@@ -73,97 +73,131 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
 
   return (
     <>
-      {/* Mini Loading Overlay during evaluation */}
       {isEvaluating && <MiniLoadingOverlay />}
 
-      <div className="min-h-screen-gradient bg-gradient-blue-white text-slate-900 px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 flex flex-col items-center justify-start relative">
-        {/* Content Container - Fully Centered and Scrollable */}
-        <div className="w-full max-w-2xl flex flex-col items-center justify-center gap-8 sm:gap-12">
-          {/* Crisis Section - Centered */}
-          <div className="w-full text-center">
-            {/* Crisis Heading */}
-            <div className="mb-6 sm:mb-8">
-              <h2 className="text-5xl sm:text-6xl lg:text-7xl font-black mb-4 sm:mb-6 bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
-                CRISIS
-              </h2>
-              <p className="text-lg sm:text-xl lg:text-2xl font-medium text-slate-600">
-                Make your critical decision
-              </p>
+      <div style={{
+        minHeight: "100vh",
+        backgroundColor: "var(--p-white)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        padding: "48px 24px 80px",
+      }}>
+        <div style={{ width: "100%", maxWidth: "640px", display: "flex", flexDirection: "column", gap: "32px" }}>
+          
+          {/* Progress Bar */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <span className="question-eyebrow">Scenario {currentStep} of {totalSteps}</span>
+              <span className="points-badge">+10 XP</span>
             </div>
-
-            {/* Crisis Text Box - Premium styling */}
-            <div className="text-center mb-8 sm:mb-10">
-              <p className="text-lg sm:text-xl lg:text-2xl font-semibold leading-relaxed text-slate-800 bg-white/80 backdrop-blur-lg border-1.5 border-blue-200 rounded-3xl p-6 sm:p-8 lg:p-10 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300">
-                {scenario.crisisText}
-              </p>
+            <div className="progress-container">
+              <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
             </div>
+          </div>
 
-            {/* Action Buttons for Multiple Choice - Centered */}
-            {scenario.questionType === "multiple-choice" &&
-              scenario.actionButtons &&
-              !showDefenseTextbox && (
-              <div className="w-full space-y-3 sm:space-y-4">
-                <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-widest text-center mb-4 sm:mb-6">
-                  Select Your Response:
-                </p>
-                {scenario.actionButtons.map((button) => (
+          {/* Question Card */}
+          <div className="question-card" style={{ animation: "slideUp 0.4s ease-out" }}>
+            <p className="question-text" style={{ marginBottom: "0" }}>
+              {scenario.crisisText}
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          {scenario.questionType === "multiple-choice" && scenario.actionButtons && !showDefenseTextbox && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", animation: "slideUp 0.5s ease-out" }}>
+              {scenario.actionButtons.map((button) => {
+                const isSelected = selectedActionButton === button.id;
+                return (
                   <button
                     key={button.id}
                     onClick={() => handleActionClick(button.id)}
                     disabled={isLoading}
-                    className={`action-button w-full transition-all duration-300 ${
-                      selectedActionButton === button.id ? "selected ring-2 ring-blue-500 scale-105" : "hover:scale-102"
-                    } ${isLoading ? "opacity-50 cursor-not-allowed" : "hover:shadow-lg"}`}
+                    className={`answer-option ${isSelected ? "selected" : ""}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "16px",
+                      width: "100%",
+                      textAlign: "left",
+                      opacity: isLoading ? 0.5 : 1,
+                      cursor: isLoading ? "not-allowed" : "pointer",
+                      borderColor: isSelected ? "var(--snap)" : undefined,
+                      borderWidth: isSelected ? "1.5px" : undefined,
+                      background: isSelected ? "var(--snap-tint)" : undefined,
+                      color: isSelected ? "var(--t-deep)" : undefined,
+                      fontWeight: isSelected ? 600 : undefined,
+                    }}
                   >
-                    <span className="action-button-index text-lg sm:text-xl font-bold">
+                    <span style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "8px",
+                      background: isSelected ? "var(--snap)" : "var(--p-surface)",
+                      color: isSelected ? "var(--p-white)" : "var(--t-secondary)",
+                      fontWeight: 700,
+                      fontSize: "14px",
+                      flexShrink: 0,
+                    }}>
                       {String.fromCharCode(65 + (button.order - 1))}
                     </span>
-                    <span className="action-button-label flex-1 text-left text-sm sm:text-base">{button.label}</span>
-                    <span className="text-xs text-slate-500 hidden sm:inline">Click to select</span>
+                    <span style={{ flex: 1, fontSize: "15px", lineHeight: 1.5 }}>
+                      {button.label}
+                    </span>
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
-          {/* Defense Textbox - Inline, not fixed position */}
+          {/* Defense Textbox */}
           {showDefenseTextbox && !defenseSubmitted && (
-            <div className="defense-box-inline w-full animate-slideDown">
-              <form onSubmit={handleDefenseSubmit} className="flex flex-col gap-3 sm:gap-4">
-                <label className="defense-label text-center text-base sm:text-lg font-bold text-slate-900">
-                  Defend Your Logic {testMode && <span className="text-xs bg-yellow-200 px-2 py-1 rounded ml-2">TEST MODE</span>}
-                </label>
+            <div className="folio-card" style={{ animation: "slideUp 0.3s ease-out" }}>
+              <form onSubmit={handleDefenseSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ textAlign: "center" }}>
+                  <label className="eyebrow" style={{ color: "var(--t-deep)", fontSize: "12px" }}>
+                    Defend Your Logic
+                    {testMode && <span style={{ marginLeft: "8px", background: "var(--xp)", color: "white", padding: "2px 6px", borderRadius: "4px", fontSize: "10px" }}>TEST MODE</span>}
+                  </label>
+                </div>
                 <textarea
                   ref={textareaRef}
                   value={defenseText}
                   onChange={(e) => setDefenseText(e.target.value)}
-                  placeholder={testMode ? "TEST MODE: Type anything or leave blank (will auto-pass)..." : "Explain your reasoning... (min 20 chars)"}
-                  className="defense-textarea w-full p-3 sm:p-4 border-1.5 border-blue-200 rounded-xl text-slate-800 bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 transition-all duration-250"
+                  placeholder={testMode ? "TEST MODE: Type anything..." : "Explain your reasoning... (min 20 chars)"}
+                  className="folio-input"
+                  style={{
+                    width: "100%",
+                    minHeight: "120px",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    lineHeight: 1.6,
+                  }}
                   disabled={isLoading || isEvaluating}
-                  autoFocus
                 />
-                <div className="text-center text-xs sm:text-sm text-slate-500 font-medium">
-                  {defenseText.length} / {testMode ? "optional" : "20"} characters {!testMode && "minimum"}
+                <div style={{ textAlign: "center", fontSize: "13px", fontWeight: 600, color: defenseText.length >= 20 ? "var(--success)" : "var(--t-secondary)" }}>
+                  {defenseText.length} / {testMode ? "optional" : "20"} characters {!testMode && "min"}
                 </div>
                 <button
                   type="submit"
                   disabled={isLoading || (!testMode && defenseText.trim().length < 20) || isEvaluating}
-                  className="button-primary w-full py-3 sm:py-4 px-4 sm:px-6 font-bold text-sm sm:text-base rounded-xl hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-250"
+                  className="btn-primary"
+                  style={{ width: "100%" }}
                 >
-                  {isEvaluating ? "Evaluating..." : testMode ? "Submit (TEST MODE)" : "Submit Defense"}
+                  {isEvaluating ? "Evaluating..." : testMode ? "Submit Defense (TEST)" : "Submit Defense"}
                 </button>
               </form>
             </div>
           )}
 
-          {/* Feedback is now in modal - removed inline display */}
-
-          {/* Spacer to allow scrolling room */}
-          <div className="h-4 sm:h-8" />
+          <div style={{ height: "32px" }} />
         </div>
       </div>
 
-      {/* Feedback Modal - Popup instead of inline */}
       <FeedbackModal
         isOpen={defenseSubmitted}
         thermalState={thermalState}
@@ -178,17 +212,14 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
           setKeywords([]);
           setFormalDef("");
           
-          // Move to next scenario
           const { nextNode, gameSession } = useArceStore.getState();
-          
-          // Check if we should end game (3 scenarios completed)
-          if (gameSession && gameSession.responses.length >= 3) {
+          if (gameSession && gameSession.responses.length >= totalSteps) {
             useArceStore.getState().endGame();
           } else {
             nextNode();
           }
         }}
-        autoCloseSeconds={3.5}
+        autoCloseSeconds={4.5}
       />
     </>
   );
