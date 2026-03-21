@@ -13,13 +13,14 @@ import BattleResult from "./BattleResult";
 export default function BattleArena() {
   const {
     battle_state,
-    current_encounter,
-    player_hp_percent,
-    boss_hp_percent,
     is_loading,
     resetBattle,
     submitAnswer,
   } = useCombatStore();
+
+  const current_encounter = battle_state?.boss.encounters[battle_state.current_encounter_index] || null;
+  const player_hp_percent = battle_state ? (battle_state.player_hp / battle_state.max_player_hp) * 100 : 100;
+  const boss_hp_percent = battle_state ? (battle_state.boss_hp / battle_state.max_boss_hp) * 100 : 100;
 
   const [localFeedback, setLocalFeedback] = useState<{
     choice: string;

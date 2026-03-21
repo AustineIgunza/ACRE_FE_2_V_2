@@ -33,7 +33,15 @@ export default function DashboardPage() {
     const recentNodes = [...nodes]
       .sort((a, b) => new Date(b.lastAttempt).getTime() - new Date(a.lastAttempt).getTime())
       .slice(0, 5);
-    return { totalConcepts, masteredCount, averageHeat, recentNodes };
+      
+    const decayedNodes = nodes.filter(n => {
+      // Must have been ignited, but it's been over 48 hours
+      if (!n.isIgnited) return false;
+      const hoursSinceAttempt = (Date.now() - new Date(n.lastAttempt).getTime()) / (1000 * 60 * 60);
+      return hoursSinceAttempt > 48;
+    });
+
+    return { totalConcepts, masteredCount, averageHeat, recentNodes, decayedNodes };
   }, [progressDetails]);
 
   if (!authInitialized || !user) {
@@ -119,6 +127,68 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
+
+        {/* ── STABILITY TRACKER (DECAYED NODES) ── */}
+        {stats.decayedNodes.length > 0 && (
+          <div style={{ marginBottom: "40px", animation: "slideUp 0.6s ease-out" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--error)" }}>❄️ Frosted Over (Concept Decay)</h3>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--t-muted)", textTransform: "uppercase" }}>Requires Re-Ignition</span>
+            </div>
+            <div className="folio-card" style={{ padding: "0", overflow: "hidden", border: "1.5px solid var(--error)" }}>
+              {stats.decayedNodes.map((node, i) => (
+                <div
+                  key={node.nodeId}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "16px 24px",
+                    borderBottom: i < stats.decayedNodes.length - 1 ? "1px solid var(--p-border)" : "none",
+                    backgroundColor: "rgba(255, 59, 48, 0.05)"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                    <div style={{
+                      width: "8px", height: "8px", borderRadius: "50%",
+                      backgroundColor: "var(--error)",
+                      flexShrink: 0,
+                      boxShadow: "0 0 8px var(--error)"
+                    }} />
+                    <div>
+                      <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--t-deep)" }}>
+                        {node.nodeId
+                          .replace(/^(node|scenario|concept)[-_]?/i, "")
+                          .replace(/[-_]/g, " ")
+                          .replace(/\b\w/g, c => c.toUpperCase())
+                          || `Concept ${node.nodeId}`}
+                      </span>
+                      <span style={{
+                        marginLeft: "12px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: "var(--error)",
+                        textTransform: "uppercase",
+                      }}>
+                        Stability Lost
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                    <span style={{ fontSize: "12px", color: "var(--t-muted)", textAlign: "right", marginRight: "16px" }}>
+                      Last seen {timeAgo(node.lastAttempt)}
+                    </span>
+                    <Link href="/learn">
+                      <button className="btn-primary" style={{ padding: "8px 16px", fontSize: "13px", background: "var(--error)" }}>
+                        Quick-Fire Recon
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── RECENT ACTIVITY ── */}
         {stats.recentNodes.length > 0 && (

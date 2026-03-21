@@ -18,6 +18,7 @@ interface ArceStore {
   gameSession: GameSession | null;
   scenarios: CrisisScenario[];
   currentScenario: CrisisScenario | null;
+  pendingNextScenario: CrisisScenario | null; // For holding on-the-fly generated variations
   isLoading: boolean;
   loadingProgress: number; // 0-100 for progress bars
   error: string | null;
@@ -40,7 +41,7 @@ interface ArceStore {
   correctButton: string | null; // Which button is correct in test mode
 
   // Actions
-  startGame: (sourceContent: string, sourceTitle?: string) => Promise<void>;
+  startGame: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => Promise<void>;
   selectAction: (buttonId: string) => void;
   showDefense: () => void;
   submitDefense: (defense: string) => Promise<{ thermalState: ThermalState, feedback: string, keywords: string[], formalDefinition: string } | undefined>;
@@ -63,6 +64,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   gameSession: null,
   scenarios: [],
   currentScenario: null,
+  pendingNextScenario: null,
   isLoading: false,
   loadingProgress: 0,
   error: null,
@@ -136,34 +138,43 @@ export const useArceStore = create<ArceStore>((set, get) => ({
     }
   },
 
-  startGame: async (sourceContent: string, sourceTitle?: string) => {
+  startGame: async (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => {
     set({ isLoading: true, error: null, showLogo: true });
 
     try {
       const { sessionToken } = get();
+
+      const formData = new FormData();
+      if (payload.text) formData.append("text_material", payload.text);
+      if (payload.url) formData.append("url", payload.url);
+      if (payload.file) formData.append("file", payload.file);
+      if (sourceTitle) formData.append("title", sourceTitle);
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-scenarios`, {
          method: 'POST',
          headers: { 
-           'Content-Type': 'application/json',
            ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
          },
-         body: JSON.stringify({ text_material: sourceContent })
+         body: formData
       });
       if (!res.ok) throw new Error("Failed to generate scenarios from backend.");
       const data = await res.json();
       
-      const mappedScenarios: CrisisScenario[] = data.scenarios.map((s: any, index: number) => ({
-        id: s.id || `scenario-${index}`,
-        nodeId: `node-${index}`,
-        crisisText: `${s.title}\n\n${s.context}\n${s.question}`,
-        questionType: 'multiple-choice',
-        actionButtons: s.options?.map((opt: any, i: number) => ({
-          id: opt.id || `btn-${i}`,
-          label: opt.text || opt.action,
-          order: i + 1
-        })) || [],
-        difficulty: 'level-2'
-      }));
+      const mappedScenarios: CrisisScenario[] = data.scenarios.map((s: any, index: number) => {
+        const slug = (s.title || `concept-${index}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        return {
+          id: s.id || `scenario-${index}`,
+          nodeId: slug,
+          crisisText: `${s.title}\n\n${s.context}\n${s.question}`,
+          questionType: 'multiple-choice',
+          actionButtons: s.options?.map((opt: any, i: number) => ({
+            id: opt.id || `btn-${i}`,
+            label: opt.text || opt.action,
+            order: i + 1
+          })) || [],
+          difficulty: 'level-2'
+        };
+      });
 
       // Build clusters dynamically from the AI-generated scenarios
       const aiClusterNodes: CausalAnchor[] = data.scenarios.map((s: any, index: number) => ({
@@ -186,7 +197,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
 
       const gameSession: GameSession = {
         id: `session-${Date.now()}`,
-        sourceContent,
+        sourceContent: payload.text || payload.url || payload.file?.name || "Multimodal Document",
         sourceTitle: sourceTitle || "Learning Session",
         clusters: [aiCluster],
         currentClusterIndex: 0,
@@ -229,7 +240,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
     const { gameSession, currentScenario, selectedActionButton, testMode, scenarios } = get();
     if (!gameSession || !currentScenario) return;
 
-    if (!testMode && defense.length < 20) {
+    if (!testMode && defense !== "[Tactical Strike - No Defense Required]" && defense.length < 20) {
       set({ error: "Defense must be at least 20 characters" });
       return;
     }
@@ -269,6 +280,36 @@ export const useArceStore = create<ArceStore>((set, get) => ({
            keywords: data.evaluation.keywords || [],
            formalDefinition: data.evaluation.formalDefinition || ""
          }
+      }
+
+      // If Frost, trigger Parallel Variation logic
+      let generatedVariation = null;
+      if (evaluation.thermalState === "frost") {
+        try {
+          const { sessionToken } = get();
+          const varRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-variation`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json', ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {}) },
+             body: JSON.stringify({ 
+               originalContext: currentScenario.crisisText, 
+               originalQuestion: currentScenario.questionType, 
+               variationType: 'parallel' 
+             })
+          });
+          if (varRes.ok) {
+            const varData = await varRes.json();
+            generatedVariation = {
+              id: varData.scenario.id || `scenario-var-${Date.now()}`,
+              nodeId: currentScenario.nodeId,
+              crisisText: `❄️ PARALLEL VARIATION\n\n${varData.scenario.title}\n\n${varData.scenario.context}\n${varData.scenario.question}`,
+              questionType: "multiple-choice" as const,
+              actionButtons: varData.scenario.options?.map((opt: any, i: number) => ({ id: opt.id || `btn-${i}`, label: opt.text || opt.action, order: i + 1 })) || [],
+              difficulty: "level-2" as const
+            };
+          }
+        } catch (err) {
+          console.warn("Failed to generate parallel variation", err);
+        }
       }
 
       const response: UserResponse = {
@@ -316,6 +357,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         showDefenseTextbox: false,
         selectedActionButton: null,
         currentPhase: "playing", 
+        pendingNextScenario: generatedVariation || null,
       });
 
       // Refresh progress from DB so dashboard stays in sync
@@ -332,13 +374,64 @@ export const useArceStore = create<ArceStore>((set, get) => ({
     }
   },
 
-  nextNode: () => {
-    const { gameSession, currentScenario, scenarios } = get();
+  nextNode: async () => {
+    const { gameSession, currentScenario, scenarios, pendingNextScenario, sessionToken, testMode } = get();
     if (!gameSession || !currentScenario) return;
 
-    const responseCount = gameSession.responses.length;
-    const nextScenarioIndex = Math.min(responseCount, scenarios.length - 1);
-    const nextScenario = scenarios[nextScenarioIndex];
+    if (pendingNextScenario) {
+       scenarios.push(pendingNextScenario);
+       set((state) => ({
+         scenarios: [...scenarios],
+         gameSession: { ...state.gameSession! },
+         currentScenario: pendingNextScenario,
+         showDefenseTextbox: false,
+         selectedActionButton: null,
+         pendingNextScenario: null,
+       }));
+       return;
+    }
+
+    // Black Swan Integration
+    const recentResponses = gameSession.responses.slice(-3);
+    const hasThreeIgnitions = recentResponses.length >= 3 && recentResponses.every(r => r.thermalResult === 'ignition');
+    
+    set({ isLoading: true });
+
+    let nextScenario = null;
+    if (hasThreeIgnitions) {
+       try {
+         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-variation`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json', ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {}) },
+             body: JSON.stringify({ 
+               originalContext: currentScenario.crisisText, 
+               originalQuestion: currentScenario.questionType, 
+               variationType: 'black-swan' 
+             })
+         });
+         if (res.ok) {
+           const data = await res.json();
+           nextScenario = {
+             id: data.scenario.id || `scenario-bs-${Date.now()}`,
+             nodeId: currentScenario.nodeId,
+             crisisText: `🚨 BLACK SWAN EVENT\n\n${data.scenario.title}\n\n${data.scenario.context}\n${data.scenario.question}`,
+             questionType: 'multiple-choice' as const,
+             actionButtons: data.scenario.options?.map((opt: any, i: number) => ({ id: opt.id || `btn-${i}`, label: opt.text || opt.action, order: i + 1 })) || [],
+             difficulty: 'level-3' as const
+           };
+           scenarios.push(nextScenario);
+           set({ scenarios });
+         }
+       } catch (err) {
+         console.warn("Black Swan failed:", err);
+       }
+    }
+
+    if (!nextScenario) {
+      const responseCount = gameSession.responses.length;
+      const nextScenarioIndex = Math.min(responseCount, scenarios.length - 1);
+      nextScenario = scenarios[nextScenarioIndex] || scenarios[scenarios.length - 1]; // fallback to last
+    }
 
     set((state) => ({
       gameSession: {
@@ -352,6 +445,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       currentScenario: nextScenario,
       showDefenseTextbox: false,
       selectedActionButton: null,
+      isLoading: false,
     }));
   },
 

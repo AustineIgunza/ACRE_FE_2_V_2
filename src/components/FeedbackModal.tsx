@@ -50,8 +50,8 @@ export default function FeedbackModal({
   const isError = thermalState === "frost";
 
   const bannerClass = isSuccess || isWarning
-    ? "feedback-banner-correct"
-    : "feedback-banner-wrong";
+    ? `feedback-banner-correct ${isSuccess ? 'animate-flash' : ''}`
+    : `feedback-banner-wrong ${isError ? 'animate-glitch' : ''}`;
 
   const progressPercent = (timeLeft / autoCloseSeconds) * 100;
 

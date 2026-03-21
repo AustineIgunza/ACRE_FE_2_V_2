@@ -134,16 +134,12 @@ export interface CombatStore {
   error: string | null;
 
   // Actions
-  startBattle: (sourceContent: string, sourceTitle?: string) => Promise<void>;
+  startBattle: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => Promise<void>;
   submitAnswer: (
     encounterId: number,
     choice: "A" | "B" | "C" | "D"
   ) => Promise<void>;
   resetBattle: () => void;
 
-  // Derived
-  current_encounter: CombatEncounter | null;
-  is_battle_active: boolean;
-  player_hp_percent: number;
-  boss_hp_percent: number;
+
 }

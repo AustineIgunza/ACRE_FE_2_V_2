@@ -30,6 +30,8 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [formalDef, setFormalDef] = useState("");
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [showKeywordChallenge, setShowKeywordChallenge] = useState(false);
+  const [keywordDefenseText, setKeywordDefenseText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Lesson progress based on responses (assuming 3 is total length)
@@ -46,7 +48,26 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
   const handleActionClick = (buttonId: string) => {
     selectAction(buttonId);
     if (scenario.questionType === "multiple-choice") {
-      setTimeout(() => showDefense(), 300);
+      // 60:40 Split Optimization
+      const needsDefense = Math.random() < 0.4 || testMode; // 40% chance for Deep Defense, or 100% in test mode to test it
+      
+      if (needsDefense) {
+        setTimeout(() => showDefense(), 300);
+      } else {
+        // Tactical Strike (60%)
+        setIsEvaluating(true);
+        setTimeout(async () => {
+          const result = await submitDefense("[Tactical Strike - No Defense Required]");
+          setIsEvaluating(false);
+          if (result) {
+            setThermalState(result.thermalState);
+            setFeedback(result.feedback);
+            setKeywords(result.keywords || []);
+            setFormalDef(result.formalDefinition || "");
+            setDefenseSubmitted(true);
+          }
+        }, 400);
+      }
     }
   };
 
@@ -69,6 +90,32 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
       setFormalDef(result.formalDefinition || "");
       setDefenseSubmitted(true);
     }
+  };
+
+  const resetAndProceed = () => {
+    setDefenseText("");
+    setKeywordDefenseText("");
+    setShowKeywordChallenge(false);
+    setThermalState("neutral");
+    setFeedback("");
+    setKeywords([]);
+    setFormalDef("");
+    const { nextNode, gameSession } = useArceStore.getState();
+    if (gameSession && gameSession.responses.length >= totalSteps) {
+      useArceStore.getState().endGame();
+    } else {
+      nextNode();
+    }
+  };
+
+  const handleKeywordChallengeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (keywords.some(k => !keywordDefenseText.toLowerCase().includes(k.toLowerCase()))) {
+      alert("You must include all the required keywords in your rewrite.");
+      return;
+    }
+    // Successfully bridged
+    resetAndProceed();
   };
 
   return (
@@ -154,8 +201,54 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
             </div>
           )}
 
+          {/* Keyword Challenge UI */}
+          {showKeywordChallenge && (
+             <div className="folio-card" style={{ animation: "slideUp 0.3s ease-out", border: "1.5px solid var(--success)" }}>
+               <form onSubmit={handleKeywordChallengeSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                 <div style={{ textAlign: "center" }}>
+                   <label className="eyebrow" style={{ color: "var(--success)", fontSize: "14px", fontWeight: "bold" }}>
+                     Academic Bridge
+                   </label>
+                   <p style={{ fontSize: "14px", marginTop: "8px", marginBottom: "0" }}>
+                     Re-defend your logic using these formal components:
+                   </p>
+                   <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px", marginTop: "8px" }}>
+                     {keywords.map(k => {
+                       const used = keywordDefenseText.toLowerCase().includes(k.toLowerCase());
+                       return (
+                         <span key={k} style={{ 
+                           background: used ? "var(--success)" : "var(--p-surface)", 
+                           color: used ? "white" : "var(--t-primary)",
+                           padding: "4px 8px", borderRadius: "100px", fontSize: "12px", fontWeight: 600,
+                           border: used ? "none" : "1px solid var(--p-border)"
+                         }}>
+                           {k} {used && "✓"}
+                         </span>
+                       );
+                     })}
+                   </div>
+                 </div>
+                 <textarea
+                   value={keywordDefenseText}
+                   onChange={(e) => setKeywordDefenseText(e.target.value)}
+                   placeholder="Rewrite your explanation..."
+                   className="folio-input"
+                   style={{ width: "100%", minHeight: "100px", resize: "vertical" }}
+                 />
+                 <button
+                   type="submit"
+                   disabled={keywords.some(k => !keywordDefenseText.toLowerCase().includes(k.toLowerCase()))}
+                   className="btn-primary"
+                   style={{ background: "var(--success)", width: "100%" }}
+                 >
+                   Solidify Mastery
+                 </button>
+               </form>
+             </div>
+          )}
+
           {/* Defense Textbox */}
-          {showDefenseTextbox && !defenseSubmitted && (
+          {showDefenseTextbox && !defenseSubmitted && !showKeywordChallenge && (
             <div className="folio-card" style={{ animation: "slideUp 0.3s ease-out" }}>
               <form onSubmit={handleDefenseSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ textAlign: "center" }}>
@@ -206,17 +299,10 @@ export default function CrisisModal({ scenario }: CrisisModalProps) {
         formalDefinition={formalDef}
         onClose={() => {
           setDefenseSubmitted(false);
-          setDefenseText("");
-          setThermalState("neutral");
-          setFeedback("");
-          setKeywords([]);
-          setFormalDef("");
-          
-          const { nextNode, gameSession } = useArceStore.getState();
-          if (gameSession && gameSession.responses.length >= totalSteps) {
-            useArceStore.getState().endGame();
+          if (thermalState === "ignition" && keywords.length > 0) {
+            setShowKeywordChallenge(true);
           } else {
-            nextNode();
+            resetAndProceed();
           }
         }}
         autoCloseSeconds={4.5}

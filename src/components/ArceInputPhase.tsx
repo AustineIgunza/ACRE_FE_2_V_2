@@ -3,23 +3,15 @@
 import { useState } from "react";
 import { useArceStore } from "@/store/arceStore";
 import LoadingScreen from "./LoadingScreen";
+import MultimodalInput from "./MultimodalInput";
 
 export default function InputPhase() {
   const { showLogo, startGame, isLoading } = useArceStore();
-  const [sourceContent, setSourceContent] = useState("");
-  const [sourceTitle, setSourceTitle] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (payload: { text?: string; url?: string; file?: File }, title: string) => {
     setError("");
-
-    if (sourceContent.trim().length < 100) {
-      setError("Please provide at least 100 characters of study material.");
-      return;
-    }
-
-    await startGame(sourceContent, sourceTitle || "Learning Session");
+    await startGame(payload, title);
   };
 
   return (
@@ -80,105 +72,9 @@ export default function InputPhase() {
         )}
 
         {/* Input Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="folio-card"
-          style={{
-            width: "100%",
-            maxWidth: "640px",
-            padding: "32px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "24px",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <label className="eyebrow" style={{ textAlign: "center" }}>
-              Study Material
-            </label>
-            <p style={{ textAlign: "center", fontSize: "14px", color: "var(--t-secondary)", marginBottom: "8px" }}>
-              Paste your notes, lecture transcript, or learning material
-            </p>
-            <textarea
-              value={sourceContent}
-              onChange={(e) => setSourceContent(e.target.value)}
-              placeholder="Enter your study material here... (minimum 100 characters)"
-              className="folio-input"
-              style={{
-                width: "100%",
-                minHeight: "160px",
-                resize: "vertical",
-                fontFamily: "inherit",
-                lineHeight: 1.6,
-              }}
-              disabled={isLoading}
-            />
-            <div style={{
-              textAlign: "center",
-              fontSize: "13px",
-              fontWeight: 600,
-              color: sourceContent.length >= 100 ? "var(--success)" : "var(--t-secondary)",
-            }}>
-              {sourceContent.length} / 100 characters minimum
-            </div>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <label className="eyebrow" style={{ textAlign: "center" }}>
-              Title (Optional)
-            </label>
-            <input
-              type="text"
-              value={sourceTitle}
-              onChange={(e) => setSourceTitle(e.target.value)}
-              placeholder="e.g., Biology Chapter 3, Economics Lecture"
-              className="folio-input"
-              style={{ width: "100%", textAlign: "center" }}
-              disabled={isLoading}
-            />
-          </div>
-
-          {error && (
-            <div style={{
-              padding: "16px",
-              background: "var(--error-bg)",
-              border: "1px solid var(--error-border)",
-              borderRadius: "8px",
-              color: "var(--error)",
-              fontWeight: 600,
-              textAlign: "center",
-              fontSize: "14px",
-            }}>
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="btn-primary"
-            style={{
-              width: "100%",
-              padding: "14px 24px",
-              fontSize: "14px",
-              opacity: isLoading ? 0.5 : 1,
-              cursor: isLoading ? "not-allowed" : "pointer",
-            }}
-          >
-            {isLoading ? (
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                <span style={{
-                  width: "16px", height: "16px", borderRadius: "50%",
-                  border: "2px solid var(--p-border)", borderTopColor: "var(--p-white)",
-                  animation: "spin 0.6s linear infinite", display: "inline-block",
-                }} />
-                Extracting Logic...
-              </span>
-            ) : (
-              "Begin Learning Session"
-            )}
-          </button>
-        </form>
+        <div style={{ width: "100%", maxWidth: "640px" }}>
+          <MultimodalInput onSubmit={handleSubmit} isLoading={isLoading} buttonText="Begin Learning Session" />
+        </div>
 
         {/* Footer Tip */}
         <div style={{

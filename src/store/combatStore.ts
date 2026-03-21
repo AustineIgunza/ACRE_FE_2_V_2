@@ -22,7 +22,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   error: null,
 
   // Start a new battle — calls backend AI to generate encounters
-  startBattle: async (sourceContent: string, sourceTitle?: string) => {
+  startBattle: async (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => {
     set({ is_loading: true, error: null });
 
     try {
@@ -36,14 +36,19 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         }
       } catch { /* ignore */ }
 
+      const formData = new FormData();
+      if (payload.text) formData.append("text_material", payload.text);
+      if (payload.url) formData.append("url", payload.url);
+      if (payload.file) formData.append("file", payload.file);
+      if (sourceTitle) formData.append("title", sourceTitle);
+
       // Call the NEW dedicated battle scenario endpoint
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-battle-scenarios`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
         },
-        body: JSON.stringify({ text_material: sourceContent }),
+        body: formData,
       });
 
       if (!res.ok) {
@@ -189,43 +194,5 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     });
   },
 
-  // Derived state: current encounter
-  get current_encounter(): CombatEncounter | null {
-    const state = get();
-    if (!state.battle_state) return null;
-    return (
-      state.battle_state.boss.encounters[
-        state.battle_state.current_encounter_index
-      ] || null
-    );
-  },
 
-  // Derived state: is battle active
-  get is_battle_active(): boolean {
-    const state = get();
-    return !!(state.battle_state &&
-      !state.battle_state.is_victory &&
-      !state.battle_state.is_defeat);
-  },
-
-  // Derived state: player HP percentage
-  get player_hp_percent(): number {
-    const state = get();
-    if (!state.battle_state) return 100;
-    return (
-      (state.battle_state.player_hp /
-        state.battle_state.max_player_hp) *
-      100
-    );
-  },
-
-  // Derived state: boss HP percentage
-  get boss_hp_percent(): number {
-    const state = get();
-    if (!state.battle_state) return 100;
-    return (
-      (state.battle_state.boss_hp / state.battle_state.max_boss_hp) *
-      100
-    );
-  },
 }));
