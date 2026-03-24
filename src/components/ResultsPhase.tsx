@@ -4,6 +4,8 @@ import { GameSession } from "@/types/arce";
 import MasteryCanvas from "./MasteryCanvas";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useThermalStore } from "@/store/thermalStore";
+import { useRouter } from "next/navigation";
 
 interface ResultsPhaseProps {
   session: GameSession;
@@ -38,14 +40,25 @@ export default function ResultsPhase({ session, onNewGame }: ResultsPhaseProps) 
   const animatedHeat = useCountUp(session.globalHeat, 2500);
   const totalXPNum = session.globalHeat * 10 + session.masteryCards.length * 50;
   const animatedXP = useCountUp(totalXPNum, 3000);
+  const { saveSessionToNodes } = useThermalStore();
+  const router = useRouter();
+  const [sessionSaved, setSessionSaved] = useState(false);
+
+  // Save learning session results to thermal heatmap on mount
+  useEffect(() => {
+    if (session) {
+      saveSessionToNodes(session);
+      setSessionSaved(true);
+    }
+  }, [session, saveSessionToNodes]);
 
   const shareToWhatsApp = () => {
-    const text = `I just earned ${totalXPNum} XP on Learn Forge!\n\nTopic: ${session.sourceTitle}\nMastery Rate: ${session.globalHeat}%\n\nCan you beat my score?`;
+    const text = `I just earned ${totalXPNum} XP on ARCÉ!\n\nTopic: ${session.sourceTitle}\nMastery Rate: ${session.globalHeat}%\n\nCan you beat my score?`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const shareToTwitter = () => {
-    const text = `Just crushed "${session.sourceTitle}" on Learn Forge — earned ${totalXPNum} XP!\n\nMastered ${session.masteryCards.length} concepts through critical thinking challenges.\n\nWho can beat this? #LearnForge #Learning`;
+    const text = `Just crushed "${session.sourceTitle}" on ARCÉ — earned ${totalXPNum} XP!\n\nMastered ${session.masteryCards.length} concepts through critical thinking challenges.\n\nWho can beat this? #ARCÉ #Learning`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -186,16 +199,18 @@ export default function ResultsPhase({ session, onNewGame }: ResultsPhaseProps) 
 
         {/* ── ACTIONS ── */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginTop: "24px", animation: "slideUp 1.4s ease-out" }}>
-          <Link href="/dashboard">
-            <button className="btn-ghost" style={{ textAlign: "center", width: "100%" }}>
-              ← Dashboard
-            </button>
-          </Link>
+          <button 
+            onClick={() => router.push("/heatmap")}
+            className="btn-ghost" 
+            style={{ textAlign: "center", width: "100%" }}
+          >
+            ← Back to Heatmap
+          </button>
           <button onClick={shareToTwitter} className="btn-ghost" style={{ textAlign: "center" }}>
             𝕏 Share Results
           </button>
           <button onClick={onNewGame} className="btn-primary" style={{ textAlign: "center" }}>
-            Continue Learning
+            New Session
           </button>
         </div>
 

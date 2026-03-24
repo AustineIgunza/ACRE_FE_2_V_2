@@ -15,7 +15,7 @@ export default function BattleInput() {
       return;
     }
 
-    await startBattle(content, title || "Untitled Battle");
+    await startBattle({ text: content }, title || "Untitled Battle");
   };
 
   return (

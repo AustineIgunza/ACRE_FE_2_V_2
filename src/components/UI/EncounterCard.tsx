@@ -43,33 +43,70 @@ export default function EncounterCard({
   ];
 
   return (
-    <div className="bg-slate-800/80 backdrop-blur border border-slate-700 rounded-lg p-8 shadow-2xl">
+    <div style={{
+      backgroundColor: "var(--p-white)",
+      border: "1px solid var(--p-border)",
+      borderRadius: "12px",
+      padding: "32px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+    }}>
       {/* Scenario */}
-      <div className="mb-8">
-        <h3 className="text-2xl font-bold text-red-400 mb-4">⚡ Scenario</h3>
-        <p className="text-lg text-slate-300 leading-relaxed">
+      <div style={{ marginBottom: "32px" }}>
+        <h3 style={{ fontSize: "20px", fontWeight: 700, color: "var(--snap)", marginBottom: "16px" }}>
+          ⚡ Scenario
+        </h3>
+        <p style={{ fontSize: "16px", color: "var(--t-mid)", lineHeight: 1.7 }}>
           {encounter.scenario}
         </p>
       </div>
 
       {/* Options */}
-      <div className="space-y-3 mb-8">
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
         {options.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => handleChoice(key)}
             disabled={is_loading || !!feedback}
-            className={`w-full p-4 text-left rounded-lg border-2 transition-all transform hover:scale-102 ${
-              feedback?.choice === key
+            style={{
+              width: "100%",
+              padding: "16px",
+              textAlign: "left",
+              borderRadius: "8px",
+              border: "2px solid",
+              borderColor: feedback?.choice === key
                 ? feedback.isCorrect
-                  ? "bg-green-900 border-green-500 text-green-100"
-                  : "bg-red-900 border-red-500 text-red-100"
-                : "bg-slate-700 border-slate-600 text-slate-200 hover:border-slate-500 hover:bg-slate-600"
-            } ${
-              is_loading || !!feedback ? "cursor-not-allowed opacity-75" : ""
-            }`}
+                  ? "var(--success)"
+                  : "var(--error)"
+                : "var(--p-border)",
+              backgroundColor: feedback?.choice === key
+                ? feedback.isCorrect
+                  ? "rgba(34, 197, 94, 0.1)"
+                  : "rgba(239, 68, 68, 0.1)"
+                : "var(--p-surface)",
+              color: feedback?.choice === key
+                ? feedback.isCorrect
+                  ? "var(--success)"
+                  : "var(--error)"
+                : "var(--t-mid)",
+              cursor: is_loading || !!feedback ? "not-allowed" : "pointer",
+              opacity: is_loading || !!feedback ? 0.75 : 1,
+              transition: "all 0.2s ease",
+              fontWeight: 500,
+            }}
+            onMouseEnter={(e) => {
+              if (!is_loading && !feedback) {
+                e.currentTarget.style.borderColor = "var(--snap)";
+                e.currentTarget.style.backgroundColor = "var(--snap-tint)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!is_loading && !feedback) {
+                e.currentTarget.style.borderColor = "var(--p-border)";
+                e.currentTarget.style.backgroundColor = "var(--p-surface)";
+              }
+            }}
           >
-            <span className="font-bold">{key}.</span> {label}
+            <span style={{ fontWeight: 700 }}>{key}.</span> {label}
           </button>
         ))}
       </div>
@@ -77,13 +114,16 @@ export default function EncounterCard({
       {/* Feedback */}
       {feedback && (
         <div
-          className={`p-4 rounded-lg border-2 ${
-            feedback.isCorrect
-              ? "bg-green-900/30 border-green-500 text-green-300"
-              : "bg-red-900/30 border-red-500 text-red-300"
-          }`}
+          style={{
+            padding: "16px",
+            borderRadius: "8px",
+            border: "2px solid",
+            borderColor: feedback.isCorrect ? "var(--success)" : "var(--error)",
+            backgroundColor: feedback.isCorrect ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)",
+            color: feedback.isCorrect ? "var(--success)" : "var(--error)",
+          }}
         >
-          <p className="font-bold mb-2">
+          <p style={{ fontWeight: 700, marginBottom: "8px" }}>
             {feedback.isCorrect ? "✅ CORRECT!" : "❌ INCORRECT"}
           </p>
           <p>{feedback.message}</p>
@@ -92,8 +132,10 @@ export default function EncounterCard({
 
       {/* Loading State */}
       {is_loading && (
-        <div className="text-center text-slate-400">
-          <p className="animate-pulse">Evaluating your answer...</p>
+        <div style={{ textAlign: "center", color: "var(--t-secondary)" }}>
+          <p style={{ animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" }}>
+            Evaluating your answer...
+          </p>
         </div>
       )}
     </div>

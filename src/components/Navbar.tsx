@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useArceStore } from "@/store/arceStore";
+import { useTestModeStore } from "@/store/testModeStore";
 import { usePathname } from "next/navigation";
 
 interface NavItem {
@@ -19,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Navbar() {
   const { user, logout } = useArceStore();
+  const { isTestMode, setTestMode } = useTestModeStore();
   const pathname = usePathname();
 
   const handleLogout = async () => {
@@ -56,7 +58,7 @@ export default function Navbar() {
               letterSpacing: "-0.5px",
             }}
           >
-            Learn Forge
+            ARCÉ
           </span>
         </Link>
 
@@ -68,6 +70,7 @@ export default function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
+                className="nav-link-hover"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -79,10 +82,28 @@ export default function Navbar() {
                   color: isActive ? "var(--snap)" : "var(--t-secondary)",
                   backgroundColor: isActive ? "var(--snap-tint)" : "transparent",
                   textDecoration: "none",
-                  transition: "all 0.15s ease",
+                  transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                  cursor: "pointer",
+                  transform: "translateY(0)",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = "var(--snap-tint)";
+                    e.currentTarget.style.color = "var(--snap)";
+                    e.currentTarget.style.fontWeight = "600";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = "var(--t-secondary)";
+                    e.currentTarget.style.fontWeight = "500";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }
                 }}
               >
-                <span style={{ fontSize: "14px" }}>{item.icon}</span>
+                <span style={{ fontSize: "16px" }}>{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -90,8 +111,37 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* User section */}
+      {/* Test Mode Button + User section */}
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        {/* Test Mode Toggle */}
+        <button
+          onClick={() => setTestMode(!isTestMode)}
+          style={{
+            padding: "6px 12px",
+            borderRadius: "6px",
+            fontWeight: 600,
+            fontSize: "12px",
+            background: isTestMode ? "var(--xp)" : "var(--p-surface)",
+            color: isTestMode ? "white" : "var(--t-secondary)",
+            border: `1px solid ${isTestMode ? "var(--xp)" : "var(--p-border)"}`,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = "0.9";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = "1";
+          }}
+          title={isTestMode ? "Click to switch to Live mode" : "Click to switch to Test mode"}
+        >
+          {isTestMode ? "🧪 TEST" : "🚀 LIVE"}
+        </button>
+
+        {/* User section continues below */}
         <div
           style={{
             display: "flex",

@@ -139,7 +139,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   },
 
   startGame: async (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => {
-    set({ isLoading: true, error: null, showLogo: true });
+    set({ isLoading: true, error: null, showLogo: true, loadingProgress: 0 });
 
     try {
       const { sessionToken } = get();
@@ -150,6 +150,13 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       if (payload.file) formData.append("file", payload.file);
       if (sourceTitle) formData.append("title", sourceTitle);
 
+      // Simulate progress during extraction (0-60%)
+      const progressInterval = setInterval(() => {
+        set((state) => ({
+          loadingProgress: Math.min(state.loadingProgress + Math.random() * 15, 60)
+        }));
+      }, 300);
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-scenarios`, {
          method: 'POST',
          headers: { 
@@ -157,7 +164,11 @@ export const useArceStore = create<ArceStore>((set, get) => ({
          },
          body: formData
       });
-      if (!res.ok) throw new Error("Failed to generate scenarios from backend.");
+      
+      if (!res.ok) {
+        clearInterval(progressInterval);
+        throw new Error("Failed to generate scenarios from backend.");
+      }
       const data = await res.json();
       
       const mappedScenarios: CrisisScenario[] = data.scenarios.map((s: any, index: number) => {
@@ -213,16 +224,24 @@ export const useArceStore = create<ArceStore>((set, get) => ({
 
       localStorage.setItem(`arce-session-${gameSession.id}`, JSON.stringify(gameSession));
 
+      // Clear interval and set to 100%
+      clearInterval(progressInterval);
       set({
         gameSession,
         scenarios: mappedScenarios,
         currentScenario: mappedScenarios[0],
         isLoading: false,
+        loadingProgress: 100,
         currentPhase: "playing",
         showLogo: false, 
       });
+
+      // Reset progress after brief delay
+      setTimeout(() => {
+        set({ loadingProgress: 0 });
+      }, 500);
     } catch (err) {
-      set({ error: err instanceof Error ? err.message : "Failed to start game", isLoading: false });
+      set({ error: err instanceof Error ? err.message : "Failed to start game", isLoading: false, loadingProgress: 0 });
     }
   },
 

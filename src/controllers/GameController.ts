@@ -18,7 +18,7 @@ export class GameController {
     }
 
     const store = useArceStore.getState();
-    store.startGame(sourceContent, sourceTitle);
+    store.startGame({ text: sourceContent }, sourceTitle);
   }
 
   /**

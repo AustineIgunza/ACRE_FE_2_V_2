@@ -113,19 +113,28 @@ export default function FeedbackModal({
           </button>
 
           <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", marginBottom: "16px" }}>
-            <div style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              background: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-              flexShrink: 0,
-            }}>
+            <button
+              onClick={onClose}
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                background: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "20px",
+                flexShrink: 0,
+                border: "none",
+                cursor: "pointer",
+                fontWeight: "bold",
+                transition: "transform 0.2s",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+            >
               {isSuccess ? "✓" : isWarning ? "!" : "✕"}
-            </div>
+            </button>
             
             <div style={{ flex: 1, paddingRight: "32px" }}>
               <h3 style={{ fontSize: "18px", marginBottom: "8px", fontWeight: 700 }}>

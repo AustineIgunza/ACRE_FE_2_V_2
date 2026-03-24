@@ -1,14 +1,59 @@
-"use client";
-
+import { useEffect } from "react";
 import { useCombatStore } from "@/store/combatStore";
+import { useThermalStore } from "@/store/thermalStore";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface BattleResultProps {
   onReset: () => void;
 }
 
 export default function BattleResult({ onReset }: BattleResultProps) {
-  const { battle_state } = useCombatStore();
+  const { battle_state, nodeContext } = useCombatStore();
+  const { updateNodeHeat, updateNodeIntegrity, recordNodeAttempt, units, saveToLocalStorage, solidifyMastery, loadFromLocalStorage } = useThermalStore();
+  const router = useRouter();
+
+  // Update node stats on victory
+  useEffect(() => {
+    if (battle_state?.is_victory && nodeContext) {
+      const correctAnswers = battle_state.battle_log.filter((log) => log.was_correct).length;
+      const totalEncounters = battle_state.boss.encounters.length;
+
+      // Mark attempt as successful if accuracy >= 70%
+      const accuracy = totalEncounters > 0 ? Math.round((correctAnswers / totalEncounters) * 100) : 0;
+      const isSuccess = accuracy >= 70;
+
+      // Always record the attempt
+      recordNodeAttempt(nodeContext.unitId, nodeContext.nodeId, isSuccess);
+      
+      // Get current node to calculate new values
+      const unit = units.find(u => u.id === nodeContext.unitId);
+      const node = unit?.nodes.find(n => n.id === nodeContext.nodeId);
+      
+      if (node) {
+        if (isSuccess) {
+          // Increase heat and integrity on quiz victory
+          updateNodeHeat(nodeContext.unitId, nodeContext.nodeId, Math.min(100, node.heat + 25));
+          updateNodeIntegrity(nodeContext.unitId, nodeContext.nodeId, Math.min(100, node.integrity + 20));
+        } else {
+          // Slight integrity penalty on quiz failure
+          updateNodeIntegrity(nodeContext.unitId, nodeContext.nodeId, Math.max(0, node.integrity - 10));
+        }
+
+        // Save to localStorage immediately
+        saveToLocalStorage();
+        
+        // Log for debugging
+        console.log("Quiz completed - Updated node stats:", {
+          nodeId: nodeContext.nodeId,
+          accuracy,
+          isSuccess,
+          newHeat: node.heat + (isSuccess ? 25 : 0),
+          newIntegrity: node.integrity + (isSuccess ? 20 : -10),
+        });
+      }
+    }
+  }, [battle_state?.is_victory]);
 
   if (!battle_state) return null;
 
@@ -18,6 +63,30 @@ export default function BattleResult({ onReset }: BattleResultProps) {
   ).length;
   const totalEncounters = battle_state.boss.encounters.length;
   const accuracy = totalEncounters > 0 ? Math.round((correctAnswers / totalEncounters) * 100) : 0;
+
+  // Check if node is ready to solidify (accuracy >= 85 and heat >= 80)
+  const canSolidify = nodeContext && accuracy >= 85;
+
+  const handleCloseQuiz = () => {
+    // Ensure latest updates are saved and loaded
+    saveToLocalStorage();
+    loadFromLocalStorage();
+    // Navigate with a small delay to ensure state is updated
+    setTimeout(() => {
+      router.push("/heatmap");
+    }, 100);
+  };
+
+  const handleSolidifyMastery = () => {
+    if (nodeContext) {
+      solidifyMastery(nodeContext.unitId);
+      saveToLocalStorage();
+      loadFromLocalStorage();
+      setTimeout(() => {
+        router.push("/heatmap");
+      }, 100);
+    }
+  };
 
   return (
     <div style={{ maxWidth: "700px", margin: "0 auto" }}>
@@ -124,19 +193,86 @@ export default function BattleResult({ onReset }: BattleResultProps) {
         {/* Message */}
         <p style={{ fontSize: "16px", color: "var(--t-mid)", marginBottom: "32px" }}>
           {isVictory
-            ? "You've proven your mastery! Share your victory or challenge yourself again."
-            : "Learn from this defeat. Review the concepts and return stronger."}
+            ? nodeContext
+              ? "🎯 Node quiz completed! Your mastery score has been updated."
+              : "You've proven your mastery! Share your victory or challenge yourself again."
+            : nodeContext
+              ? "Learn from this quiz. Review the concept and try again."
+              : "Learn from this defeat. Review the concepts and return stronger."}
         </p>
 
+        {/* Node Context Display */}
+        {nodeContext && (
+          <div style={{
+            marginBottom: "24px",
+            padding: "12px",
+            backgroundColor: "var(--p-surface)",
+            borderRadius: "8px",
+            borderLeft: "4px solid var(--snap)",
+            fontSize: "13px",
+            color: "var(--t-secondary)",
+          }}>
+            <strong style={{ color: "var(--t-primary)" }}>📌 {nodeContext.nodeTopic}</strong> — {nodeContext.nodeTitle}
+          </div>
+        )}
+
         {/* Actions */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          <Link href="/dashboard">
+        <div style={{ display: "grid", gridTemplateColumns: canSolidify && isVictory ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr", gap: "16px" }}>
+          {nodeContext && isVictory && (
+            <button 
+              onClick={handleCloseQuiz}
+              style={{
+                width: "100%",
+                padding: "12px",
+                backgroundColor: "var(--error)",
+                color: "white",
+                borderRadius: "8px",
+                fontWeight: 700,
+                fontSize: "14px",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
+              title="Close and return to heatmap"
+            >
+              ✕ Close
+            </button>
+          )}
+          <Link href={nodeContext ? "/heatmap" : "/dashboard"}>
             <button className="btn-ghost" style={{ width: "100%" }}>
-              ← Dashboard
+              ← {nodeContext ? "Heatmap" : "Dashboard"}
             </button>
           </Link>
+          {canSolidify && isVictory && (
+            <button 
+              onClick={handleSolidifyMastery}
+              style={{
+                width: "100%",
+                padding: "12px",
+                backgroundColor: "var(--snap)",
+                color: "white",
+                borderRadius: "8px",
+                fontWeight: 700,
+                fontSize: "14px",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                boxShadow: "0 0 16px rgba(255, 193, 7, 0.4)"
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.boxShadow = "0 0 24px rgba(255, 193, 7, 0.6)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.boxShadow = "0 0 16px rgba(255, 193, 7, 0.4)";
+              }}
+            >
+              🔒 Solidify Mastery
+            </button>
+          )}
           <button onClick={onReset} className="btn-primary" style={{ width: "100%" }}>
-            {isVictory ? "⚔️ New Battle" : "⚔️ Try Again"}
+            {isVictory ? (nodeContext ? "🎯 Another Quiz" : "⚔️ New Battle") : "⚔️ Try Again"}
           </button>
         </div>
       </div>

@@ -7,11 +7,12 @@ import {
   CombatEncounter,
   CombatBoss,
 } from "@/types/combat";
+import { useTestModeStore } from "@/store/testModeStore";
 
 /**
  * ACRE Combat Store - Zustand
  * Manages all battle state across the app
- * Now connected to the backend AI for real encounter generation
+ * MVP: Uses mock scenarios (Phase 2 will connect to backend AI)
  */
 
 export const useCombatStore = create<CombatStore>((set, get) => ({
@@ -20,13 +21,14 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   battle_state: null,
   is_loading: false,
   error: null,
+  nodeContext: null,
 
-  // Start a new battle — calls backend AI to generate encounters
+  // Start a new battle — generates encounters from backend AI
   startBattle: async (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => {
     set({ is_loading: true, error: null });
 
     try {
-      // Get auth token from supabase (read from localStorage to avoid importing arceStore)
+      // Get auth token from Supabase
       let authToken: string | null = null;
       try {
         const storageKey = Object.keys(localStorage).find(k => k.startsWith("sb-") && k.endsWith("-auth-token"));
@@ -42,26 +44,30 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       if (payload.file) formData.append("file", payload.file);
       if (sourceTitle) formData.append("title", sourceTitle);
 
-      // Call the NEW dedicated battle scenario endpoint
+      // Get test mode state
+      const isTestMode = useTestModeStore.getState().isTestMode;
+
+      // Call frontend API which proxies to ACRE backend
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-battle-scenarios`, {
         method: 'POST',
         headers: {
           ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+          'X-Test-Mode': isTestMode ? 'true' : 'false',
         },
         body: formData,
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.details || errData.error || "Failed to generate battle scenarios.");
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to generate battle scenarios.");
       }
-      
+
       const data = await res.json();
 
       // Map AI scenarios with 4 options (A, B, C, D)
-      const encounters: CombatEncounter[] = data.scenarios.map((s: any, index: number) => {
+      const mockEncounters: CombatEncounter[] = data.scenarios?.map((s: any, index: number) => {
         const optMap: Record<string, string> = {};
-        s.options.forEach((o: any) => {
+        s.options?.forEach((o: any) => {
           optMap[o.id] = o.text || o.action || "Option";
         });
 
@@ -75,15 +81,58 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
             D: optMap["D"] || "Option D",
           },
           correct_option: (s.correct_option || "A") as "A" | "B" | "C" | "D",
-          win_feedback: `Masterful! Your thermal logic solved the crisis in "${s.title}".`,
+          win_feedback: `Masterful! Your understanding solved the crisis in "${s.title}".`,
           loss_feedback: `Critical Insight Missing: ${s.title}. ${s.context}`,
         };
-      });
+      }) || [
+        {
+          id: 1,
+          scenario: `Crisis: ${sourceTitle || "Challenge"}\n\nBased on your study material, you face a critical decision that tests your understanding of the core concepts.`,
+          options: {
+            A: "Focus on the root cause of the problem",
+            B: "Apply a quick surface-level fix",
+            C: "Ignore the problem and move forward",
+            D: "Ask for help without analyzing first",
+          },
+          correct_option: "A",
+          win_feedback: "🔥 CRITICAL HIT! You identified the root cause. Mastery confirmed.",
+          loss_feedback: "The boss smiles. You missed the core principle. Understanding depth matters more than speed.",
+        },
+        {
+          id: 2,
+          scenario: `The next challenge arises: How do you approach this problem systematically?`,
+          options: {
+            A: "Build 10 quick versions and iterate",
+            B: "Spend weeks perfecting one version",
+            C: "Guess based on intuition",
+            D: "Copy what others did",
+          },
+          correct_option: "A",
+          win_feedback: "🔥 DEVASTATING BLOW! You understand that volume negates luck. The person after 10 reps is different.",
+          loss_feedback: "The boss laughs. You're still optimizing for the wrong variable. Volume is the real variable.",
+        },
+        {
+          id: 3,
+          scenario: `Final test: Can you explain WHY your solution works?`,
+          options: {
+            A: "I understand the causal chain of events",
+            B: "It worked for someone else",
+            C: "I'm not sure but it seemed right",
+            D: "I memorized the answer",
+          },
+          correct_option: "A",
+          win_feedback: "🔥 FINISHING BLOW! You've transcended shallow learning. You own this concept.",
+          loss_feedback: "The boss nods. You can apply but don't understand. Mastery requires causal depth.",
+        },
+      ];
+
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       const boss: CombatBoss = {
-        boss_name: sourceTitle || "The Knowledge Guardian",
-        intro_narrative: `You are about to face a boss forged from your study material. It has ${encounters.length} encounters designed to test your deep understanding. Prove your mastery!`,
-        encounters,
+        boss_name: "The Knowledge Guardian",
+        intro_narrative: `You face a boss forged from your study material. It has ${mockEncounters.length} encounters designed to test your deep understanding. Prove your mastery by answering correctly!`,
+        encounters: mockEncounters,
       };
 
       const battleState: BattleState = {
@@ -191,8 +240,12 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       battle_state: null,
       is_loading: false,
       error: null,
+      nodeContext: null,
     });
   },
 
-
+  // Set node context for targeted quiz
+  setNodeContext: (context) => {
+    set({ nodeContext: context });
+  },
 }));

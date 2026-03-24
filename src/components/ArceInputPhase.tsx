@@ -6,7 +6,7 @@ import LoadingScreen from "./LoadingScreen";
 import MultimodalInput from "./MultimodalInput";
 
 export default function InputPhase() {
-  const { showLogo, startGame, isLoading } = useArceStore();
+  const { showLogo, startGame, isLoading, loadingProgress } = useArceStore();
   const [error, setError] = useState("");
 
   const handleSubmit = async (payload: { text?: string; url?: string; file?: File }, title: string) => {
@@ -18,7 +18,7 @@ export default function InputPhase() {
     <>
       {/* Loading Screen Overlay */}
       {isLoading && (
-        <LoadingScreen phase="extracting" progress={Math.random() * 70 + 30} />
+        <LoadingScreen phase="extracting" progress={loadingProgress} />
       )}
 
       <div style={{
@@ -52,7 +52,7 @@ export default function InputPhase() {
               letterSpacing: "-1.3px",
               marginBottom: "12px",
             }}>
-              Learn Forge
+              ARCÉ
             </h1>
             <p style={{
               fontSize: "20px",

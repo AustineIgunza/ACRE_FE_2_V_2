@@ -3,46 +3,107 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useArceStore } from "@/store/arceStore";
+import { useThermalStore } from "@/store/thermalStore";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 
 export default function DashboardPage() {
   const { user, authInitialized, initAuth, fetchProgress, userProgress, progressDetails } = useArceStore();
+  const { units, loadFromLocalStorage } = useThermalStore();
   const router = useRouter();
 
   useEffect(() => {
     initAuth();
-  }, [initAuth]);
+    loadFromLocalStorage();
+  }, [initAuth, loadFromLocalStorage]);
 
   useEffect(() => {
     if (authInitialized && !user) {
       router.push("/signin");
     } else if (authInitialized && user) {
       fetchProgress();
+      loadFromLocalStorage();
     }
-  }, [user, authInitialized, router, fetchProgress]);
+  }, [user, authInitialized, router, fetchProgress, loadFromLocalStorage]);
 
-  // Compute live stats from DB data
+  // Refresh progress when page becomes visible (returning from battle/heatmap)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && authInitialized && user) {
+        fetchProgress();
+        loadFromLocalStorage();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [authInitialized, user, fetchProgress, loadFromLocalStorage]);
+
+  // Compute live stats from both thermal nodes and DB data
   const stats = useMemo(() => {
-    const nodes = progressDetails;
-    const totalConcepts = nodes.length;
-    const masteredCount = nodes.filter(n => n.isIgnited).length;
+    // Get all nodes from thermal units
+    const allThermalNodes = units.flatMap(u => u.nodes.map(n => ({
+      ...n,
+      unitName: u.name,
+      unitId: u.id
+    })));
+
+    // Get nodes from DB
+    const dbNodes = progressDetails;
+    
+    // Merge: prioritize thermal data if available, fall back to DB
+    const mergedNodes = [
+      ...allThermalNodes,
+      ...dbNodes.filter(db => !allThermalNodes.some(t => t.title === db.nodeId))
+    ];
+
+    const totalConcepts = mergedNodes.length;
+    const masteredCount = allThermalNodes.filter(n => n.status === 'ignition').length + 
+                         dbNodes.filter(n => n.isIgnited).length;
     const averageHeat = totalConcepts > 0
-      ? Math.round(nodes.reduce((sum, n) => sum + n.heatScore, 0) / totalConcepts)
+      ? Math.round((
+          allThermalNodes.reduce((sum, n) => sum + n.heat, 0) +
+          dbNodes.reduce((sum, n) => sum + n.heatScore, 0)
+        ) / totalConcepts)
       : 0;
-    const recentNodes = [...nodes]
+    
+    const recentNodes = [
+      ...allThermalNodes.map(n => ({
+        nodeId: n.title,
+        heatScore: n.heat,
+        lastAttempt: typeof n.lastAttempt === 'string' 
+          ? n.lastAttempt 
+          : n.lastAttempt instanceof Date 
+            ? n.lastAttempt.toISOString()
+            : new Date().toISOString(),
+        isIgnited: n.status === 'ignition'
+      })),
+      ...dbNodes
+    ]
       .sort((a, b) => new Date(b.lastAttempt).getTime() - new Date(a.lastAttempt).getTime())
       .slice(0, 5);
       
-    const decayedNodes = nodes.filter(n => {
-      // Must have been ignited, but it's been over 48 hours
-      if (!n.isIgnited) return false;
-      const hoursSinceAttempt = (Date.now() - new Date(n.lastAttempt).getTime()) / (1000 * 60 * 60);
+    const decayedNodes = allThermalNodes.filter(n => {
+      if (n.status !== 'ignition') return false;
+      const lastAttemptTime = n.lastAttempt instanceof Date 
+        ? n.lastAttempt.getTime()
+        : typeof n.lastAttempt === 'string'
+          ? new Date(n.lastAttempt).getTime()
+          : 0;
+      const hoursSinceAttempt = (Date.now() - lastAttemptTime) / (1000 * 60 * 60);
       return hoursSinceAttempt > 48;
-    });
+    }).map(n => ({
+      nodeId: n.title,
+      lastAttempt: typeof n.lastAttempt === 'string'
+        ? n.lastAttempt
+        : n.lastAttempt instanceof Date
+          ? n.lastAttempt.toISOString()
+          : new Date().toISOString(),
+      heatScore: n.heat
+    }));
 
     return { totalConcepts, masteredCount, averageHeat, recentNodes, decayedNodes };
-  }, [progressDetails]);
+  }, [units, progressDetails]);
 
   if (!authInitialized || !user) {
     return (

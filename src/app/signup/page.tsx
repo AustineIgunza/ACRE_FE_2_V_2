@@ -57,7 +57,7 @@ export default function SignUpPage() {
         <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", textDecoration: "none" }}>
           <span className="nav-logo-accent" />
           <span style={{ fontFamily: "Georgia, serif", fontSize: "24px", fontWeight: 400, color: "var(--t-primary)", letterSpacing: "-0.5px" }}>
-            Learn Forge
+            ARCÉ
           </span>
         </Link>
       </div>
