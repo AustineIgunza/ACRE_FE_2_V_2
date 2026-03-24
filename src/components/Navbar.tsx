@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useArceStore } from "@/store/arceStore";
-import { useTestModeStore } from "@/store/testModeStore";
 import { usePathname } from "next/navigation";
 
 interface NavItem {
@@ -20,7 +19,6 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Navbar() {
   const { user, logout } = useArceStore();
-  const { isTestMode, setTestMode } = useTestModeStore();
   const pathname = usePathname();
 
   const handleLogout = async () => {
@@ -111,37 +109,8 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Test Mode Button + User section */}
+      {/* User section */}
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        {/* Test Mode Toggle */}
-        <button
-          onClick={() => setTestMode(!isTestMode)}
-          style={{
-            padding: "6px 12px",
-            borderRadius: "6px",
-            fontWeight: 600,
-            fontSize: "12px",
-            background: isTestMode ? "var(--xp)" : "var(--p-surface)",
-            color: isTestMode ? "white" : "var(--t-secondary)",
-            border: `1px solid ${isTestMode ? "var(--xp)" : "var(--p-border)"}`,
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "0.9";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "1";
-          }}
-          title={isTestMode ? "Click to switch to Live mode" : "Click to switch to Test mode"}
-        >
-          {isTestMode ? "🧪 TEST" : "🚀 LIVE"}
-        </button>
-
-        {/* User section continues below */}
         <div
           style={{
             display: "flex",

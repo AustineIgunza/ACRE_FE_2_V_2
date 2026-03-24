@@ -7,7 +7,6 @@ import {
   CombatEncounter,
   CombatBoss,
 } from "@/types/combat";
-import { useTestModeStore } from "@/store/testModeStore";
 
 /**
  * ACRE Combat Store - Zustand
@@ -44,15 +43,11 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       if (payload.file) formData.append("file", payload.file);
       if (sourceTitle) formData.append("title", sourceTitle);
 
-      // Get test mode state
-      const isTestMode = useTestModeStore.getState().isTestMode;
-
       // Call frontend API which proxies to ACRE backend
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-battle-scenarios`, {
         method: 'POST',
         headers: {
           ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
-          'X-Test-Mode': isTestMode ? 'true' : 'false',
         },
         body: formData,
       });
