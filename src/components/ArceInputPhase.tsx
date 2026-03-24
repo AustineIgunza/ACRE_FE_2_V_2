@@ -23,7 +23,7 @@ export default function InputPhase() {
 
       <div style={{
         minHeight: "100vh",
-        backgroundColor: "var(--p-white)",
+        backgroundColor: "var(--p-surface)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",

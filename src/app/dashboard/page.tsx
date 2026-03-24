@@ -118,17 +118,17 @@ export default function DashboardPage() {
   }
 
   const getHeatColor = (heat: number) => {
-    if (heat >= 100) return "var(--success)";
-    if (heat > 50) return "var(--warning)";
-    if (heat > 0) return "var(--error)";
-    return "var(--t-muted)";
+    if (heat >= 100) return "var(--snap)";
+    if (heat >= 60) return "var(--warning)";
+    if (heat >= 25) return "var(--info)";
+    return "var(--p-border)";
   };
 
   const getHeatLabel = (heat: number) => {
     if (heat >= 100) return "Mastered";
-    if (heat > 50) return "Partial";
-    if (heat > 0) return "Emerging";
-    return "Not Started";
+    if (heat >= 60) return "Iterated (Hot)";
+    if (heat >= 25) return "Learning (Warm)";
+    return "Untested Logic";
   };
 
   const timeAgo = (dateStr: string) => {
@@ -148,7 +148,6 @@ export default function DashboardPage() {
 
       <main role="main" style={{ padding: "48px 24px 80px", maxWidth: "1000px", margin: "0 auto" }}>
         
-        {/* Welcome Section */}
         <div style={{ marginBottom: "40px", animation: "slideUp 0.4s ease-out" }}>
           <span className="eyebrow" style={{ marginBottom: "12px", display: "inline-block" }}>
             DASHBOARD
@@ -161,7 +160,6 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* ── STATS GRID ── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginBottom: "40px", animation: "slideUp 0.5s ease-out" }}>
           <div className="folio-card" style={{ padding: "28px", textAlign: "center" }}>
             <div style={{ fontSize: "36px", fontWeight: 700, color: "var(--snap)", lineHeight: 1 }}>
@@ -189,7 +187,56 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── STABILITY TRACKER (DECAYED NODES) ── */}
+        {stats.totalConcepts > 0 && (
+          <div style={{ marginBottom: "40px", animation: "slideUp 0.6s ease-out", display: "flex", gap: "24px", flexWrap: "wrap" }}>
+            <div className="folio-card" style={{ flex: "1 1 calc(100% - 300px)", minWidth: "300px" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "4px" }}>My Heatmap: Knowledge Portfolio</h3>
+              <p style={{ fontSize: "14px", color: "var(--t-secondary)", marginBottom: "20px" }}>A 5x5 thermal visualization of your tracked concepts.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(30px, 1fr))", gap: "8px", maxWidth: "300px" }}>
+                {Array.from({ length: 25 }).map((_, i) => {
+                  const node = progressDetails[i];
+                  const heat = node ? node.heatScore : 0;
+                  return (
+                    <div 
+                      key={i} 
+                      title={node ? `${node.nodeId}: ${heat}%` : "Empty Slot"}
+                      style={{
+                        aspectRatio: "1",
+                        borderRadius: "6px",
+                        backgroundColor: getHeatColor(heat),
+                        boxShadow: heat >= 100 ? "0 0 10px rgba(200,48,16,0.5)" : "none",
+                        border: heat === 0 ? "1px solid var(--p-border)" : "none",
+                        transition: "all 0.3s ease"
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+            
+            <div className="folio-card" style={{ flex: "1 1 260px", maxWidth: "340px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", justifyContent: "center" }}>
+              <div style={{ 
+                display: "grid", 
+                gridTemplateColumns: "repeat(3, 18px)", 
+                gap: "4px", 
+                marginBottom: "20px",
+                padding: "16px",
+                background: "var(--t-deep)",
+                borderRadius: "12px",
+                boxShadow: "0 10px 15px -3px rgba(0,0,0,0.2)"
+              }}>
+                {Array.from({ length: 9 }).map((_, i) => {
+                  const n = progressDetails[i];
+                  return <div key={i} style={{ width: "18px", height: "18px", borderRadius: "4px", backgroundColor: getHeatColor(n ? n.heatScore : 0) }} />
+                })}
+              </div>
+              <h4 style={{ fontSize: "15px", fontWeight: 800, color: "var(--t-deep)", marginBottom: "8px", textTransform: "uppercase" }}>
+                "{user.user_metadata?.full_name?.split(" ")[0] || user.email?.split("@")[0] || "USER"}'S MASTERY: {stats.averageHeat}% HEAT"
+              </h4>
+            </div>
+          </div>
+        )}
+
         {stats.decayedNodes.length > 0 && (
           <div style={{ marginBottom: "40px", animation: "slideUp 0.6s ease-out" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
@@ -251,7 +298,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── RECENT ACTIVITY ── */}
         {stats.recentNodes.length > 0 && (
           <div style={{ marginBottom: "40px", animation: "slideUp 0.7s ease-out" }}>
             <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "16px" }}>Recent Activity</h3>
@@ -311,7 +357,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── EMPTY STATE ── */}
         {stats.totalConcepts === 0 && (
           <div className="folio-card" style={{ padding: "48px", textAlign: "center", marginBottom: "40px", animation: "slideUp 0.6s ease-out" }}>
             <div style={{ fontSize: "48px", marginBottom: "16px" }}>📚</div>
@@ -327,7 +372,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── ACTION GRID ── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "24px", animation: "slideUp 0.8s ease-out" }}>
           
           <Link href="/learn" style={{ textDecoration: "none" }}>

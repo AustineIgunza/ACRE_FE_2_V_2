@@ -24,35 +24,24 @@ export default function SignUpPage() {
         email,
         password,
         options: {
-          data: { full_name: name }
+          data: {
+            full_name: name
+          }
         }
       });
       if (signUpError) throw signUpError;
-      setSuccess("Account created successfully! Redirecting to dashboard...");
-      setIsLoading(false);
       
-      // Auto-redirect if email confirmation is off, but better to keep success message visible
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 1500);
+      setSuccess("Account created successfully! Please check your inbox for a verification email before signing in.");
     } catch (err: any) {
       setError(err.message || "An error occurred during sign up");
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div style={{ 
-      backgroundColor: "var(--p-white)", 
-      minHeight: "100vh", 
-      display: "flex", 
-      flexDirection: "column",
-      alignItems: "center", 
-      justifyContent: "center",
-      padding: "24px"
-    }}>
+    <div style={{ backgroundColor: "var(--p-white)", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px" }}>
       
-      {/* Brand Header */}
       <div style={{ marginBottom: "40px", textAlign: "center" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", textDecoration: "none" }}>
           <span className="nav-logo-accent" />
@@ -62,12 +51,7 @@ export default function SignUpPage() {
         </Link>
       </div>
 
-      <div className="folio-card" style={{ 
-        width: "100%", 
-        maxWidth: "400px", 
-        padding: "40px 32px",
-        animation: "slideUp 0.4s ease-out" 
-      }}>
+      <div className="folio-card" style={{ width: "100%", maxWidth: "400px", padding: "40px 32px", animation: "slideUp 0.4s ease-out" }}>
         <h1 style={{ fontSize: "24px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "8px", textAlign: "center" }}>
           Create your account
         </h1>
@@ -88,74 +72,30 @@ export default function SignUpPage() {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          
           <div>
-            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--t-deep)", marginBottom: "8px" }}>
-              Full Name
-            </label>
-            <input 
-              type="text" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              placeholder="Jane Doe"
-              className="folio-input"
-              style={{ width: "100%" }}
-            />
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--t-deep)", marginBottom: "8px" }}>Full Name</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Jane Doe" className="folio-input" style={{ width: "100%" }} />
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--t-deep)", marginBottom: "8px" }}>
-              Email address
-            </label>
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="name@example.com"
-              className="folio-input"
-              style={{ width: "100%" }}
-            />
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--t-deep)", marginBottom: "8px" }}>Email address</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="name@example.com" className="folio-input" style={{ width: "100%" }} />
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--t-deep)", marginBottom: "8px" }}>
-              Password
-            </label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              className="folio-input"
-              style={{ width: "100%" }}
-            />
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--t-deep)", marginBottom: "8px" }}>Password</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" className="folio-input" style={{ width: "100%" }} />
           </div>
 
-          <button 
-            type="submit" 
-            className="btn-primary" 
-            disabled={isLoading}
-            style={{ 
-              width: "100%", 
-              marginTop: "8px",
-              opacity: isLoading ? 0.7 : 1,
-              cursor: isLoading ? "not-allowed" : "pointer"
-            }}
-          >
+          <button type="submit" className="btn-primary" disabled={isLoading} style={{ width: "100%", marginTop: "8px", opacity: isLoading ? 0.7 : 1, cursor: isLoading ? "not-allowed" : "pointer" }}>
             {isLoading ? "Creating account..." : "Sign Up"}
           </button>
-          
         </form>
       </div>
 
       <p style={{ marginTop: "32px", fontSize: "14px", color: "var(--t-secondary)" }}>
         Already have an account?{" "}
-        <Link href="/signin" style={{ color: "var(--snap)", fontWeight: 600, textDecoration: "none" }}>
-          Sign in
-        </Link>
+        <Link href="/signin" style={{ color: "var(--snap)", fontWeight: 600, textDecoration: "none" }}>Sign in</Link>
       </p>
 
     </div>

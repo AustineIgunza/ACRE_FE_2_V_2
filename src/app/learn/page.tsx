@@ -40,7 +40,7 @@ export default function Home() {
   }
 
   return (
-    <div style={{ backgroundColor: "var(--p-white)", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh" }}>
       <Navbar />
 
       {/* Test Mode Toggle - Small Floating Button */}
