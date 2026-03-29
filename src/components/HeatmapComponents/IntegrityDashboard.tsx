@@ -69,7 +69,7 @@ export default function IntegrityDashboard({ unit }: IntegrityDashboardProps) {
         <div style={{ backgroundColor: 'var(--p-surface)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
           <p style={{ fontSize: '20px', marginBottom: '4px' }}>❄️</p>
           <p style={{ fontSize: '11px', color: 'var(--t-secondary)' }}>Frozen</p>
-          <p style={{ fontSize: '16px', fontWeight: 700, color: '#0ea5e9' }}>{statusCounts.frost}</p>
+          <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--info)' }}>{statusCounts.frost}</p>
         </div>
         <div style={{ backgroundColor: 'var(--p-surface)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
           <p style={{ fontSize: '20px', marginBottom: '4px' }}>🕯️</p>

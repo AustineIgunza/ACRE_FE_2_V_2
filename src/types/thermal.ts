@@ -22,12 +22,26 @@ export interface Unit {
   stability: number; // 0-100, average of all nodes
 }
 
+export interface CombatLog {
+  id: string;
+  node_id: string;
+  scenario_text: string;
+  action_choice: string;
+  defense_text: string | null;
+  academic_defense: string | null;
+  ideal_action: string;
+  thermal_result: string;
+  feedback: string;
+  created_at: string;
+}
+
 export interface ThermalState {
   units: Unit[];
   currentUnitId?: string;
   currentNodeId?: string;
   totalHeat: number;
   overallIntegrity: number;
+  currentNodeHistory: CombatLog | null;
 }
 
 export const NodeStatus = {

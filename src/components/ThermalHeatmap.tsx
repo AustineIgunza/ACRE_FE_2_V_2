@@ -15,34 +15,10 @@ export default function ThermalHeatmap() {
     currentNodeId,
     overallIntegrity,
     selectUnit,
-    selectNode,
-    loadFromLocalStorage,
-    saveToLocalStorage
+    selectNode
   } = useThermalStore();
 
   const [showNodeDetail, setShowNodeDetail] = useState(false);
-
-  // Load on component mount
-  useEffect(() => {
-    loadFromLocalStorage();
-  }, [loadFromLocalStorage]);
-
-  // Save whenever units change
-  useEffect(() => {
-    saveToLocalStorage();
-  }, [units, saveToLocalStorage]);
-
-  // Reload from localStorage when page becomes visible (returning from battle)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        loadFromLocalStorage();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [loadFromLocalStorage]);
 
   const currentUnit = units.find(u => u.id === currentUnitId);
   const currentNode = currentUnit?.nodes.find(n => n.id === currentNodeId);

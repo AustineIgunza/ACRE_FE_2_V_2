@@ -9,7 +9,7 @@ import ThermalHeatmap from "@/components/ThermalHeatmap";
 
 export default function HeatmapPage() {
   const { user, authInitialized, initAuth } = useArceStore();
-  const { loadFromLocalStorage } = useThermalStore();
+  const { fetchThermalLibrary } = useThermalStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -26,16 +26,16 @@ export default function HeatmapPage() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        loadFromLocalStorage();
+        fetchThermalLibrary();
       }
     };
 
     // Also load immediately when page mounts
-    loadFromLocalStorage();
+    fetchThermalLibrary();
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [loadFromLocalStorage]);
+  }, [fetchThermalLibrary]);
 
   if (!authInitialized || !user) {
     return (

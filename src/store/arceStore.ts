@@ -115,7 +115,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
     if (!user) return;
     
     const { data, error } = await supabase
-      .from('user_progress')
+      .from('user_nodes')
       .select('node_id, heat_score, is_ignited, last_attempt');
       
     if (error) {

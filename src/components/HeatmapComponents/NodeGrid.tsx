@@ -12,19 +12,8 @@ interface NodeGridProps {
 }
 
 export default function NodeGrid({ nodes, currentNodeId, onSelectNode }: NodeGridProps) {
-  const [isCreating, setIsCreating] = useState(false);
-  const [newNodeTitle, setNewNodeTitle] = useState('');
-  const [newNodeTopic, setNewNodeTopic] = useState('');
-  const { currentUnitId, createNode } = useThermalStore();
-
-  const handleCreateNode = () => {
-    if (newNodeTitle.trim() && currentUnitId) {
-      createNode(currentUnitId, newNodeTitle, newNodeTopic);
-      setNewNodeTitle('');
-      setNewNodeTopic('');
-      setIsCreating(false);
-    }
-  };
+  const { units, currentUnitId, selectNode } = useThermalStore();
+  const currentUnit = units.find(u => u.id === currentUnitId);
 
   return (
     <div style={{ backgroundColor: 'var(--p-white)', border: '1px solid var(--p-border)', borderRadius: '12px', padding: '16px' }}>
@@ -69,7 +58,7 @@ export default function NodeGrid({ nodes, currentNodeId, onSelectNode }: NodeGri
                       transition: 'all 0.2s',
                       backgroundColor: node.status === 'ignition' ? 'var(--snap)' :
                                      node.status === 'glow' ? 'var(--xp)' :
-                                     node.status === 'frost' ? '#0ea5e9' :
+                                     node.status === 'frost' ? 'var(--info)' :
                                      'var(--p-border)',
                       width: `${node.heat}%`
                     }}
@@ -110,100 +99,6 @@ export default function NodeGrid({ nodes, currentNodeId, onSelectNode }: NodeGri
         })}
       </div>
 
-      {/* Create Node Form */}
-      {isCreating ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px', backgroundColor: 'var(--p-surface)', borderRadius: '8px' }}>
-          <input
-            type="text"
-            placeholder="Node title"
-            value={newNodeTitle}
-            onChange={(e) => setNewNodeTitle(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px',
-              backgroundColor: 'var(--p-white)',
-              border: '1px solid var(--p-border)',
-              borderRadius: '6px',
-              color: 'var(--t-primary)',
-              fontSize: '13px'
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Topic/Concept"
-            value={newNodeTopic}
-            onChange={(e) => setNewNodeTopic(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px',
-              backgroundColor: 'var(--p-white)',
-              border: '1px solid var(--p-border)',
-              borderRadius: '6px',
-              color: 'var(--t-primary)',
-              fontSize: '13px'
-            }}
-          />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={handleCreateNode}
-              style={{
-                flex: 1,
-                padding: '8px',
-                backgroundColor: 'var(--snap)',
-                color: 'white',
-                borderRadius: '6px',
-                fontWeight: 600,
-                fontSize: '13px',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = 'var(--snap-hover)')}
-              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'var(--snap)')}
-            >
-              Create
-            </button>
-            <button
-              onClick={() => setIsCreating(false)}
-              style={{
-                flex: 1,
-                padding: '8px',
-                backgroundColor: 'var(--p-surface)',
-                color: 'var(--t-primary)',
-                borderRadius: '6px',
-                fontSize: '13px',
-                border: '1px solid var(--p-border)',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = 'var(--p-border)')}
-              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'var(--p-surface)')}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => setIsCreating(true)}
-          style={{
-            width: '100%',
-            padding: '10px',
-            background: 'linear-gradient(to right, var(--snap), var(--xp))',
-            color: 'white',
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '13px',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-          onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-        >
-          + New Node
-        </button>
-      )}
     </div>
   );
 }

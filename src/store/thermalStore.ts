@@ -1,481 +1,191 @@
 import { create } from 'zustand';
 import { Node, Unit, ThermalState, NodeStatus } from '@/types/thermal';
-
-// Sample data for testing
-const SAMPLE_DATA: ThermalState = {
-  units: [
-    {
-      id: 'unit-microeconomics',
-      name: 'Microeconomics 101',
-      description: 'Study of supply, demand, and market equilibrium',
-      createdAt: new Date('2026-03-01'),
-      stability: 78,
-      nodes: [
-        {
-          id: 'node-supply-demand',
-          title: 'Law of Supply & Demand',
-          topic: 'Market Forces',
-          status: 'ignition',
-          heat: 92,
-          integrity: 88,
-          createdAt: new Date('2026-03-01'),
-          lastAttempt: new Date('2026-03-24T14:30:00'),
-          correctAttempts: 8,
-          totalAttempts: 9,
-          thermalLeak: false
-        },
-        {
-          id: 'node-elasticity',
-          title: 'Price Elasticity',
-          topic: 'Market Response',
-          status: 'glow',
-          heat: 65,
-          integrity: 72,
-          createdAt: new Date('2026-03-05'),
-          lastAttempt: new Date('2026-03-20T10:15:00'),
-          correctAttempts: 5,
-          totalAttempts: 8,
-          thermalLeak: false
-        },
-        {
-          id: 'node-consumer-surplus',
-          title: 'Consumer Surplus',
-          topic: 'Market Efficiency',
-          status: 'frost',
-          heat: 38,
-          integrity: 42,
-          createdAt: new Date('2026-03-10'),
-          lastAttempt: new Date('2026-03-22T16:45:00'),
-          correctAttempts: 2,
-          totalAttempts: 5,
-          thermalLeak: true
-        },
-        {
-          id: 'node-monopoly',
-          title: 'Perfect Competition',
-          topic: 'Market Structure',
-          status: 'grey',
-          heat: 0,
-          integrity: 0,
-          createdAt: new Date('2026-03-23'),
-          correctAttempts: 0,
-          totalAttempts: 0,
-          thermalLeak: false
-        }
-      ]
-    },
-    {
-      id: 'unit-calculus',
-      name: 'Calculus II',
-      description: 'Integration techniques and applications',
-      createdAt: new Date('2026-03-02'),
-      stability: 85,
-      nodes: [
-        {
-          id: 'node-derivatives',
-          title: 'Derivative Rules',
-          topic: 'Differentiation',
-          status: 'ignition',
-          heat: 88,
-          integrity: 92,
-          createdAt: new Date('2026-03-02'),
-          lastAttempt: new Date('2026-03-24T09:00:00'),
-          correctAttempts: 10,
-          totalAttempts: 11,
-          thermalLeak: false
-        },
-        {
-          id: 'node-integrals',
-          title: 'Integration by Parts',
-          topic: 'Integration',
-          status: 'ignition',
-          heat: 95,
-          integrity: 90,
-          createdAt: new Date('2026-03-03'),
-          lastAttempt: new Date('2026-03-23T13:20:00'),
-          correctAttempts: 9,
-          totalAttempts: 10,
-          thermalLeak: false
-        },
-        {
-          id: 'node-limits',
-          title: 'Limits & Continuity',
-          topic: 'Foundations',
-          status: 'glow',
-          heat: 72,
-          integrity: 78,
-          createdAt: new Date('2026-03-04'),
-          lastAttempt: new Date('2026-03-21T11:40:00'),
-          correctAttempts: 6,
-          totalAttempts: 8,
-          thermalLeak: false
-        }
-      ]
-    },
-    {
-      id: 'unit-shakespeare',
-      name: 'Shakespeare & The Sonnets',
-      description: 'Analysis of sonnets and dramatic works',
-      createdAt: new Date('2026-03-06'),
-      stability: 62,
-      nodes: [
-        {
-          id: 'node-sonnet-18',
-          title: 'Sonnet 18 Analysis',
-          topic: 'Poetry',
-          status: 'glow',
-          heat: 58,
-          integrity: 65,
-          createdAt: new Date('2026-03-06'),
-          lastAttempt: new Date('2026-03-19T15:30:00'),
-          correctAttempts: 4,
-          totalAttempts: 7,
-          thermalLeak: false
-        },
-        {
-          id: 'node-metaphor',
-          title: 'Metaphor & Imagery',
-          topic: 'Literary Devices',
-          status: 'frost',
-          heat: 45,
-          integrity: 38,
-          createdAt: new Date('2026-03-08'),
-          lastAttempt: new Date('2026-03-23T10:00:00'),
-          correctAttempts: 1,
-          totalAttempts: 4,
-          thermalLeak: true
-        },
-        {
-          id: 'node-hamlet',
-          title: 'Hamlet - Act III',
-          topic: 'Drama',
-          status: 'grey',
-          heat: 0,
-          integrity: 0,
-          createdAt: new Date('2026-03-24'),
-          correctAttempts: 0,
-          totalAttempts: 0,
-          thermalLeak: false
-        }
-      ]
-    }
-  ],
-  currentUnitId: 'unit-microeconomics',
-  currentNodeId: 'node-supply-demand',
-  totalHeat: 0,
-  overallIntegrity: 0
-};
+import { supabase } from '@/lib/supabaseClient';
 
 interface ThermalStore extends ThermalState {
-  // Unit actions
-  createUnit: (name: string, description: string) => void;
-  deleteUnit: (unitId: string) => void;
+  // Navigation
   selectUnit: (unitId: string) => void;
-  
-  // Node actions
-  createNode: (unitId: string, title: string, topic: string) => void;
-  updateNodeStatus: (unitId: string, nodeId: string, status: Node['status']) => void;
-  updateNodeHeat: (unitId: string, nodeId: string, heat: number) => void;
-  updateNodeIntegrity: (unitId: string, nodeId: string, integrity: number) => void;
-  recordNodeAttempt: (unitId: string, nodeId: string, success: boolean) => void;
-  flagThermalLeak: (unitId: string, nodeId: string) => void;
   selectNode: (unitId: string, nodeId: string) => void;
   
-  // Calculations
-  calculateUnitStability: (unitId: string) => number;
-  calculateOverallIntegrity: () => number;
-  
-  // Learning session integration
-  saveSessionToNodes: (session: any) => void;
-  
-  // Mastery solidification
-  solidifyMastery: (unitId: string) => void;
-  
-  // Persistence
-  saveToLocalStorage: () => void;
-  loadFromLocalStorage: () => void;
+  // Backend Integration
+  fetchThermalLibrary: () => Promise<void>;
+  updateNodeStats: (unitId: string, nodeId: string, isSuccess: boolean) => Promise<void>;
+  fetchNodeHistory: (nodeId: string) => Promise<void>;
+}
+
+function mapHeatToStatus(heat: number, isIgnited: boolean): 'grey' | 'frost' | 'glow' | 'ignition' {
+  if (heat >= 100) return 'ignition';
+  if (heat >= 60) return 'glow';
+  if (heat >= 25) return 'frost';
+  return 'grey';
+}
+
+function calculateUnitStability(nodes: Node[]): number {
+  if (!nodes || nodes.length === 0) return 0;
+  return nodes.reduce((sum, n) => sum + n.heat, 0) / nodes.length;
 }
 
 export const useThermalStore = create<ThermalStore>((set, get) => ({
   units: [],
   currentUnitId: undefined,
   currentNodeId: undefined,
+  currentNodeHistory: null,
   totalHeat: 0,
-  overallIntegrity: 0,
-
-  // Unit actions
-  createUnit: (name: string, description: string) => set((state) => ({
-    units: [...state.units, {
-      id: `unit-${Date.now()}`,
-      name,
-      description,
-      nodes: [],
-      createdAt: new Date(),
-      stability: 0
-    }]
-  })),
-
-  deleteUnit: (unitId: string) => set((state) => ({
-    units: state.units.filter(u => u.id !== unitId)
-  })),
-
-  selectUnit: (unitId: string) => set({ currentUnitId: unitId }),
-
-  // Node actions
-  createNode: (unitId: string, title: string, topic: string) => set((state) => {
-    const newNode: Node = {
-      id: `node-${Date.now()}`,
-      title,
-      topic,
-      status: 'grey',
-      heat: 0,
-      integrity: 0,
-      createdAt: new Date(),
-      correctAttempts: 0,
-      totalAttempts: 0
-    };
-
-    return {
-      units: state.units.map(u =>
-        u.id === unitId
-          ? { ...u, nodes: [...u.nodes, newNode] }
-          : u
-      )
-    };
-  }),
-
-  updateNodeStatus: (unitId: string, nodeId: string, status: Node['status']) =>
-    set((state) => ({
-      units: state.units.map(u =>
-        u.id === unitId
-          ? {
-              ...u,
-              nodes: u.nodes.map(n =>
-                n.id === nodeId ? { ...n, status, lastAttempt: new Date() } : n
-              )
-            }
-          : u
-      )
-    })),
-
-  updateNodeHeat: (unitId: string, nodeId: string, heat: number) =>
-    set((state) => ({
-      units: state.units.map(u =>
-        u.id === unitId
-          ? {
-              ...u,
-              nodes: u.nodes.map(n =>
-                n.id === nodeId ? { ...n, heat: Math.min(100, Math.max(0, heat)) } : n
-              )
-            }
-          : u
-      )
-    })),
-
-  updateNodeIntegrity: (unitId: string, nodeId: string, integrity: number) =>
-    set((state) => ({
-      units: state.units.map(u =>
-        u.id === unitId
-          ? {
-              ...u,
-              nodes: u.nodes.map(n =>
-                n.id === nodeId ? { ...n, integrity: Math.min(100, Math.max(0, integrity)) } : n
-              )
-            }
-          : u
-      )
-    })),
-
-  recordNodeAttempt: (unitId: string, nodeId: string, success: boolean) =>
-    set((state) => ({
-      units: state.units.map(u =>
-        u.id === unitId
-          ? {
-              ...u,
-              nodes: u.nodes.map(n =>
-                n.id === nodeId
-                  ? {
-                      ...n,
-                      totalAttempts: n.totalAttempts + 1,
-                      correctAttempts: success ? n.correctAttempts + 1 : n.correctAttempts,
-                      status: success ? 'ignition' : 'frost'
-                    }
-                  : n
-              )
-            }
-          : u
-      )
-    })),
-
-  flagThermalLeak: (unitId: string, nodeId: string) =>
-    set((state) => ({
-      units: state.units.map(u =>
-        u.id === unitId
-          ? {
-              ...u,
-              nodes: u.nodes.map(n =>
-                n.id === nodeId ? { ...n, thermalLeak: true, status: 'frost' } : n
-              )
-            }
-          : u
-      )
-    })),
-
-  selectNode: (unitId: string, nodeId: string) =>
-    set({ currentUnitId: unitId, currentNodeId: nodeId }),
-
-  // Calculations
-  calculateUnitStability: (unitId: string) => {
-    const state = get();
-    const unit = state.units.find(u => u.id === unitId);
-    if (!unit || unit.nodes.length === 0) return 0;
-    
-    const avgIntegrity = unit.nodes.reduce((sum, n) => sum + n.integrity, 0) / unit.nodes.length;
-    return avgIntegrity;
-  },
-
-  calculateOverallIntegrity: () => {
+  get overallIntegrity() {
     const state = get();
     if (state.units.length === 0) return 0;
-    
     const allNodes = state.units.flatMap(u => u.nodes);
     if (allNodes.length === 0) return 0;
-    
     return allNodes.reduce((sum, n) => sum + n.integrity, 0) / allNodes.length;
   },
 
-  // Save learning session results to nodes
-  saveSessionToNodes: (session: any) => {
-    set((state) => {
-      // Find or create a unit for this learning session
-      const sourceTitle = session.sourceTitle || 'Learning Session';
-      let unit = state.units.find(u => u.name === sourceTitle);
-      
-      if (!unit) {
-        // Create new unit
-        unit = {
-          id: `unit-${Date.now()}`,
-          name: sourceTitle,
-          description: `Learning session from: ${sourceTitle}`,
-          nodes: [],
-          createdAt: new Date(),
-          stability: 0
-        };
-      }
+  selectUnit: (unitId: string) => set({ currentUnitId: unitId }),
+  selectNode: (unitId: string, nodeId: string) => set({ currentUnitId: unitId, currentNodeId: nodeId }),
 
-      // Convert mastery cards to nodes
-      const newNodes = session.masteryCards.map((card: any) => {
-        const existingNode = unit!.nodes.find(n => n.title === card.nodeId);
-        
-        if (existingNode) {
-          // Update existing node
-          const newCorrectAttempts = existingNode.correctAttempts + (session.globalHeat >= 70 ? 1 : 0);
-          const newTotalAttempts = existingNode.totalAttempts + 1;
-          const newHeat = Math.min(100, existingNode.heat + 25);
-          const newIntegrity = session.globalHeat >= 70 
-            ? Math.min(100, existingNode.integrity + 20) 
-            : Math.max(0, existingNode.integrity - 10);
-          
-          return {
-            ...existingNode,
-            heat: newHeat,
-            integrity: newIntegrity,
-            correctAttempts: newCorrectAttempts,
-            totalAttempts: newTotalAttempts,
-            status: newHeat >= 80 ? 'ignition' : newHeat >= 50 ? 'glow' : newHeat >= 20 ? 'frost' : 'grey',
-            lastAttempt: new Date()
-          };
-        } else {
-          // Create new node
-          const isSuccess = session.globalHeat >= 70;
-          return {
-            id: `node-${Date.now()}-${Math.random()}`,
-            title: card.nodeId,
-            topic: card.formalDefinition?.substring(0, 50) || 'Unknown Topic',
-            status: isSuccess ? 'glow' : 'frost',
-            heat: isSuccess ? 25 : 10,
-            integrity: isSuccess ? 20 : 5,
-            createdAt: new Date(),
-            correctAttempts: isSuccess ? 1 : 0,
-            totalAttempts: 1,
-            lastAttempt: new Date(),
-            thermalLeak: false
-          };
-        }
+  fetchThermalLibrary: async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user) return;
+
+    const { data, error } = await supabase
+      .from('user_units')
+      .select('id, title, description, created_at, user_nodes(node_id, title, topic, heat_score, is_ignited, total_attempts, correct_attempts, last_attempt)');
+
+    if (error) {
+      if (error.code === '42501') {
+        console.warn("PostgreSQL 42501 (Permission Denied): user_units access blocked. This usually means table permissions are missing or the user has no allowed rows yet.", error.message);
+      } else {
+        console.error('Failed to fetch thermal library:', error.message, "Code:", error.code);
+      }
+      return;
+    }
+
+    if (data) {
+      const parsedUnits: Unit[] = data.map((unit: any) => {
+        const parsedNodes: Node[] = (unit.user_nodes || []).map((n: any) => ({
+          id: n.node_id,
+          title: n.title,
+          topic: n.topic,
+          status: mapHeatToStatus(n.heat_score, n.is_ignited),
+          heat: n.heat_score,
+          integrity: n.total_attempts > 0
+            ? Math.round((n.correct_attempts / n.total_attempts) * 100)
+            : 0,
+          createdAt: new Date(unit.created_at),
+          lastAttempt: new Date(n.last_attempt),
+          correctAttempts: n.correct_attempts,
+          totalAttempts: n.total_attempts,
+          thermalLeak: false
+        }));
+
+        return {
+          id: unit.id,
+          name: unit.title,
+          description: unit.description || 'Learning Session',
+          createdAt: new Date(unit.created_at),
+          stability: calculateUnitStability(parsedNodes),
+          nodes: parsedNodes
+        };
       });
 
-      // Update or add unit with nodes
-      const updatedUnits = state.units.map(u => u.id === unit!.id ? { ...unit!, nodes: newNodes } : u);
-      if (!state.units.find(u => u.id === unit!.id)) {
-        updatedUnits.push({ ...unit!, nodes: newNodes });
+      set({ units: parsedUnits });
+      
+      // Auto-select first unit if none selected
+      const current = get().currentUnitId;
+      if (!current && parsedUnits.length > 0) {
+         set({ currentUnitId: parsedUnits[0].id });
       }
-
-      return { units: updatedUnits };
-    });
-
-    // Save to localStorage
-    setTimeout(() => {
-      get().saveToLocalStorage();
-    }, 0);
+    }
   },
 
-  // Solidify mastery - lock nodes to prevent decay
-  solidifyMastery: (unitId: string) => {
-    set((state) => ({
-      units: state.units.map(u =>
-        u.id === unitId
-          ? {
-              ...u,
-              nodes: u.nodes.map(n =>
-                n.status === 'ignition'
-                  ? { ...n, status: 'ignition', thermalLeak: false }
-                  : n
-              )
-            }
-          : u
-      )
-    }));
+  updateNodeStats: async (unitId: string, nodeId: string, isSuccess: boolean) => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user) return;
 
-    // Save to localStorage
-    setTimeout(() => {
-      get().saveToLocalStorage();
-    }, 0);
+    const units = get().units;
+    const unitIndex = units.findIndex(u => u.id === unitId);
+    if (unitIndex === -1) return;
+
+    const nodeIndex = units[unitIndex].nodes.findIndex(n => n.id === nodeId);
+    if (nodeIndex === -1) return;
+
+    const node = units[unitIndex].nodes[nodeIndex];
+
+    // Compute new values
+    const newHeat = Math.min(100, Math.max(0, node.heat + (isSuccess ? 25 : -10)));
+    const newIsIgnited = newHeat >= 100;
+    const newStatus = mapHeatToStatus(newHeat, newIsIgnited);
+    const wasIgnited = node.heat >= 100 || node.status === 'ignition';
+    
+    // Decay Notification Check
+    if (wasIgnited && !newIsIgnited) {
+      alert("⚠️ DECAY NOTIFICATION: This concept has dropped below Ignition level. Review it to restore full mastery!");
+    }
+
+    // Optimistically update local state
+    const updatedUnits = [...units];
+    const updatedNodes = [...updatedUnits[unitIndex].nodes];
+    const newTotalAttempts = node.totalAttempts + 1;
+    const newCorrectAttempts = node.correctAttempts + (isSuccess ? 1 : 0);
+    const newIntegrity = Math.round((newCorrectAttempts / newTotalAttempts) * 100);
+
+    updatedNodes[nodeIndex] = {
+      ...node,
+      heat: newHeat,
+      status: newStatus,
+      totalAttempts: newTotalAttempts,
+      correctAttempts: newCorrectAttempts,
+      integrity: newIntegrity,
+      lastAttempt: new Date()
+    };
+    
+    updatedUnits[unitIndex] = {
+      ...updatedUnits[unitIndex],
+      nodes: updatedNodes,
+      stability: calculateUnitStability(updatedNodes)
+    };
+
+    set({ units: updatedUnits });
+
+    // Sync to Supabase
+    const { error } = await supabase.from('user_nodes').update({
+      heat_score: newHeat,
+      is_ignited: newIsIgnited,
+      total_attempts: newTotalAttempts,
+      correct_attempts: newCorrectAttempts,
+      last_attempt: new Date().toISOString()
+    }).eq('user_id', session.session.user.id).eq('node_id', nodeId);
+
+    if (error) {
+      console.error("Failed to sync node stats to DB:", error);
+      // Fallback is currently ignored - next fetch overrides it properly.
+    }
   },
 
-  // Persistence
-  saveToLocalStorage: () => {
-    const state = get();
-    localStorage.setItem('thermalState', JSON.stringify(state));
-  },
+  fetchNodeHistory: async (nodeId: string) => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user) return;
 
-  loadFromLocalStorage: () => {
-    const stored = localStorage.getItem('thermalState');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        
-        // Reconstruct Date objects for all nodes
-        if (parsed.units) {
-          parsed.units = parsed.units.map((unit: any) => ({
-            ...unit,
-            createdAt: unit.createdAt ? new Date(unit.createdAt) : new Date(),
-            nodes: unit.nodes.map((node: any) => ({
-              ...node,
-              createdAt: node.createdAt ? new Date(node.createdAt) : new Date(),
-              lastAttempt: node.lastAttempt ? new Date(node.lastAttempt) : undefined
-            }))
-          }));
-        }
-        
-        set(parsed);
-      } catch (e) {
-        console.error('Failed to load thermal state:', e);
-        // Fall back to sample data on error
-        set(SAMPLE_DATA);
+    // Reset history while loading new data
+    set({ currentNodeHistory: null });
+
+    const { data, error } = await supabase
+      .from('user_responses')
+      .select('id, node_id, scenario_text, action_choice, defense_text, academic_defense, ideal_action, thermal_result, feedback, created_at')
+      .eq('user_id', session.session.user.id)
+      .eq('node_id', nodeId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code !== 'PGRST116') { // Ignore "No rows found"
+        console.error("Failed to fetch node history:", error);
       }
-    } else {
-      // No saved data - load sample data for testing
-      set(SAMPLE_DATA);
+      return;
+    }
+
+    if (data) {
+      set({ currentNodeHistory: data });
     }
   }
 }));

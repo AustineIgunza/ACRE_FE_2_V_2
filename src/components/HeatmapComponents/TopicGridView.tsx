@@ -9,20 +9,8 @@ interface TopicGridViewProps {
 }
 
 export default function TopicGridView({ onNodeClick }: TopicGridViewProps) {
-  const [isCreating, setIsCreating] = useState(false);
-  const [newNodeTitle, setNewNodeTitle] = useState("");
-  const [newNodeTopic, setNewNodeTopic] = useState("");
-  const { units, currentUnitId, selectNode, createNode } = useThermalStore();
+  const { units, currentUnitId, selectNode } = useThermalStore();
   const currentUnit = units.find((u) => u.id === currentUnitId);
-
-  const handleCreateNode = () => {
-    if (newNodeTitle.trim() && newNodeTopic.trim() && currentUnitId) {
-      createNode(currentUnitId, newNodeTitle, newNodeTopic);
-      setNewNodeTitle("");
-      setNewNodeTopic("");
-      setIsCreating(false);
-    }
-  };
 
   if (!currentUnit) {
     return (
@@ -51,19 +39,19 @@ export default function TopicGridView({ onNodeClick }: TopicGridViewProps) {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, { bg: string; text: string; icon: string }> = {
-      grey: { bg: "#e8e8e8", text: "#666", icon: "◯" },
-      frost: { bg: "#dbeafe", text: "#1e40af", icon: "❄️" },
-      glow: { bg: "#fffbeb", text: "#92400e", icon: "🕯️" },
-      ignition: { bg: "#fee2e2", text: "#7f1d1d", icon: "🔥" },
+      grey: { bg: "var(--p-surface)", text: "var(--t-secondary)", icon: "◯" },
+      frost: { bg: "var(--info-bg, #dbeafe)", text: "var(--info, #1e40af)", icon: "❄️" },
+      glow: { bg: "var(--warning-bg)", text: "var(--warning)", icon: "🕯️" },
+      ignition: { bg: "var(--snap-tint)", text: "var(--snap)", icon: "🔥" },
     };
     return colors[status] || colors.grey;
   };
 
   const getHeatColor = (heat: number) => {
-    if (heat < 30) return "#c7d2e8";
-    if (heat < 60) return "#fde047";
-    if (heat < 85) return "#fb923c";
-    return "#ef4444";
+    if (heat >= 100) return "var(--snap)";
+    if (heat >= 60) return "var(--warning)";
+    if (heat >= 25) return "var(--info)";
+    return "var(--p-border)";
   };
 
   return (
@@ -331,122 +319,6 @@ export default function TopicGridView({ onNodeClick }: TopicGridViewProps) {
         </div>
       )}
 
-      {/* Create Node Button/Form */}
-      <div style={{ marginTop: "48px", paddingTop: "24px", borderTop: "2px solid var(--p-border)" }}>
-        {isCreating ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "16px", backgroundColor: "var(--p-surface)", borderRadius: "10px" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "6px", color: "var(--t-secondary)" }}>Node Title</label>
-              <input
-                type="text"
-                placeholder="e.g., Supply & Demand Curves"
-                value={newNodeTitle}
-                onChange={(e) => setNewNodeTitle(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  backgroundColor: "var(--p-white)",
-                  border: "1px solid var(--p-border)",
-                  borderRadius: "6px",
-                  color: "var(--t-primary)",
-                  fontSize: "13px",
-                  fontFamily: "inherit"
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "6px", color: "var(--t-secondary)" }}>Topic/Concept</label>
-              <input
-                type="text"
-                placeholder="e.g., Market Forces"
-                value={newNodeTopic}
-                onChange={(e) => setNewNodeTopic(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  backgroundColor: "var(--p-white)",
-                  border: "1px solid var(--p-border)",
-                  borderRadius: "6px",
-                  color: "var(--t-primary)",
-                  fontSize: "13px",
-                  fontFamily: "inherit"
-                }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                onClick={handleCreateNode}
-                disabled={!newNodeTitle.trim() || !newNodeTopic.trim()}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  backgroundColor: newNodeTitle.trim() && newNodeTopic.trim() ? "var(--snap)" : "var(--p-border)",
-                  color: "white",
-                  borderRadius: "6px",
-                  fontWeight: 600,
-                  fontSize: "13px",
-                  border: "none",
-                  cursor: newNodeTitle.trim() && newNodeTopic.trim() ? "pointer" : "not-allowed",
-                  transition: "all 0.2s"
-                }}
-                onMouseOver={(e) => newNodeTitle.trim() && newNodeTopic.trim() && (e.currentTarget.style.opacity = "0.9")}
-                onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
-              >
-                ✨ Create Node
-              </button>
-              <button
-                onClick={() => {
-                  setIsCreating(false);
-                  setNewNodeTitle("");
-                  setNewNodeTopic("");
-                }}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  backgroundColor: "var(--p-surface)",
-                  color: "var(--t-primary)",
-                  borderRadius: "6px",
-                  fontSize: "13px",
-                  border: "1px solid var(--p-border)",
-                  cursor: "pointer",
-                  transition: "all 0.2s"
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--p-border)")}
-                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "var(--p-surface)")}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setIsCreating(true)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: "linear-gradient(135deg, var(--snap) 0%, var(--xp) 100%)",
-              color: "white",
-              borderRadius: "8px",
-              fontWeight: 600,
-              fontSize: "14px",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.3s",
-              boxShadow: "0 4px 12px rgba(255, 92, 53, 0.2)"
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 6px 16px rgba(255, 92, 53, 0.3)";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 12px rgba(255, 92, 53, 0.2)";
-            }}
-          >
-            + Add New Node
-          </button>
-        )}
-      </div>
     </div>
   );
 }

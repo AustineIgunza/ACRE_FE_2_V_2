@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import { useRouter } from 'next/navigation';
 import { Node } from '@/types/thermal';
 import { useThermalStore } from '@/store/thermalStore';
@@ -15,31 +17,16 @@ interface NodeDetailProps {
 export default function NodeDetail({ node, unitId, onClose }: NodeDetailProps) {
   const router = useRouter();
   const { setNodeContext } = useCombatStore();
-  const {
-    updateNodeHeat,
-    updateNodeIntegrity,
-    recordNodeAttempt,
-    flagThermalLeak,
-    updateNodeStatus
-  } = useThermalStore();
+  const { fetchNodeHistory, currentNodeHistory } = useThermalStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (node.id) {
+      fetchNodeHistory(node.id);
+    }
+  }, [node.id, fetchNodeHistory]);
 
   const colors = StatusColors[node.status];
-
-  const handleSuccess = () => {
-    recordNodeAttempt(unitId, node.id, true);
-    updateNodeHeat(unitId, node.id, Math.min(100, node.heat + 20));
-    updateNodeIntegrity(unitId, node.id, Math.min(100, node.integrity + 15));
-  };
-
-  const handleFailure = () => {
-    recordNodeAttempt(unitId, node.id, false);
-    updateNodeIntegrity(unitId, node.id, Math.max(0, node.integrity - 20));
-    flagThermalLeak(unitId, node.id);
-  };
-
-  const handleThermalLeakFlag = () => {
-    flagThermalLeak(unitId, node.id);
-  };
 
   const handleTakeQuiz = () => {
     // Store the node context in combat store
@@ -101,7 +88,7 @@ export default function NodeDetail({ node, unitId, onClose }: NodeDetailProps) {
               transition: 'all 0.2s',
               backgroundColor: node.status === 'ignition' ? 'var(--snap)' :
                               node.status === 'glow' ? 'var(--xp)' :
-                              node.status === 'frost' ? '#0ea5e9' :
+                              node.status === 'frost' ? 'var(--info)' :
                               'var(--p-border)',
               width: `${node.heat}%`
             }}
@@ -193,64 +180,145 @@ export default function NodeDetail({ node, unitId, onClose }: NodeDetailProps) {
         >
           🎯 Take Quiz
         </button>
-        <button
-          onClick={handleSuccess}
-          style={{
-            width: '100%',
-            padding: '10px',
-            backgroundColor: 'var(--success)',
-            color: 'white',
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '13px',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-          onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-        >
-          ✓ Mark Success
-        </button>
-        <button
-          onClick={handleFailure}
-          style={{
-            width: '100%',
-            padding: '10px',
-            backgroundColor: 'var(--error)',
-            color: 'white',
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '13px',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-          onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-        >
-          ✕ Mark Failure
-        </button>
-        <button
-          onClick={handleThermalLeakFlag}
-          style={{
-            width: '100%',
-            padding: '10px',
-            backgroundColor: 'var(--xp)',
-            color: 'white',
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '13px',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-          onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-        >
-          🚨 Flag Thermal Leak
-        </button>
+
+        {currentNodeHistory && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            style={{
+              width: '100%',
+              padding: '10px',
+              backgroundColor: 'var(--p-surface)',
+              border: '1px solid var(--p-border)',
+              color: 'var(--t-primary)',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(14, 165, 233, 0.1)';
+              e.currentTarget.style.borderColor = 'var(--info)';
+              e.currentTarget.style.color = 'var(--info)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--p-surface)';
+              e.currentTarget.style.borderColor = 'var(--p-border)';
+              e.currentTarget.style.color = 'var(--t-primary)';
+            }}
+          >
+            📜 View Combat Log
+          </button>
+        )}
       </div>
+
+      {/* Combat Log Modal */}
+      {isModalOpen && currentNodeHistory && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '24px'
+        }}>
+          <div style={{
+            backgroundColor: 'var(--p-white)',
+            border: '1px solid var(--p-border)',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid var(--p-border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--t-primary)' }}>
+                  Combat Log
+                </h3>
+                <span style={{ fontSize: '12px', color: 'var(--t-muted)' }}>
+                  {new Date(currentNodeHistory.created_at).toLocaleString()}
+                </span>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                style={{
+                  background: 'transparent', border: 'none', color: 'var(--t-secondary)',
+                  fontSize: '20px', cursor: 'pointer'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Scenario Context */}
+              <div>
+                <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--info)', fontWeight: 700, marginBottom: '8px' }}>Scenario Encountered</h4>
+                <div style={{ backgroundColor: 'var(--p-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--p-border)' }}>
+                  <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--t-deep)' }}>{currentNodeHistory.scenario_text}</p>
+                </div>
+              </div>
+
+              {/* Action Choices */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '16px' }}>
+                <div style={{ backgroundColor: 'rgba(255, 59, 48, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 59, 48, 0.2)' }}>
+                   <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--error)', fontWeight: 700, marginBottom: '8px' }}>Your Action</h4>
+                   <p style={{ fontSize: '13px', color: 'var(--t-deep)', fontWeight: 600 }}>{currentNodeHistory.action_choice}</p>
+                </div>
+                <div style={{ backgroundColor: 'rgba(52, 199, 89, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(52, 199, 89, 0.2)' }}>
+                   <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--success)', fontWeight: 700, marginBottom: '8px' }}>Ideal Action</h4>
+                   <p style={{ fontSize: '13px', color: 'var(--success)', fontWeight: 600 }}>{currentNodeHistory.ideal_action}</p>
+                </div>
+              </div>
+
+              {/* Defenses */}
+              {currentNodeHistory.defense_text && (
+                <div>
+                  <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--warning)', fontWeight: 700, marginBottom: '8px' }}>Combat Defense (Logic)</h4>
+                  <div style={{ backgroundColor: 'rgba(255, 149, 0, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 149, 0, 0.2)' }}>
+                    <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--t-deep)' }}>{currentNodeHistory.defense_text}</p>
+                  </div>
+                </div>
+              )}
+
+              {currentNodeHistory.academic_defense && (
+                <div>
+                  <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--snap)', fontWeight: 700, marginBottom: '8px' }}>Academic Defense</h4>
+                  <div style={{ backgroundColor: 'rgba(255, 45, 85, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 45, 85, 0.2)' }}>
+                    <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--t-deep)' }}>{currentNodeHistory.academic_defense}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* AI Feedback */}
+              {currentNodeHistory.feedback && (
+                <div>
+                  <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--xp)', fontWeight: 700, marginBottom: '8px' }}>Post-Action Analysis</h4>
+                  <div style={{ backgroundColor: 'var(--p-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--p-border)' }}>
+                    <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--t-deep)', whiteSpace: 'pre-wrap' }}>{currentNodeHistory.feedback}</p>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

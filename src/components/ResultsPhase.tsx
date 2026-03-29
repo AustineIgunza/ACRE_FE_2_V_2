@@ -40,17 +40,15 @@ export default function ResultsPhase({ session, onNewGame }: ResultsPhaseProps) 
   const animatedHeat = useCountUp(session.globalHeat, 2500);
   const totalXPNum = session.globalHeat * 10 + session.masteryCards.length * 50;
   const animatedXP = useCountUp(totalXPNum, 3000);
-  const { saveSessionToNodes } = useThermalStore();
   const router = useRouter();
   const [sessionSaved, setSessionSaved] = useState(false);
 
-  // Save learning session results to thermal heatmap on mount
+  // Stats are updated directly in the DB now. No local save needed.
   useEffect(() => {
     if (session) {
-      saveSessionToNodes(session);
       setSessionSaved(true);
     }
-  }, [session, saveSessionToNodes]);
+  }, [session]);
 
   const shareToWhatsApp = () => {
     const text = `I just earned ${totalXPNum} XP on ARCÉ!\n\nTopic: ${session.sourceTitle}\nMastery Rate: ${session.globalHeat}%\n\nCan you beat my score?`;

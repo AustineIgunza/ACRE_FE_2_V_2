@@ -9,35 +9,35 @@ import Navbar from "@/components/Navbar";
 
 export default function DashboardPage() {
   const { user, authInitialized, initAuth, fetchProgress, userProgress, progressDetails } = useArceStore();
-  const { units, loadFromLocalStorage } = useThermalStore();
+  const { units, fetchThermalLibrary } = useThermalStore();
   const router = useRouter();
 
   useEffect(() => {
     initAuth();
-    loadFromLocalStorage();
-  }, [initAuth, loadFromLocalStorage]);
+    fetchThermalLibrary();
+  }, [initAuth, fetchThermalLibrary]);
 
   useEffect(() => {
     if (authInitialized && !user) {
       router.push("/signin");
     } else if (authInitialized && user) {
       fetchProgress();
-      loadFromLocalStorage();
+      fetchThermalLibrary();
     }
-  }, [user, authInitialized, router, fetchProgress, loadFromLocalStorage]);
+  }, [user, authInitialized, router, fetchProgress, fetchThermalLibrary]);
 
   // Refresh progress when page becomes visible (returning from battle/heatmap)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && authInitialized && user) {
         fetchProgress();
-        loadFromLocalStorage();
+        fetchThermalLibrary();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [authInitialized, user, fetchProgress, loadFromLocalStorage]);
+  }, [authInitialized, user, fetchProgress, fetchThermalLibrary]);
 
   // Compute live stats from both thermal nodes and DB data
   const stats = useMemo(() => {
@@ -52,24 +52,27 @@ export default function DashboardPage() {
     const dbNodes = progressDetails;
     
     // Merge: prioritize thermal data if available, fall back to DB
+    const uniqueDbNodes = dbNodes.filter(db => !allThermalNodes.some(t => t.id === db.nodeId));
+    
     const mergedNodes = [
       ...allThermalNodes,
-      ...dbNodes.filter(db => !allThermalNodes.some(t => t.title === db.nodeId))
+      ...uniqueDbNodes
     ];
 
     const totalConcepts = mergedNodes.length;
     const masteredCount = allThermalNodes.filter(n => n.status === 'ignition').length + 
-                         dbNodes.filter(n => n.isIgnited).length;
+                         uniqueDbNodes.filter(n => n.isIgnited).length;
     const averageHeat = totalConcepts > 0
       ? Math.round((
           allThermalNodes.reduce((sum, n) => sum + n.heat, 0) +
-          dbNodes.reduce((sum, n) => sum + n.heatScore, 0)
+          uniqueDbNodes.reduce((sum, n) => sum + n.heatScore, 0)
         ) / totalConcepts)
       : 0;
     
     const recentNodes = [
       ...allThermalNodes.map(n => ({
-        nodeId: n.title,
+        nodeId: n.id,
+        title: n.title,
         heatScore: n.heat,
         lastAttempt: typeof n.lastAttempt === 'string' 
           ? n.lastAttempt 
@@ -78,7 +81,7 @@ export default function DashboardPage() {
             : new Date().toISOString(),
         isIgnited: n.status === 'ignition'
       })),
-      ...dbNodes
+      ...uniqueDbNodes.map(db => ({ ...db, title: db.nodeId }))
     ]
       .sort((a, b) => new Date(b.lastAttempt).getTime() - new Date(a.lastAttempt).getTime())
       .slice(0, 5);
@@ -93,7 +96,8 @@ export default function DashboardPage() {
       const hoursSinceAttempt = (Date.now() - lastAttemptTime) / (1000 * 60 * 60);
       return hoursSinceAttempt > 48;
     }).map(n => ({
-      nodeId: n.title,
+      nodeId: n.id,
+      title: n.title,
       lastAttempt: typeof n.lastAttempt === 'string'
         ? n.lastAttempt
         : n.lastAttempt instanceof Date
@@ -246,7 +250,7 @@ export default function DashboardPage() {
             <div className="folio-card" style={{ padding: "0", overflow: "hidden", border: "1.5px solid var(--error)" }}>
               {stats.decayedNodes.map((node, i) => (
                 <div
-                  key={node.nodeId}
+                  key={`${node.nodeId}-${i}`}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -265,11 +269,13 @@ export default function DashboardPage() {
                     }} />
                     <div>
                       <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--t-deep)" }}>
-                        {node.nodeId
-                          .replace(/^(node|scenario|concept)[-_]?/i, "")
-                          .replace(/[-_]/g, " ")
-                          .replace(/\b\w/g, c => c.toUpperCase())
-                          || `Concept ${node.nodeId}`}
+                        {node.title
+                          ? node.title
+                          : node.nodeId
+                              .replace(/^(node|scenario|concept)[-_]?/i, "")
+                              .replace(/[-_]/g, " ")
+                              .replace(/\b\w/g, c => c.toUpperCase())
+                              || `Concept ${node.nodeId}`}
                       </span>
                       <span style={{
                         marginLeft: "12px",
@@ -304,7 +310,7 @@ export default function DashboardPage() {
             <div className="folio-card" style={{ padding: "0", overflow: "hidden" }}>
               {stats.recentNodes.map((node, i) => (
                 <div
-                  key={node.nodeId}
+                  key={`${node.nodeId}-${i}`}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -321,11 +327,13 @@ export default function DashboardPage() {
                     }} />
                     <div>
                       <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--t-deep)" }}>
-                        {node.nodeId
-                          .replace(/^(node|scenario|concept)[-_]?/i, "")
-                          .replace(/[-_]/g, " ")
-                          .replace(/\b\w/g, c => c.toUpperCase())
-                          || `Concept ${node.nodeId}`}
+                        {node.title
+                          ? node.title
+                          : node.nodeId
+                              .replace(/^(node|scenario|concept)[-_]?/i, "")
+                              .replace(/[-_]/g, " ")
+                              .replace(/\b\w/g, c => c.toUpperCase())
+                              || `Concept ${node.nodeId}`}
                       </span>
                       <span style={{
                         marginLeft: "12px",
