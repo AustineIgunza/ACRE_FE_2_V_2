@@ -210,6 +210,32 @@ export default function NodeDetail({ node, unitId, onClose }: NodeDetailProps) {
             📜 View Combat Log
           </button>
         )}
+
+        <button
+          onClick={onClose}
+          style={{
+            width: '100%',
+            padding: '10px',
+            backgroundColor: 'transparent',
+            border: '1px solid var(--p-border)',
+            color: 'var(--t-secondary)',
+            borderRadius: '8px',
+            fontWeight: 600,
+            fontSize: '13px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--p-surface)';
+            e.currentTarget.style.color = 'var(--t-primary)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = 'var(--t-secondary)';
+          }}
+        >
+          Close Panel
+        </button>
       </div>
 
       {/* Combat Log Modal */}
