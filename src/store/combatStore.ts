@@ -27,28 +27,16 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     set({ is_loading: true, error: null });
 
     try {
-      // Get auth token from Supabase
-      let authToken: string | null = null;
-      try {
-        const storageKey = Object.keys(localStorage).find(k => k.startsWith("sb-") && k.endsWith("-auth-token"));
-        if (storageKey) {
-          const authData = JSON.parse(localStorage.getItem(storageKey) || "{}");
-          authToken = authData?.access_token || null;
-        }
-      } catch { /* ignore */ }
-
       const formData = new FormData();
       if (payload.text) formData.append("text_material", payload.text);
       if (payload.url) formData.append("url", payload.url);
       if (payload.file) formData.append("file", payload.file);
       if (sourceTitle) formData.append("title", sourceTitle);
 
-      // Call frontend API which proxies to ACRE backend
+      // Better Auth uses cookies — no manual token needed
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-battle-scenarios`, {
         method: 'POST',
-        headers: {
-          ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
-        },
+        credentials: 'include',
         body: formData,
       });
 

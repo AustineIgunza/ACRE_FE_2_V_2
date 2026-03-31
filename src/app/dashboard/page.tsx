@@ -157,7 +157,7 @@ export default function DashboardPage() {
             DASHBOARD
           </span>
           <h1 style={{ fontSize: "36px", letterSpacing: "-1px", color: "var(--t-primary)", marginBottom: "8px" }}>
-            Welcome back, {user.user_metadata?.full_name?.split(" ")[0] || user.email?.split("@")[0] || "Student"}.
+            Welcome back, {user.name?.split(" ")[0] || user.email?.split("@")[0] || "Student"}.
           </h1>
           <p style={{ fontSize: "17px", color: "var(--t-secondary)" }}>
             Your learning progress at a glance.
@@ -235,7 +235,7 @@ export default function DashboardPage() {
                 })}
               </div>
               <h4 style={{ fontSize: "15px", fontWeight: 800, color: "var(--t-deep)", marginBottom: "8px", textTransform: "uppercase" }}>
-                "{user.user_metadata?.full_name?.split(" ")[0] || user.email?.split("@")[0] || "USER"}'S MASTERY: {stats.averageHeat}% HEAT"
+                "{user.name?.split(" ")[0] || user.email?.split("@")[0] || "USER"}'S MASTERY: {stats.averageHeat}% HEAT"
               </h4>
             </div>
           </div>

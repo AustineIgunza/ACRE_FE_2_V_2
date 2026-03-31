@@ -135,10 +135,10 @@ export default function Navbar() {
               fontWeight: 700,
             }}
           >
-            {(user.user_metadata?.full_name?.[0] || user.email?.[0] || "U").toUpperCase()}
+            {(user.name?.[0] || user.email?.[0] || "U").toUpperCase()}
           </div>
           <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--t-deep)" }}>
-            {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
+            {user.name || user.email?.split("@")[0] || "User"}
           </span>
         </div>
         <button

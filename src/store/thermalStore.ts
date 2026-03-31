@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { Node, Unit, ThermalState, NodeStatus } from '@/types/thermal';
-import { supabase } from '@/lib/supabaseClient';
+import { authClient } from '@/lib/authClient';
 
+// All DB requests are now routed to the authenticated backend API
 interface ThermalStore extends ThermalState {
   // Navigation
   selectUnit: (unitId: string) => void;
@@ -43,23 +44,18 @@ export const useThermalStore = create<ThermalStore>((set, get) => ({
   selectNode: (unitId: string, nodeId: string) => set({ currentUnitId: unitId, currentNodeId: nodeId }),
 
   fetchThermalLibrary: async () => {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session?.session?.user) return;
+    const { data: session } = await authClient.getSession();
+    if (!session?.user) return;
 
-    const { data, error } = await supabase
-      .from('user_units')
-      .select('id, title, description, created_at, user_nodes(node_id, title, topic, heat_score, is_ignited, total_attempts, correct_attempts, last_attempt)');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/thermal/library`, {
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error("API Unauthorized or Failed");
+      
+      const { units: data } = await res.json();
 
-    if (error) {
-      if (error.code === '42501') {
-        console.warn("PostgreSQL 42501 (Permission Denied): user_units access blocked. This usually means table permissions are missing or the user has no allowed rows yet.", error.message);
-      } else {
-        console.error('Failed to fetch thermal library:', error.message, "Code:", error.code);
-      }
-      return;
-    }
-
-    if (data) {
+      if (data) {
       const parsedUnits: Unit[] = data.map((unit: any) => {
         const parsedNodes: Node[] = (unit.user_nodes || []).map((n: any) => ({
           id: n.node_id,
@@ -95,11 +91,14 @@ export const useThermalStore = create<ThermalStore>((set, get) => ({
          set({ currentUnitId: parsedUnits[0].id });
       }
     }
+    } catch (err) {
+      console.error('Failed to fetch thermal library:', err);
+    }
   },
 
   updateNodeStats: async (unitId: string, nodeId: string, isSuccess: boolean) => {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session?.session?.user) return;
+    const { data: session } = await authClient.getSession();
+    if (!session?.user) return;
 
     const units = get().units;
     const unitIndex = units.findIndex(u => u.id === unitId);
@@ -110,18 +109,15 @@ export const useThermalStore = create<ThermalStore>((set, get) => ({
 
     const node = units[unitIndex].nodes[nodeIndex];
 
-    // Compute new values
     const newHeat = Math.min(100, Math.max(0, node.heat + (isSuccess ? 25 : -10)));
     const newIsIgnited = newHeat >= 100;
     const newStatus = mapHeatToStatus(newHeat, newIsIgnited);
     const wasIgnited = node.heat >= 100 || node.status === 'ignition';
     
-    // Decay Notification Check
     if (wasIgnited && !newIsIgnited) {
       alert("⚠️ DECAY NOTIFICATION: This concept has dropped below Ignition level. Review it to restore full mastery!");
     }
 
-    // Optimistically update local state
     const updatedUnits = [...units];
     const updatedNodes = [...updatedUnits[unitIndex].nodes];
     const newTotalAttempts = node.totalAttempts + 1;
@@ -146,46 +142,44 @@ export const useThermalStore = create<ThermalStore>((set, get) => ({
 
     set({ units: updatedUnits });
 
-    // Sync to Supabase
-    const { error } = await supabase.from('user_nodes').update({
-      heat_score: newHeat,
-      is_ignited: newIsIgnited,
-      total_attempts: newTotalAttempts,
-      correct_attempts: newCorrectAttempts,
-      last_attempt: new Date().toISOString()
-    }).eq('user_id', session.session.user.id).eq('node_id', nodeId);
-
-    if (error) {
-      console.error("Failed to sync node stats to DB:", error);
-      // Fallback is currently ignored - next fetch overrides it properly.
+    // Sync to authenticated backend API
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/thermal/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          nodeId,
+          newHeat,
+          newIsIgnited,
+          newTotalAttempts,
+          newCorrectAttempts
+        })
+      });
+      if (!res.ok) throw new Error("Failed to update stats via backend");
+    } catch (err) {
+      console.error("Failed to sync node stats to DB:", err);
     }
   },
 
   fetchNodeHistory: async (nodeId: string) => {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session?.session?.user) return;
+    const { data: session } = await authClient.getSession();
+    if (!session?.user) return;
 
-    // Reset history while loading new data
     set({ currentNodeHistory: null });
 
-    const { data, error } = await supabase
-      .from('user_responses')
-      .select('id, node_id, scenario_text, action_choice, defense_text, academic_defense, ideal_action, thermal_result, feedback, created_at')
-      .eq('user_id', session.session.user.id)
-      .eq('node_id', nodeId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error) {
-      if (error.code !== 'PGRST116') { // Ignore "No rows found"
-        console.error("Failed to fetch node history:", error);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/thermal/history?nodeId=${nodeId}`, {
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error("Failed to fetch history via backend");
+      
+      const { history } = await res.json();
+      if (history) {
+        set({ currentNodeHistory: history });
       }
-      return;
-    }
-
-    if (data) {
-      set({ currentNodeHistory: data });
+    } catch (err) {
+      console.error("Failed to fetch node history:", err);
     }
   }
 }));
