@@ -11,6 +11,13 @@ export interface Node {
   totalAttempts: number;
   thermalLeak?: boolean; // latency > 5s
   locked?: boolean; // locked nodes don't decay
+  intel_card?: {
+    crisis_context: string;
+    formal_mechanism: string;
+    chain_analysis: string;
+    so_what: string;
+    accuracy: string;
+  } | null;
 }
 
 export interface Unit {
@@ -41,7 +48,7 @@ export interface ThermalState {
   currentNodeId?: string;
   totalHeat: number;
   overallIntegrity: number;
-  currentNodeHistory: CombatLog | null;
+  currentNodeHistory: CombatLog[] | null;
 }
 
 export const NodeStatus = {

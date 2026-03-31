@@ -70,7 +70,8 @@ export const useThermalStore = create<ThermalStore>((set, get) => ({
           lastAttempt: new Date(n.last_attempt),
           correctAttempts: n.correct_attempts,
           totalAttempts: n.total_attempts,
-          thermalLeak: false
+          thermalLeak: false,
+          intel_card: n.intel_card || null
         }));
 
         return {

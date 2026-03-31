@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
 import { useRouter } from 'next/navigation';
-import { Node } from '@/types/thermal';
+import { Node, CombatLog } from '@/types/thermal';
 import { useThermalStore } from '@/store/thermalStore';
 import { useCombatStore } from '@/store/combatStore';
 import { StatusColors } from '@/types/thermal';
+import { InlineMath, BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
 
 interface NodeDetailProps {
   node: Node;
@@ -18,7 +19,7 @@ export default function NodeDetail({ node, unitId, onClose }: NodeDetailProps) {
   const router = useRouter();
   const { setNodeContext } = useCombatStore();
   const { fetchNodeHistory, currentNodeHistory } = useThermalStore();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (node.id) {
@@ -27,324 +28,172 @@ export default function NodeDetail({ node, unitId, onClose }: NodeDetailProps) {
   }, [node.id, fetchNodeHistory]);
 
   const colors = StatusColors[node.status];
+  const intel = node.intel_card;
 
   const handleTakeQuiz = () => {
-    // Store the node context in combat store
     setNodeContext({
       nodeId: node.id,
       nodeTitle: node.title,
       nodeTopic: node.topic,
       unitId,
     });
-    // Navigate to battle page
     router.push('/battle');
   };
 
   return (
-    <div style={{ backgroundColor: 'var(--p-white)', border: '1px solid var(--p-border)', borderRadius: '12px', padding: '16px', position: 'sticky', top: '20px', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 700, flex: 1, color: 'var(--t-primary)' }}>{node.title}</h3>
-        <button
-          onClick={onClose}
-          style={{
-            marginLeft: '8px',
-            fontSize: '16px',
-            fontWeight: 600,
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--t-secondary)',
-            padding: '4px 8px'
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.color = 'var(--t-primary)')}
-          onMouseOut={(e) => (e.currentTarget.style.color = 'var(--t-secondary)')}
-        >
-          ✕
-        </button>
+    <div style={{ 
+      backgroundColor: 'var(--p-white)', 
+      borderLeft: '1px solid var(--p-border)', 
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      color: 'var(--t-primary)'
+    }}>
+      {/* Header */}
+      <div style={{ padding: '24px', borderBottom: '1px solid var(--p-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--t-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>Intel Card</span>
+          <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0 0' }}>{node.title}</h3>
+        </div>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--t-secondary)', cursor: 'pointer', fontSize: '20px' }}>✕</button>
       </div>
 
-      {/* Status Badge */}
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '12px', padding: '6px 12px', backgroundColor: 'var(--p-surface)', borderRadius: '20px' }}>
-        <span style={{ fontSize: '16px' }}>{colors.icon}</span>
-        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t-primary)', textTransform: 'capitalize' }}>{node.status}</span>
-      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        {!showHistory ? (
+          /* Intel Card Mode */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Thermal State Info */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', backgroundColor: 'var(--p-surface)', borderRadius: '20px' }}>
+                <span style={{ fontSize: '16px' }}>{colors.icon}</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>{node.status}</span>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '10px', color: 'var(--t-muted)', fontWeight: 700 }}>THERMAL INTEGRITY</div>
+                <div style={{ fontSize: '18px', fontWeight: 800 }}>{Math.round(node.heat)}%</div>
+              </div>
+            </div>
 
-      {/* Topic */}
-      <div style={{ marginBottom: '12px' }}>
-        <p style={{ fontSize: '11px', color: 'var(--t-secondary)', marginBottom: '4px' }}>Topic</p>
-        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t-primary)' }}>{node.topic}</p>
-      </div>
+            {intel ? (
+              <>
+                {/* LaTeX Mechanism */}
+                <div style={{ 
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid var(--p-border)',
+                  borderRadius: '16px',
+                  padding: '32px 24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '120px',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ position: 'absolute', top: '12px', left: '16px', fontSize: '9px', fontWeight: 800, color: 'var(--info)', opacity: 0.6 }}>FORMAL_MECHANISM</div>
+                  <div style={{ fontSize: '1.2em' }}>
+                    <BlockMath math={intel.formal_mechanism} />
+                  </div>
+                </div>
 
-      {/* Heat Meter */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t-secondary)' }}>Heat</p>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t-primary)' }}>{Math.round(node.heat)}%</p>
-        </div>
-        <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--p-surface)', borderRadius: '4px', overflow: 'hidden' }}>
-          <div
-            style={{
-              height: '100%',
-              transition: 'all 0.2s',
-              backgroundColor: node.status === 'ignition' ? 'var(--snap)' :
-                              node.status === 'glow' ? 'var(--xp)' :
-                              node.status === 'frost' ? 'var(--info)' :
-                              'var(--p-border)',
-              width: `${node.heat}%`
-            }}
-          />
-        </div>
-      </div>
+                {/* The "So What" */}
+                <div>
+                  <h4 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--t-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ color: 'var(--xp)' }}>◈</span> THE SO WHAT
+                  </h4>
+                  <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--t-deep)', fontStyle: 'italic', fontWeight: 500 }}>
+                    "{intel.so_what}"
+                  </p>
+                </div>
 
-      {/* Integrity Meter */}
-      <div style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t-secondary)' }}>Integrity</p>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t-primary)' }}>{Math.round(node.integrity)}%</p>
-        </div>
-        <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--p-surface)', borderRadius: '4px', overflow: 'hidden' }}>
-          <div
-            style={{
-              height: '100%',
-              backgroundColor: 'var(--success)',
-              transition: 'all 0.2s',
-              width: `${node.integrity}%`
-            }}
-          />
-        </div>
-      </div>
+                {/* Crisis Context */}
+                <div>
+                  <h4 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--t-muted)', marginBottom: '8px' }}>CRISIS CONTEXT</h4>
+                  <div style={{ fontSize: '13px', lineHeight: 1.6, padding: '16px', backgroundColor: 'var(--p-surface)', borderRadius: '12px', border: '1px solid var(--p-border)' }}>
+                    {intel.crisis_context}
+                  </div>
+                </div>
 
-      {/* Stats */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', padding: '12px', backgroundColor: 'var(--p-surface)', borderRadius: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-          <span style={{ color: 'var(--t-secondary)' }}>Total Attempts</span>
-          <span style={{ fontWeight: 700, color: 'var(--t-primary)' }}>{node.totalAttempts}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-          <span style={{ color: 'var(--t-secondary)' }}>Correct</span>
-          <span style={{ fontWeight: 700, color: 'var(--t-primary)' }}>{node.correctAttempts}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-          <span style={{ color: 'var(--t-secondary)' }}>Success Rate</span>
-          <span style={{ fontWeight: 700, color: 'var(--t-primary)' }}>
-            {node.totalAttempts > 0
-              ? `${Math.round((node.correctAttempts / node.totalAttempts) * 100)}%`
-              : '-'}
-          </span>
-        </div>
-        {node.lastAttempt && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-            <span style={{ color: 'var(--t-secondary)' }}>Last Attempt</span>
-            <span style={{ fontWeight: 700, color: 'var(--t-primary)' }}>
-              {new Date(node.lastAttempt).toLocaleDateString()}
-            </span>
+                {/* Keywords/Topics */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 600, backgroundColor: 'rgba(14, 165, 233, 0.1)', color: 'var(--info)', borderRadius: '6px' }}>{node.topic}</div>
+                  <div style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 600, backgroundColor: 'var(--p-surface)', color: 'var(--t-secondary)', borderRadius: '6px' }}>Invariant Node</div>
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: '40px 20px', textAlign: 'center', backgroundColor: 'var(--p-surface)', borderRadius: '16px', border: '1px dashed var(--p-border)' }}>
+                <p style={{ fontSize: '13px', color: 'var(--t-muted)' }}>This node was extracted under a legacy engine version. Re-ignite this topic to generate an Intel Card.</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* History / Domino Log Mode */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h4 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--t-muted)', textTransform: 'uppercase' }}>Reasoning History</h4>
+            {currentNodeHistory && currentNodeHistory.length > 0 ? (
+              currentNodeHistory.map((log: CombatLog) => (
+                <div key={log.id} style={{ padding: '16px', border: '1px solid var(--p-border)', borderRadius: '12px', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: log.thermal_result === 'IGNITION' ? 'var(--success)' : 'var(--xp)' }}>
+                      {log.thermal_result}
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'var(--t-muted)' }}>
+                      {new Date(log.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                     <div style={{ fontSize: '10px', color: 'var(--t-muted)', marginBottom: '4px' }}>CHAIN RESPONSED</div>
+                     <p style={{ fontSize: '12px', lineHeight: 1.5 }}>{log.defense_text}</p>
+                  </div>
+                  <div style={{ padding: '10px', backgroundColor: 'var(--p-surface)', borderRadius: '8px', borderLeft: '3px solid var(--snap)' }}>
+                     <div style={{ fontSize: '10px', color: 'var(--snap)', fontWeight: 700, marginBottom: '2px' }}>NEURAL EVALUATION</div>
+                     <p style={{ fontSize: '12px', lineHeight: 1.5 }}>{log.academic_defense}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p style={{ fontSize: '13px', color: 'var(--t-muted)' }}>No behavioral logs found for this node.</p>
+            )}
           </div>
         )}
       </div>
 
-      {/* Thermal Leak Warning */}
-      {node.thermalLeak && (
-        <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: 'var(--error-bg)', border: '1px solid var(--error-border)', borderRadius: '8px' }}>
-          <p style={{ fontSize: '12px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-            <span>⚠️</span>
-            <span>Thermal Leak Detected: Latency &gt; 5s</span>
-          </p>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* Footer Actions */}
+      <div style={{ padding: '24px', borderTop: '1px solid var(--p-border)', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--p-surface)' }}>
         <button
           onClick={handleTakeQuiz}
           style={{
             width: '100%',
-            padding: '10px',
-            background: 'linear-gradient(135deg, var(--snap) 0%, var(--xp) 100%)',
+            padding: '14px',
+            background: 'linear-gradient(135deg, var(--info) 0%, var(--snap) 100%)',
             color: 'white',
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '13px',
+            borderRadius: '12px',
+            fontWeight: 700,
+            fontSize: '14px',
             border: 'none',
             cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(255, 92, 53, 0.2)',
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.opacity = '0.9';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 92, 53, 0.3)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.opacity = '1';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(255, 92, 53, 0.2)';
+            boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)'
           }}
         >
-          🎯 Take Quiz
+          {node.heat < 100 ? '◈ Re-Ignite Node' : '◈ Stress Test Mechanism'}
         </button>
-
-        {currentNodeHistory && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            style={{
-              width: '100%',
-              padding: '10px',
-              backgroundColor: 'var(--p-surface)',
-              border: '1px solid var(--p-border)',
-              color: 'var(--t-primary)',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(14, 165, 233, 0.1)';
-              e.currentTarget.style.borderColor = 'var(--info)';
-              e.currentTarget.style.color = 'var(--info)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--p-surface)';
-              e.currentTarget.style.borderColor = 'var(--p-border)';
-              e.currentTarget.style.color = 'var(--t-primary)';
-            }}
-          >
-            📜 View Combat Log
-          </button>
-        )}
 
         <button
-          onClick={onClose}
+          onClick={() => setShowHistory(!showHistory)}
           style={{
             width: '100%',
-            padding: '10px',
-            backgroundColor: 'transparent',
-            border: '1px solid var(--p-border)',
-            color: 'var(--t-secondary)',
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '13px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--p-surface)';
-            e.currentTarget.style.color = 'var(--t-primary)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = 'var(--t-secondary)';
-          }}
-        >
-          Close Panel
-        </button>
-      </div>
-
-      {/* Combat Log Modal */}
-      {isModalOpen && currentNodeHistory && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '24px'
-        }}>
-          <div style={{
+            padding: '12px',
             backgroundColor: 'var(--p-white)',
             border: '1px solid var(--p-border)',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '600px',
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
-          }}>
-            {/* Modal Header */}
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid var(--p-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--t-primary)' }}>
-                  Combat Log
-                </h3>
-                <span style={{ fontSize: '12px', color: 'var(--t-muted)' }}>
-                  {new Date(currentNodeHistory.created_at).toLocaleString()}
-                </span>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                style={{
-                  background: 'transparent', border: 'none', color: 'var(--t-secondary)',
-                  fontSize: '20px', cursor: 'pointer'
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
-              {/* Scenario Context */}
-              <div>
-                <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--info)', fontWeight: 700, marginBottom: '8px' }}>Scenario Encountered</h4>
-                <div style={{ backgroundColor: 'var(--p-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--p-border)' }}>
-                  <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--t-deep)' }}>{currentNodeHistory.scenario_text}</p>
-                </div>
-              </div>
-
-              {/* Action Choices */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '16px' }}>
-                <div style={{ backgroundColor: 'rgba(255, 59, 48, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 59, 48, 0.2)' }}>
-                   <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--error)', fontWeight: 700, marginBottom: '8px' }}>Your Action</h4>
-                   <p style={{ fontSize: '13px', color: 'var(--t-deep)', fontWeight: 600 }}>{currentNodeHistory.action_choice}</p>
-                </div>
-                <div style={{ backgroundColor: 'rgba(52, 199, 89, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(52, 199, 89, 0.2)' }}>
-                   <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--success)', fontWeight: 700, marginBottom: '8px' }}>Ideal Action</h4>
-                   <p style={{ fontSize: '13px', color: 'var(--success)', fontWeight: 600 }}>{currentNodeHistory.ideal_action}</p>
-                </div>
-              </div>
-
-              {/* Defenses */}
-              {currentNodeHistory.defense_text && (
-                <div>
-                  <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--warning)', fontWeight: 700, marginBottom: '8px' }}>Combat Defense (Logic)</h4>
-                  <div style={{ backgroundColor: 'rgba(255, 149, 0, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 149, 0, 0.2)' }}>
-                    <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--t-deep)' }}>{currentNodeHistory.defense_text}</p>
-                  </div>
-                </div>
-              )}
-
-              {currentNodeHistory.academic_defense && (
-                <div>
-                  <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--snap)', fontWeight: 700, marginBottom: '8px' }}>Academic Defense</h4>
-                  <div style={{ backgroundColor: 'rgba(255, 45, 85, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 45, 85, 0.2)' }}>
-                    <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--t-deep)' }}>{currentNodeHistory.academic_defense}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* AI Feedback */}
-              {currentNodeHistory.feedback && (
-                <div>
-                  <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--xp)', fontWeight: 700, marginBottom: '8px' }}>Post-Action Analysis</h4>
-                  <div style={{ backgroundColor: 'var(--p-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--p-border)' }}>
-                    <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--t-deep)', whiteSpace: 'pre-wrap' }}>{currentNodeHistory.feedback}</p>
-                  </div>
-                </div>
-              )}
-
-            </div>
-          </div>
-        </div>
-      )}
+            color: 'var(--t-primary)',
+            borderRadius: '12px',
+            fontWeight: 600,
+            fontSize: '13px',
+            cursor: 'pointer'
+          }}
+        >
+          {showHistory ? 'View Intel Card' : 'View Reasoning Logs'}
+        </button>
+      </div>
     </div>
   );
 }
