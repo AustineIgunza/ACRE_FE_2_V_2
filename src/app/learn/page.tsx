@@ -1,18 +1,25 @@
 "use client";
 
 import { useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
-import { useRouter } from "next/navigation";
-import ArceInputPhase from "@/components/ArceInputPhase";
-import CrisisModal from "@/components/CrisisModal";
-import ResultsPhase from "@/components/ResultsPhase";
 import Navbar from "@/components/Navbar";
+import InputPhase from "@/components/learn/InputPhase";
+import ChallengeZone from "@/components/learn/ChallengeZone";
+import BreakthroughTransition from "@/components/learn/BreakthroughTransition";
+import IntelCardSanctuary from "@/components/learn/IntelCardSanctuary";
+import EvaluationSplitScreen from "@/components/learn/EvaluationSplitScreen";
+import Synchronization from "@/components/learn/Synchronization";
+import { useRouter } from "next/navigation";
 
-export default function Home() {
-  const { 
-    gameSession, currentPhase, currentScenario, resetGame, 
-    testMode, toggleTestMode,
-    user, authInitialized, initAuth
+export default function LearnPage() {
+  const {
+    currentPhase,
+    user,
+    authInitialized,
+    initAuth,
+    testMode,
+    toggleTestMode,
   } = useArceStore();
   const router = useRouter();
 
@@ -23,32 +30,67 @@ export default function Home() {
   // Loading state while checking auth
   if (!authInitialized) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--p-surface)" }}>
-        <div style={{
-          width: "40px", height: "40px", borderRadius: "50%",
-          border: "3px solid var(--p-border)", borderTopColor: "var(--snap)",
-          animation: "spin 0.6s linear infinite"
-        }} />
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "var(--p-surface)",
+      }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+          style={{
+            width: "40px", height: "40px", borderRadius: "50%",
+            border: "3px solid var(--p-border)",
+            borderTopColor: "var(--snap)",
+          }}
+        />
       </div>
     );
   }
 
-  // Require Auth
+  // Require Auth  
   if (!user) {
     router.push("/signin");
     return null;
   }
 
-  return (
-    <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh" }}>
-      <Navbar />
+  // Determine background based on phase
+  const getBackgroundColor = () => {
+    switch (currentPhase) {
+      case "input":
+      case "extracting":
+        return "var(--p-surface)";
+      case "challenge":
+      case "transition":
+        return "#0a0a0c";
+      case "sanctuary":
+        return "var(--p-white)";
+      case "evaluation":
+        return "#0a0a0c"; // left panel is dark
+      case "synchronization":
+        return "#0a0a0c";
+      default:
+        return "var(--p-surface)";
+    }
+  };
 
-      {/* Test Mode Toggle - Small Floating Button */}
+  return (
+    <div style={{
+      backgroundColor: getBackgroundColor(),
+      minHeight: "100vh",
+      transition: "background-color 0.6s ease",
+    }}>
+      {/* Navbar: only show in input and sanctuary phases */}
+      {(currentPhase === "input" || currentPhase === "extracting") && <Navbar />}
+
+      {/* Test Mode Toggle */}
       <div style={{
         position: "fixed",
         bottom: "16px",
         right: "16px",
-        zIndex: 50,
+        zIndex: 300,
       }}>
         <button
           onClick={toggleTestMode}
@@ -59,9 +101,9 @@ export default function Home() {
             fontWeight: 700,
             fontSize: "12px",
             transition: "all 0.2s",
-            background: testMode ? "var(--xp)" : "var(--p-surface)",
-            color: testMode ? "var(--p-white)" : "var(--t-secondary)",
-            border: "1px solid var(--p-border)",
+            background: testMode ? "var(--xp)" : "rgba(255,255,255,0.08)",
+            color: testMode ? "#000" : "rgba(255,255,255,0.4)",
+            border: "1px solid rgba(255,255,255,0.1)",
             cursor: "pointer",
           }}
         >
@@ -69,21 +111,44 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Content */}
-      <div style={{ position: "relative", width: "100%", minHeight: "calc(100vh - 56px)" }}>
-        {/* Input Phase: Logo + Textarea */}
-        {currentPhase === "input" && <ArceInputPhase />}
-
-        {/* Playing Phase: Crisis Modal + Defense */}
-        {currentPhase === "playing" && currentScenario && gameSession && (
-          <CrisisModal scenario={currentScenario} />
+      {/* Phase Router */}
+      <AnimatePresence mode="wait">
+        {(currentPhase === "input" || currentPhase === "extracting") && (
+          <motion.div key="input" exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+            <InputPhase />
+          </motion.div>
         )}
 
-        {/* Results Phase: Mastery Cards + Stats */}
-        {currentPhase === "results" && gameSession && (
-          <ResultsPhase session={gameSession} onNewGame={resetGame} />
+        {currentPhase === "challenge" && (
+          <motion.div key="challenge" exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+            <ChallengeZone />
+          </motion.div>
         )}
-      </div>
+
+        {currentPhase === "transition" && (
+          <motion.div key="transition">
+            <BreakthroughTransition />
+          </motion.div>
+        )}
+
+        {currentPhase === "sanctuary" && (
+          <motion.div key="sanctuary">
+            <IntelCardSanctuary />
+          </motion.div>
+        )}
+
+        {currentPhase === "evaluation" && (
+          <motion.div key="evaluation">
+            <EvaluationSplitScreen />
+          </motion.div>
+        )}
+
+        {currentPhase === "synchronization" && (
+          <motion.div key="synchronization">
+            <Synchronization />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

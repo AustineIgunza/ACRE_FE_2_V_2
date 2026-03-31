@@ -2,13 +2,14 @@
 
 import { create } from "zustand";
 import {
-  GameSession,
-  Cluster,
-  CausalAnchor,
-  CrisisScenario,
+  LearnPhase,
+  ExtractedDocument,
+  LogicNode,
+  IntelCard,
+  StressTest,
+  LearnSession,
   UserResponse,
   ThermalState,
-  MasteryCard,
 } from "@/types/arce";
 import { authClient } from "@/lib/authClient";
 
@@ -21,77 +22,72 @@ interface AuthUser {
 }
 
 interface ArceStore {
-  // Session state
-  gameSession: GameSession | null;
-  scenarios: CrisisScenario[];
-  currentScenario: CrisisScenario | null;
-  pendingNextScenario: CrisisScenario | null;
+  // ── AUTH STATE ──
+  user: AuthUser | null;
+  authInitialized: boolean;
+  initAuth: () => void;
+  logout: () => Promise<void>;
+
+  // ── PHASE STATE MACHINE ──
+  currentPhase: LearnPhase;
+  setPhase: (phase: LearnPhase) => void;
+
+  // ── SESSION ──
+  session: LearnSession | null;
   isLoading: boolean;
-  loadingProgress: number;
   error: string | null;
 
-  // Progress State
+  // ── DOCUMENT & NODES ──
+  document: ExtractedDocument | null;
+  currentNodeIndex: number;
+  currentNode: LogicNode | null;
+
+  // ── CHALLENGE ZONE (Phase 1) ──
+  userDominoChain: string;
+  setUserDominoChain: (chain: string) => void;
+
+  // ── INTEL CARD (Phase 3) ──
+  currentIntelCard: IntelCard | null;
+
+  // ── STRESS TEST (Phase 4) ──
+  currentStressTest: StressTest | null;
+
+  // ── PROGRESS ──
+  completedNodeIds: string[];
   userProgress: Record<string, number>;
   progressDetails: { nodeId: string; heatScore: number; isIgnited: boolean; lastAttempt: string }[];
 
-  // Auth State
-  user: AuthUser | null;
-  authInitialized: boolean;
-
-  // UI state
-  showLogo: boolean;
-  currentPhase: "input" | "playing" | "results";
-  selectedActionButton: string | null;
-  showDefenseTextbox: boolean;
+  // ── TEST MODE ──
   testMode: boolean;
-  correctButton: string | null;
-
-  // Actions
-  startGame: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => Promise<void>;
-  selectAction: (buttonId: string) => void;
-  showDefense: () => void;
-  submitDefense: (defense: string) => Promise<{ thermalState: ThermalState, feedback: string, keywords: string[], formalDefinition: string } | undefined>;
-  nextNode: () => void;
-  nextCluster: () => void;
-  resetGame: () => void;
-  endGame: () => void;
   toggleTestMode: () => void;
-  
-  // Auth Actions
-  initAuth: () => void;
-  logout: () => Promise<void>;
-  
-  // Progress Actions
+
+  // ── ACTIONS ──
+  // Phase 0: Extract Logic from source material
+  extractLogic: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => Promise<void>;
+
+  // Phase 1→2→3: Submit domino chain → evaluate → produce Intel Card
+  submitDominoChain: () => Promise<void>;
+
+  // Phase 4: Generate stress test
+  generateStressTest: () => Promise<void>;
+
+  // Phase 5: Synchronize and advance to next node
+  synchronizeAndAdvance: () => void;
+
+  // Navigation
+  resetGame: () => void;
   fetchProgress: () => Promise<void>;
 }
 
 export const useArceStore = create<ArceStore>((set, get) => ({
-  // Initial state
-  gameSession: null,
-  scenarios: [],
-  currentScenario: null,
-  pendingNextScenario: null,
-  isLoading: false,
-  loadingProgress: 0,
-  error: null,
-  userProgress: {},
-  progressDetails: [],
-  showLogo: true,
-  currentPhase: "input",
-  selectedActionButton: null,
-  showDefenseTextbox: false,
-  testMode: false,
-  correctButton: null,
-
-  // Auth initial state
+  // ── AUTH ──
   user: null,
   authInitialized: false,
 
-  // Initialize auth listener using Better Auth
   initAuth: () => {
     authClient.getSession().then(({ data }) => {
       const user = data?.user ?? null;
-      set({ 
+      set({
         user: user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null,
         authInitialized: true
       });
@@ -101,21 +97,370 @@ export const useArceStore = create<ArceStore>((set, get) => ({
 
   logout: async () => {
     await authClient.signOut();
-    set({ user: null, gameSession: null, userProgress: {} });
+    set({ user: null, session: null, userProgress: {} });
+  },
+
+  // ── PHASE STATE ──
+  currentPhase: "input",
+  setPhase: (phase) => set({ currentPhase: phase }),
+
+  // ── SESSION ──
+  session: null,
+  isLoading: false,
+  error: null,
+
+  // ── DOCUMENT & NODES ──
+  document: null,
+  currentNodeIndex: 0,
+  currentNode: null,
+
+  // ── CHALLENGE (Phase 1) ──
+  userDominoChain: "",
+  setUserDominoChain: (chain) => set({ userDominoChain: chain }),
+
+  // ── INTEL CARD (Phase 3) ──
+  currentIntelCard: null,
+
+  // ── STRESS TEST (Phase 4) ──
+  currentStressTest: null,
+
+  // ── PROGRESS ──
+  completedNodeIds: [],
+  userProgress: {},
+  progressDetails: [],
+
+  // ── TEST MODE ──
+  testMode: false,
+  toggleTestMode: () => set((s) => ({ testMode: !s.testMode })),
+
+  // ═════════════════════════════════════════════
+  // PHASE 0: ATOMIC LOGIC EXTRACTION
+  // ═════════════════════════════════════════════
+  extractLogic: async (payload, sourceTitle) => {
+    set({ isLoading: true, error: null, currentPhase: "extracting" });
+
+    try {
+      // If text is provided, use the extract endpoint first for chunking
+      // Then use generate-scenarios as fallback for multimodal
+      let extractedDoc: ExtractedDocument | null = null;
+
+      if (payload.text && payload.text.length >= 50) {
+        // Direct text extraction via extract endpoint
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/extract`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ sourceText: payload.text })
+        });
+
+        if (!res.ok) throw new Error("Extraction failed");
+        const data = await res.json();
+
+        extractedDoc = {
+          total_nodes: data.total_nodes || data.nodes?.length || 0,
+          topic_title: data.topic_title || sourceTitle || "Learning Session",
+          nodes: data.nodes || []
+        };
+      } else {
+        // For files/URLs, use the generate-scenarios endpoint with FormData
+        const formData = new FormData();
+        if (payload.text) formData.append("text_material", payload.text);
+        if (payload.url) formData.append("url", payload.url);
+        if (payload.file) formData.append("file", payload.file);
+        if (sourceTitle) formData.append("title", sourceTitle);
+
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-scenarios`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+
+        if (!res.ok) throw new Error("Scenario generation failed");
+        const data = await res.json();
+
+        // Map the legacy scenario format to new LogicNode format
+        extractedDoc = {
+          total_nodes: data.scenarios?.length || 0,
+          topic_title: data.unitTitle || sourceTitle || "Learning Session",
+          nodes: (data.scenarios || []).map((s: any, i: number) => ({
+            id: s.id || `node-${i}`,
+            title: s.title || `Concept ${i + 1}`,
+            core_logic: s.context || "",
+            latex_formula: "",
+            so_what: "",
+            crisis_context: `${s.context}\n${s.question}`,
+            domino_question: s.question || "Walk through the Domino Effect of this scenario.",
+            dashboard_indicator: "Metric Loading..."
+          }))
+        };
+      }
+
+      if (!extractedDoc || extractedDoc.nodes.length === 0) {
+        throw new Error("No logic nodes extracted");
+      }
+
+      const newSession: LearnSession = {
+        id: `session-${Date.now()}`,
+        sourceContent: payload.text || payload.url || payload.file?.name || "",
+        sourceTitle: sourceTitle || extractedDoc.topic_title,
+        document: extractedDoc,
+        currentNodeIndex: 0,
+        completedNodeIds: [],
+        responses: [],
+        globalHeat: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      set({
+        document: extractedDoc,
+        session: newSession,
+        currentNodeIndex: 0,
+        currentNode: extractedDoc.nodes[0],
+        isLoading: false,
+        currentPhase: "challenge", // Move to Phase 1
+        userDominoChain: "",
+        currentIntelCard: null,
+        currentStressTest: null,
+        completedNodeIds: [],
+      });
+
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : "Failed to extract logic",
+        isLoading: false,
+        currentPhase: "input"
+      });
+    }
+  },
+
+  // ═════════════════════════════════════════════
+  // PHASE 1→2→3: SUBMIT DOMINO CHAIN → EVALUATE
+  // ═════════════════════════════════════════════
+  submitDominoChain: async () => {
+    const { currentNode, userDominoChain, testMode } = get();
+    if (!currentNode) return;
+
+    if (!testMode && userDominoChain.trim().length < 20) {
+      set({ error: "Your domino chain must be at least 20 characters. Trace the full logic." });
+      return;
+    }
+
+    set({ isLoading: true, error: null, currentPhase: "transition" });
+
+    try {
+      let intelCard: IntelCard;
+
+      if (testMode) {
+        // Test mode: skip real eval
+        await new Promise((r) => setTimeout(r, 1500));
+        intelCard = {
+          nodeId: currentNode.id,
+          title: currentNode.title,
+          formalMechanism: currentNode.core_logic,
+          latexFormula: currentNode.latex_formula,
+          soWhat: currentNode.so_what || "🔥 TEST MODE: Logic chain accepted.",
+          keywords: ["test", "mode"],
+          accuracy: "ignition",
+          chainAnalysis: "Test mode — auto-approved.",
+          heatDelta: 30,
+        };
+      } else {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/evaluate-logic`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            nodeId: currentNode.id,
+            userDominoChain,
+            crisisContext: currentNode.crisis_context,
+            dominoQuestion: currentNode.domino_question,
+            coreLogic: currentNode.core_logic,
+            latexFormula: currentNode.latex_formula,
+            soWhat: currentNode.so_what,
+          })
+        });
+
+        if (!res.ok) throw new Error("Evaluation failed");
+        const data = await res.json();
+        const ev = data.evaluation;
+
+        intelCard = {
+          nodeId: currentNode.id,
+          title: ev.intel_card_title || currentNode.title,
+          formalMechanism: ev.formal_mechanism,
+          latexFormula: ev.latex_formula || currentNode.latex_formula,
+          soWhat: ev.so_what,
+          keywords: ev.keywords || [],
+          accuracy: ev.accuracy.toLowerCase() as ThermalState,
+          chainAnalysis: ev.chain_analysis,
+          heatDelta: ev.heat_score_delta || 0,
+        };
+      }
+
+      // Brief pause for transition animation
+      await new Promise((r) => setTimeout(r, 800));
+
+      set({
+        currentIntelCard: intelCard,
+        isLoading: false,
+        currentPhase: "sanctuary", // Move to Phase 3
+      });
+
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : "Evaluation failed",
+        isLoading: false,
+        currentPhase: "challenge", // Go back to challenge
+      });
+    }
+  },
+
+  // ═════════════════════════════════════════════
+  // PHASE 4: GENERATE STRESS TEST
+  // ═════════════════════════════════════════════
+  generateStressTest: async () => {
+    const { currentNode, currentIntelCard, userDominoChain, testMode } = get();
+    if (!currentNode || !currentIntelCard) return;
+
+    set({ isLoading: true, error: null });
+
+    try {
+      let stressTest: StressTest;
+
+      if (testMode) {
+        await new Promise((r) => setTimeout(r, 1000));
+        stressTest = {
+          counterVariable: "Test Counter-Variable",
+          updatedDashboardIndicator: "Test Metric: 99% ↑",
+          stressQuestion: "🧪 TEST MODE: If this logic breaks under pressure, what's the failure mode?",
+          hint: "Think about the edge case.",
+        };
+      } else {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stress-test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            crisisContext: currentNode.crisis_context,
+            intelCardTitle: currentIntelCard.title,
+            formalMechanism: currentIntelCard.formalMechanism,
+            latexFormula: currentIntelCard.latexFormula,
+            soWhat: currentIntelCard.soWhat,
+            userDominoChain,
+          })
+        });
+
+        if (!res.ok) throw new Error("Stress test generation failed");
+        const data = await res.json();
+        const st = data.stressTest;
+
+        stressTest = {
+          counterVariable: st.counter_variable,
+          updatedDashboardIndicator: st.updated_dashboard_indicator,
+          stressQuestion: st.stress_question,
+          hint: st.hint,
+        };
+      }
+
+      set({
+        currentStressTest: stressTest,
+        isLoading: false,
+        currentPhase: "evaluation", // Move to Phase 4
+      });
+
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : "Stress test failed",
+        isLoading: false,
+      });
+    }
+  },
+
+  // ═════════════════════════════════════════════
+  // PHASE 5: SYNCHRONIZE AND ADVANCE
+  // ═════════════════════════════════════════════
+  synchronizeAndAdvance: () => {
+    const { document, currentNodeIndex, currentIntelCard, session, completedNodeIds, currentNode } = get();
+    if (!document || !session || !currentNode) return;
+
+    const newCompleted = [...completedNodeIds, currentNode.id];
+    const nextIndex = currentNodeIndex + 1;
+    const hasMoreNodes = nextIndex < document.nodes.length;
+
+    // Update heat
+    const heatDelta = currentIntelCard?.heatDelta || 0;
+    const newGlobalHeat = Math.min(100, Math.max(0, session.globalHeat + heatDelta));
+
+    set({ currentPhase: "synchronization" });
+
+    // Brief sync animation, then advance
+    setTimeout(() => {
+      if (hasMoreNodes) {
+        set({
+          currentNodeIndex: nextIndex,
+          currentNode: document.nodes[nextIndex],
+          currentIntelCard: null,
+          currentStressTest: null,
+          userDominoChain: "",
+          completedNodeIds: newCompleted,
+          currentPhase: "challenge", // Back to Phase 1 for next node
+          session: {
+            ...session,
+            currentNodeIndex: nextIndex,
+            completedNodeIds: newCompleted,
+            globalHeat: newGlobalHeat,
+            updatedAt: Date.now(),
+          },
+        });
+      } else {
+        // All nodes complete
+        set({
+          completedNodeIds: newCompleted,
+          currentPhase: "input", // Reset to start
+          session: {
+            ...session,
+            completedNodeIds: newCompleted,
+            globalHeat: newGlobalHeat,
+            updatedAt: Date.now(),
+          },
+        });
+      }
+    }, 2000);
+
+    get().fetchProgress();
+  },
+
+  // ═════════════════════════════════════════════
+  // NAVIGATION
+  // ═════════════════════════════════════════════
+  resetGame: () => {
+    set({
+      session: null,
+      document: null,
+      currentNode: null,
+      currentNodeIndex: 0,
+      currentIntelCard: null,
+      currentStressTest: null,
+      userDominoChain: "",
+      completedNodeIds: [],
+      isLoading: false,
+      error: null,
+      currentPhase: "input",
+    });
   },
 
   fetchProgress: async () => {
     const { user } = get();
     if (!user) return;
-    
+
     try {
-      // Fetch progress via the backend API (cookies are sent automatically)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user-progress`, {
         credentials: 'include',
       });
       if (!res.ok) return;
       const data = await res.json();
-      
+
       if (data?.nodes) {
         const progressMap: Record<string, number> = {};
         const details = data.nodes.map((row: any) => {
@@ -133,393 +478,4 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       console.error("Failed to fetch progress:", err);
     }
   },
-
-  startGame: async (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => {
-    set({ isLoading: true, error: null, showLogo: true, loadingProgress: 0 });
-
-    try {
-      const formData = new FormData();
-      if (payload.text) formData.append("text_material", payload.text);
-      if (payload.url) formData.append("url", payload.url);
-      if (payload.file) formData.append("file", payload.file);
-      if (sourceTitle) formData.append("title", sourceTitle);
-
-      // Simulate progress during extraction (0-60%)
-      const progressInterval = setInterval(() => {
-        set((state) => ({
-          loadingProgress: Math.min(state.loadingProgress + Math.random() * 15, 60)
-        }));
-      }, 300);
-
-      // Better Auth uses cookies — no Authorization header needed
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-scenarios`, {
-         method: 'POST',
-         credentials: 'include',
-         body: formData
-      });
-      
-      if (!res.ok) {
-        clearInterval(progressInterval);
-        throw new Error("Failed to generate scenarios from backend.");
-      }
-      const data = await res.json();
-      
-      const mappedScenarios: CrisisScenario[] = data.scenarios.map((s: any, index: number) => {
-        const slug = (s.title || `concept-${index}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        return {
-          id: s.id || `scenario-${index}`,
-          nodeId: slug,
-          crisisText: `${s.title}\n\n${s.context}\n${s.question}`,
-          questionType: 'multiple-choice',
-          actionButtons: s.options?.map((opt: any, i: number) => ({
-            id: opt.id || `btn-${i}`,
-            label: opt.text || opt.action,
-            order: i + 1
-          })) || [],
-          difficulty: 'level-2'
-        };
-      });
-
-      const aiClusterNodes: CausalAnchor[] = data.scenarios.map((s: any, index: number) => ({
-        id: s.id || `node-${index}`,
-        title: s.title || `Concept ${index + 1}`,
-        description: s.context || "",
-        thermalState: "neutral" as const,
-        heat: 0,
-        integrity: 0,
-      }));
-
-      const aiCluster: Cluster = {
-        id: `cluster-${Date.now()}`,
-        clusterIndex: 0,
-        title: sourceTitle || "Learning Session",
-        description: `${data.scenarios.length} concepts extracted from your study material`,
-        status: "unlocked",
-        nodes: aiClusterNodes,
-      };
-
-      const gameSession: GameSession = {
-        id: `session-${Date.now()}`,
-        sourceContent: payload.text || payload.url || payload.file?.name || "Multimodal Document",
-        sourceTitle: sourceTitle || "Learning Session",
-        clusters: [aiCluster],
-        currentClusterIndex: 0,
-        currentNodeIndex: 0,
-        globalHeat: 0,
-        globalIntegrity: 0,
-        responses: [],
-        masteryCards: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        completed: false,
-      };
-
-      localStorage.setItem(`arce-session-${gameSession.id}`, JSON.stringify(gameSession));
-
-      clearInterval(progressInterval);
-      set({
-        gameSession,
-        scenarios: mappedScenarios,
-        currentScenario: mappedScenarios[0],
-        isLoading: false,
-        loadingProgress: 100,
-        currentPhase: "playing",
-        showLogo: false, 
-      });
-
-      setTimeout(() => {
-        set({ loadingProgress: 0 });
-      }, 500);
-    } catch (err) {
-      set({ error: err instanceof Error ? err.message : "Failed to start game", isLoading: false, loadingProgress: 0 });
-    }
-  },
-
-  selectAction: (buttonId: string) => {
-    set({ selectedActionButton: buttonId });
-  },
-
-  showDefense: () => {
-    set({ showDefenseTextbox: true });
-  },
-
-  submitDefense: async (defense: string) => {
-    const { gameSession, currentScenario, selectedActionButton, testMode, scenarios, user } = get();
-    if (!gameSession || !currentScenario) return;
-
-    if (!testMode && defense !== "[Tactical Strike - No Defense Required]" && defense.length < 20) {
-      set({ error: "Defense must be at least 20 characters" });
-      return;
-    }
-
-    set({ isLoading: true });
-
-    try {
-      let evaluation;
-      if (testMode) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        evaluation = {
-          thermalState: "ignition" as ThermalState,
-          feedback: "🔥 TEST MODE: This answer is marked correct for testing!",
-          heatDelta: 25,
-        };
-      } else {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/evaluate`, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           credentials: 'include',
-           body: JSON.stringify({ 
-             scenarioId: currentScenario.id, 
-             userChoice: selectedActionButton, 
-             userDefense: defense,
-             userId: user?.id || "" 
-           })
-         });
-         if (!res.ok) throw new Error("Evaluation request failed.");
-         const data = await res.json();
-         evaluation = {
-           thermalState: data.evaluation.state.toLowerCase() as ThermalState,
-           feedback: data.evaluation.feedback,
-           heatDelta: data.evaluation.heatScoreDelta || 0,
-           keywords: data.evaluation.keywords || [],
-           formalDefinition: data.evaluation.formalDefinition || ""
-         }
-      }
-
-      // If Frost, trigger Parallel Variation logic
-      let generatedVariation = null;
-      if (evaluation.thermalState === "frost") {
-        try {
-          const varRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-variation`, {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             credentials: 'include',
-             body: JSON.stringify({ 
-               originalContext: currentScenario.crisisText, 
-               originalQuestion: currentScenario.questionType, 
-               variationType: 'parallel' 
-             })
-          });
-          if (varRes.ok) {
-            const varData = await varRes.json();
-            generatedVariation = {
-              id: varData.scenario.id || `scenario-var-${Date.now()}`,
-              nodeId: currentScenario.nodeId,
-              crisisText: `❄️ PARALLEL VARIATION\n\n${varData.scenario.title}\n\n${varData.scenario.context}\n${varData.scenario.question}`,
-              questionType: "multiple-choice" as const,
-              actionButtons: varData.scenario.options?.map((opt: any, i: number) => ({ id: opt.id || `btn-${i}`, label: opt.text || opt.action, order: i + 1 })) || [],
-              difficulty: "level-2" as const
-            };
-          }
-        } catch (err) {
-          console.warn("Failed to generate parallel variation", err);
-        }
-      }
-
-      const response: UserResponse = {
-        id: `response-${Date.now()}`,
-        scenarioId: currentScenario.id,
-        defense: defense || "[TEST MODE - NO DEFENSE]",
-        timestamp: Date.now(),
-        thermalResult: evaluation.thermalState,
-        feedback: evaluation.feedback,
-        actionChoice: selectedActionButton || undefined,
-      };
-
-      const updatedSession = { ...gameSession };
-      updatedSession.responses.push(response);
-
-      if (evaluation.thermalState === "ignition") {
-        const masteryCard: MasteryCard = {
-          id: `mastery-${currentScenario.nodeId}-${Date.now()}`,
-          nodeId: currentScenario.nodeId,
-          formalDefinition: evaluation.formalDefinition || evaluation.feedback,
-          keywords: evaluation.keywords || [],
-          createdAt: Date.now(),
-        };
-        updatedSession.masteryCards.push(masteryCard);
-      }
-
-      const delta = evaluation.heatDelta || 0;
-      if (evaluation.thermalState === "frost") {
-        updatedSession.globalHeat = Math.max(0, updatedSession.globalHeat - Math.abs(delta));
-        updatedSession.globalIntegrity = Math.max(0, updatedSession.globalIntegrity - 5);
-      } else if (evaluation.thermalState === "warning") {
-        updatedSession.globalHeat = Math.min(100, updatedSession.globalHeat + Math.abs(delta));
-        updatedSession.globalIntegrity += 3;
-      } else if (evaluation.thermalState === "ignition") {
-        updatedSession.globalHeat = Math.min(100, updatedSession.globalHeat + Math.abs(delta));
-        updatedSession.globalIntegrity = Math.min(100, updatedSession.globalIntegrity + 15);
-      }
-
-      updatedSession.updatedAt = Date.now();
-      localStorage.setItem(`arce-session-${updatedSession.id}`, JSON.stringify(updatedSession));
-
-      set({
-        gameSession: updatedSession,
-        isLoading: false,
-        showDefenseTextbox: false,
-        selectedActionButton: null,
-        currentPhase: "playing", 
-        pendingNextScenario: generatedVariation || null,
-      });
-
-      get().fetchProgress();
-
-      return {
-        thermalState: evaluation.thermalState,
-        feedback: evaluation.feedback,
-        keywords: evaluation.keywords || [],
-        formalDefinition: evaluation.formalDefinition || "",
-      };
-    } catch (err) {
-      set({ error: err instanceof Error ? err.message : "Failed to submit defense", isLoading: false });
-    }
-  },
-
-  nextNode: async () => {
-    const { gameSession, currentScenario, scenarios, pendingNextScenario, testMode } = get();
-    if (!gameSession || !currentScenario) return;
-
-    if (pendingNextScenario) {
-       scenarios.push(pendingNextScenario);
-       set((state) => ({
-         scenarios: [...scenarios],
-         gameSession: { ...state.gameSession! },
-         currentScenario: pendingNextScenario,
-         showDefenseTextbox: false,
-         selectedActionButton: null,
-         pendingNextScenario: null,
-       }));
-       return;
-    }
-
-    // Black Swan Integration
-    const recentResponses = gameSession.responses.slice(-3);
-    const hasThreeIgnitions = recentResponses.length >= 3 && recentResponses.every(r => r.thermalResult === 'ignition');
-    
-    set({ isLoading: true });
-
-    let nextScenario = null;
-    if (hasThreeIgnitions) {
-       try {
-         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-variation`, {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             credentials: 'include',
-             body: JSON.stringify({ 
-               originalContext: currentScenario.crisisText, 
-               originalQuestion: currentScenario.questionType, 
-               variationType: 'black-swan' 
-             })
-         });
-         if (res.ok) {
-           const data = await res.json();
-           nextScenario = {
-             id: data.scenario.id || `scenario-bs-${Date.now()}`,
-             nodeId: currentScenario.nodeId,
-             crisisText: `🚨 BLACK SWAN EVENT\n\n${data.scenario.title}\n\n${data.scenario.context}\n${data.scenario.question}`,
-             questionType: 'multiple-choice' as const,
-             actionButtons: data.scenario.options?.map((opt: any, i: number) => ({ id: opt.id || `btn-${i}`, label: opt.text || opt.action, order: i + 1 })) || [],
-             difficulty: 'level-3' as const
-           };
-           scenarios.push(nextScenario);
-           set({ scenarios });
-         }
-       } catch (err) {
-         console.warn("Black Swan failed:", err);
-       }
-    }
-
-    if (!nextScenario) {
-      const responseCount = gameSession.responses.length;
-      const nextScenarioIndex = Math.min(responseCount, scenarios.length - 1);
-      nextScenario = scenarios[nextScenarioIndex] || scenarios[scenarios.length - 1];
-    }
-
-    set((state) => ({
-      gameSession: {
-        ...state.gameSession!,
-        currentNodeIndex: Math.min(
-          state.gameSession!.currentNodeIndex + 1,
-          state.gameSession!.clusters[state.gameSession!.currentClusterIndex]
-            .nodes.length - 1
-        ),
-      },
-      currentScenario: nextScenario,
-      showDefenseTextbox: false,
-      selectedActionButton: null,
-      isLoading: false,
-    }));
-  },
-
-  nextCluster: () => {
-    const { gameSession, scenarios } = get();
-    if (!gameSession) return;
-
-    if (gameSession.currentClusterIndex < gameSession.clusters.length - 1) {
-      const responseCount = gameSession.responses.length;
-      const nextScenarioIndex = Math.min(responseCount, scenarios.length - 1);
-
-      set((state) => ({
-        gameSession: {
-          ...state.gameSession!,
-          currentClusterIndex: state.gameSession!.currentClusterIndex + 1,
-          currentNodeIndex: 0,
-        },
-        currentScenario: scenarios[nextScenarioIndex],
-        showDefenseTextbox: false,
-        selectedActionButton: null,
-      }));
-    } else {
-      get().endGame();
-    }
-  },
-
-  endGame: () => {
-    const { gameSession } = get();
-    if (!gameSession) return;
-
-    const updatedSession = { ...gameSession, completed: true };
-    localStorage.setItem(
-      `arce-session-${updatedSession.id}`,
-      JSON.stringify(updatedSession)
-    );
-
-    set({
-      gameSession: updatedSession,
-      currentPhase: "results",
-      showLogo: true,
-    });
-  },
-
-  resetGame: () => {
-    set({
-      gameSession: null,
-      currentScenario: null,
-      isLoading: false,
-      error: null,
-      showLogo: true,
-      currentPhase: "input",
-      selectedActionButton: null,
-      showDefenseTextbox: false,
-    });
-  },
-
-  toggleTestMode: () => {
-    set((state) => ({
-      testMode: !state.testMode,
-    }));
-  },
 }));
-
-// Mock feedback for different thermal states
-function getMockFeedback(thermalState: ThermalState): string {
-  const feedbackMap: Record<ThermalState, string> = {
-    frost: "❄️ Your logic is shallow. This exposes a critical gap. Try again with deeper causality.",
-    warning: "⚠️ You are on the right track, but your defense is incomplete. Why does this truly work?",
-    ignition: "🔥 Deep causality detected! You have grasped the leverage point. This node is Ignited.",
-    neutral: "Analyzing your response...",
-  };
-  return feedbackMap[thermalState] || "Evaluating...";
-}
