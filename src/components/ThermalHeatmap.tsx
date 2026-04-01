@@ -25,8 +25,8 @@ export default function ThermalHeatmap() {
 
   return (
     <div style={{ 
-      backgroundColor: 'var(--p-surface)', 
-      color: 'var(--t-mid)',
+      backgroundColor: 'transparent', 
+      color: '#f0f2ec',
       padding: '24px',
       borderRadius: '12px'
     }}>
@@ -34,14 +34,14 @@ export default function ThermalHeatmap() {
       <div style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--t-primary)', marginBottom: '8px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
               🗺️ Your Mastery Map
             </h2>
-            <p style={{ fontSize: '14px', color: 'var(--t-secondary)' }}>Track concepts through thermal states</p>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>Track concepts through thermal states</p>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '12px', color: 'var(--t-secondary)', marginBottom: '4px' }}>Overall Integrity</p>
-            <p style={{ fontSize: '32px', fontWeight: 700, color: overallIntegrity > 70 ? 'var(--success)' : overallIntegrity > 40 ? 'var(--xp)' : 'var(--error)' }}>
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>Overall Integrity</p>
+            <p style={{ fontSize: '32px', fontWeight: 700, color: overallIntegrity > 70 ? '#10b981' : overallIntegrity > 40 ? '#f59e0b' : '#ef4444' }}>
               {Math.round(overallIntegrity)}%
             </p>
           </div>
@@ -51,8 +51,8 @@ export default function ThermalHeatmap() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
           {Object.entries(StatusColors).map(([status, colors]) => (
             <div key={status} style={{ 
-              backgroundColor: 'var(--p-white)',
-              border: '1px solid var(--p-border)',
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              border: `1px solid ${colors.bg.replace('0.1', '0.2')}`, // use the status color's bg variable, slightly more opaque
               padding: '8px 12px', 
               borderRadius: '8px', 
               display: 'flex', 
@@ -60,7 +60,7 @@ export default function ThermalHeatmap() {
               gap: '8px',
               fontSize: '13px',
               fontWeight: 600,
-              color: 'var(--t-mid)'
+              color: colors.text
             }}>
               <span>{colors.icon}</span>
               <span className="capitalize">{status}</span>
@@ -83,10 +83,10 @@ export default function ThermalHeatmap() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <IntegrityDashboard unit={currentUnit} />
           
-          {/* Topic-based Grid View */}
+          {/* Topic-based Accordion View */}
           <div style={{
-            backgroundColor: 'var(--p-white)',
-            border: '1px solid var(--p-border)',
+            backgroundColor: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: '12px',
             overflow: 'hidden'
           }}>
@@ -105,10 +105,10 @@ export default function ThermalHeatmap() {
           top: 0,
           right: 0,
           bottom: 0,
-          width: '360px',
-          backgroundColor: 'var(--p-white)',
-          borderLeft: '1px solid var(--p-border)',
-          boxShadow: '-4px 0 12px rgba(0,0,0,0.1)',
+          width: '380px',
+          backgroundColor: '#0f0f12',
+          borderLeft: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '-8px 0 24px rgba(0,0,0,0.5)',
           zIndex: 40,
           overflowY: 'auto',
           animation: 'slideInRight 0.3s ease-out'

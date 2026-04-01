@@ -11,7 +11,8 @@ export type LearnPhase =
   | "transition"     // Phase 2: Breakthrough Transition animation
   | "sanctuary"      // Phase 3: Intel Card Sanctuary (Gallery Mode)
   | "evaluation"     // Phase 4: Split-Screen Stress Test
-  | "synchronization"; // Phase 5: Card plugs into dashboard
+  | "synchronization" // Phase 5: Card plugs into dashboard
+  | "debrief";       // Phase 6: Session Summary / After Action Report
 
 // ── THERMAL STATES ──
 export type ThermalState = "frost" | "warning" | "ignition" | "neutral";

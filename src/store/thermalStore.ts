@@ -14,11 +14,11 @@ interface ThermalStore extends ThermalState {
   fetchNodeHistory: (nodeId: string) => Promise<void>;
 }
 
-function mapHeatToStatus(heat: number, isIgnited: boolean): 'grey' | 'frost' | 'glow' | 'ignition' {
+function mapHeatToStatus(heat: number, isIgnited: boolean): 'neutral' | 'frost' | 'warning' | 'ignition' {
   if (heat >= 100) return 'ignition';
-  if (heat >= 60) return 'glow';
+  if (heat >= 60) return 'warning';
   if (heat >= 25) return 'frost';
-  return 'grey';
+  return 'neutral';
 }
 
 function calculateUnitStability(nodes: Node[]): number {
@@ -57,7 +57,7 @@ export const useThermalStore = create<ThermalStore>((set, get) => ({
 
       if (data) {
       const parsedUnits: Unit[] = data.map((unit: any) => {
-        const parsedNodes: Node[] = (unit.user_nodes || []).map((n: any) => ({
+        const parsedNodes: Node[] = (unit.nodes || unit.user_nodes || []).map((n: any) => ({
           id: n.node_id,
           title: n.title,
           topic: n.topic,

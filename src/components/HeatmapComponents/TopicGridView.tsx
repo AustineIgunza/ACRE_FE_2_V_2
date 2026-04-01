@@ -3,8 +3,8 @@
 import { useState } from "react";
 import type { Node } from "@/types/thermal";
 import { useThermalStore } from "@/store/thermalStore";
-import { InlineMath } from "react-katex";
-import 'katex/dist/katex.min.css';
+import { StatusColors } from "@/types/thermal";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface TopicGridViewProps {
   onNodeClick?: (unitId: string, nodeId: string) => void;
@@ -12,12 +12,12 @@ interface TopicGridViewProps {
 
 export default function TopicGridView({ onNodeClick }: TopicGridViewProps) {
   const { units, currentUnitId, selectNode } = useThermalStore();
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
   const currentUnit = units.find((u) => u.id === currentUnitId);
 
   if (!currentUnit) {
     return (
-      <div style={{ padding: "32px", textAlign: "center", color: "var(--t-secondary)" }}>
+      <div style={{ padding: "32px", textAlign: "center", color: "rgba(255,255,255,0.5)" }}>
         <p>Select a unit to view topics</p>
       </div>
     );
@@ -35,28 +35,28 @@ export default function TopicGridView({ onNodeClick }: TopicGridViewProps) {
   const topicsArray = Array.from(topicGroups.entries());
 
   const getStatusColor = (status: string) => {
-    const colors: Record<string, { bg: string; text: string; icon: string; shadow: string }> = {
-      grey: { bg: "var(--p-surface)", text: "var(--t-secondary)", icon: "◯", shadow: "none" },
-      frost: { bg: "#f1f5f9", text: "var(--info)", icon: "❄️", shadow: "0 4px 12px rgba(14, 165, 233, 0.1)" },
-      glow: { bg: "#fffbeb", text: "var(--warning)", icon: "🕯️", shadow: "0 4px 12px rgba(255, 149, 0, 0.2)" },
-      ignition: { bg: "#fef2f2", text: "var(--snap)", icon: "🔥", shadow: "0 4px 20px rgba(255, 59, 48, 0.2)" },
-    };
-    return colors[status] || colors.grey;
+    const colors = StatusColors[status as keyof typeof StatusColors];
+    return colors || StatusColors.neutral;
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "ignition": return "IGNITED";
+      case "warning": return "UNSTABLE";
+      case "frost": return "FROST";
+      default: return "NEUTRAL";
+    }
+  };
+
+  const toggleAccordion = (nodeId: string) => {
+    setExpandedNodeId((prev) => (prev === nodeId ? null : nodeId));
   };
 
   return (
     <div style={{ padding: "24px", width: "100%" }}>
-      <style>{`
-        @keyframes ignitionPulse {
-          0% { transform: scale(1); box-shadow: 0 4px 20px rgba(255, 59, 48, 0.2); }
-          50% { transform: scale(1.02); box-shadow: 0 8px 30px rgba(255, 59, 48, 0.4); }
-          100% { transform: scale(1); box-shadow: 0 4px 20px rgba(255, 59, 48, 0.2); }
-        }
-      `}</style>
-      
       {topicsArray.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 24px", color: "var(--t-secondary)" }}>
-          <p>No nodes yet. Create one to start!</p>
+        <div style={{ textAlign: "center", padding: "48px 24px", color: "rgba(255,255,255,0.5)" }}>
+          <p>No nodes yet. Start an extraction to populate your mastery map.</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
@@ -65,87 +65,154 @@ export default function TopicGridView({ onNodeClick }: TopicGridViewProps) {
 
             return (
               <div key={topic}>
-                <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: '1px solid var(--p-border)', paddingBottom: '8px' }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--t-primary)" }}>{topic}</h3>
-                  <span style={{ fontSize: '11px', color: 'var(--t-muted)' }}>{masteredCount} / {nodes.length} MASTERED</span>
+                <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "8px" }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#fff", fontFamily: "Georgia, serif" }}>{topic}</h3>
+                  <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", fontFamily: "monospace" }}>{masteredCount} / {nodes.length} MASTERED</span>
                 </div>
 
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-                  gap: "12px",
-                }}>
-                  {nodes.map((node) => {
+                {/* Accordion List */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {nodes.map((node, index) => {
                     const statusConfig = getStatusColor(node.status);
-                    const isHovered = hoveredNodeId === node.id;
+                    const isExpanded = expandedNodeId === node.id;
                     const hasIntel = !!node.intel_card;
 
                     return (
                       <div
                         key={node.id}
-                        onMouseEnter={() => setHoveredNodeId(node.id)}
-                        onMouseLeave={() => setHoveredNodeId(null)}
-                        onClick={() => selectNode(currentUnit.id, node.id)}
                         style={{
-                          padding: "16px",
+                          backgroundColor: isExpanded ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.02)",
+                          border: `1px solid ${isExpanded ? statusConfig.text : "rgba(255,255,255,0.08)"}`,
                           borderRadius: "12px",
-                          backgroundColor: statusConfig.bg,
-                          border: `1.5px solid ${isHovered ? statusConfig.text : 'transparent'}`,
-                          cursor: "pointer",
-                          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                          boxShadow: statusConfig.shadow,
-                          animation: node.status === 'ignition' ? 'ignitionPulse 3s infinite ease-in-out' : 'none',
-                          position: 'relative',
-                          overflow: 'hidden'
+                          overflow: "hidden",
+                          transition: "all 0.3s ease",
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-                          <span style={{ fontSize: "14px" }}>{statusConfig.icon}</span>
-                          <span style={{ fontSize: "9px", fontWeight: 700, color: statusConfig.text, textTransform: "uppercase", letterSpacing: '0.05em' }}>{node.status}</span>
-                        </div>
-
-                        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--t-primary)", lineHeight: 1.3, marginBottom: '4px' }}>
-                          {node.title}
-                        </div>
-
-                        {/* Hover Preview: LaTeX formula if available */}
-                        {isHovered && hasIntel ? (
-                          <div style={{ 
-                            marginTop: '8px', 
-                            padding: '8px', 
-                            backgroundColor: 'white', 
-                            borderRadius: '6px', 
-                            border: '1px solid var(--p-border)',
-                            fontSize: '0.85em',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            animation: 'fadeIn 0.2s ease-out'
-                          }}>
-                            <InlineMath math={node.intel_card!.formal_mechanism} />
+                        {/* Header Row */}
+                        <button
+                          onClick={() => toggleAccordion(node.id)}
+                          style={{
+                            width: "100%",
+                            padding: "16px 20px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            color: "#fff",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                            <div style={{
+                              width: "28px", height: "28px", borderRadius: "50%",
+                              backgroundColor: statusConfig.bg,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              color: statusConfig.text, fontSize: "11px", fontFamily: "monospace", fontWeight: 700,
+                            }}>
+                              {String(index + 1).padStart(2, "0")}
+                            </div>
+                            <span style={{ fontSize: "14px", fontWeight: 500, fontFamily: "Georgia, serif" }}>
+                              {node.title}
+                            </span>
                           </div>
-                        ) : (
-                          <div style={{ fontSize: '10px', color: 'var(--t-muted)', marginTop: '8px' }}>
-                            {node.totalAttempts} attempts
+
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            {/* Heat bar */}
+                            <div style={{ width: "60px", height: "4px", backgroundColor: "rgba(255,255,255,0.1)", borderRadius: "2px", overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: `${node.heat}%`, backgroundColor: statusConfig.text, transition: "width 0.5s ease-out" }} />
+                            </div>
+                            <span style={{ fontSize: "11px", fontWeight: 600, color: statusConfig.text, textTransform: "uppercase", letterSpacing: "1px", minWidth: "70px", textAlign: "right" }}>
+                              {getStatusLabel(node.status)}
+                            </span>
+                            <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} style={{ color: "rgba(255,255,255,0.3)" }}>
+                              ▼
+                            </motion.div>
                           </div>
-                        )}
-                        
-                        {/* Thermal Progress Sub-bar */}
-                        <div style={{ 
-                          position: 'absolute', 
-                          bottom: 0, 
-                          left: 0, 
-                          right: 0, 
-                          height: '3px', 
-                          backgroundColor: 'rgba(0,0,0,0.05)' 
-                        }}>
-                          <div style={{ 
-                            height: '100%', 
-                            width: `${node.heat}%`, 
-                            backgroundColor: node.status === 'ignition' ? 'var(--snap)' : 'var(--info)',
-                            transition: 'width 0.5s ease-out'
-                          }} />
-                        </div>
+                        </button>
+
+                        {/* Expandable Content */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: "easeInOut" }}
+                              style={{ overflow: "hidden" }}
+                            >
+                              <div style={{
+                                padding: "20px", paddingTop: 0,
+                                borderTop: "1px solid rgba(255,255,255,0.05)",
+                                marginTop: "4px",
+                                display: "flex", flexDirection: "column", gap: "20px",
+                              }}>
+                                {hasIntel ? (
+                                  <>
+                                    {/* Formal Mechanism */}
+                                    <div>
+                                      <span style={{ display: "block", fontSize: "10px", color: "rgba(255,255,255,0.3)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "8px" }}>
+                                        Formal Mechanism
+                                      </span>
+                                      <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.7)", lineHeight: 1.6, margin: 0 }}>
+                                        {node.intel_card!.formal_mechanism}
+                                      </p>
+                                    </div>
+
+                                    {/* So What? */}
+                                    <div>
+                                      <span style={{ display: "block", fontSize: "10px", color: "rgba(255,255,255,0.3)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "8px" }}>
+                                        &quot;So What?&quot;
+                                      </span>
+                                      <div style={{
+                                        padding: "16px",
+                                        backgroundColor: `${statusConfig.text}10`,
+                                        borderLeft: `2px solid ${statusConfig.text}`,
+                                        color: "#f0f2ec", fontSize: "15px", lineHeight: 1.6,
+                                        fontFamily: "Georgia, serif", fontStyle: "italic",
+                                      }}>
+                                        {node.intel_card!.so_what}
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div style={{ padding: "20px", textAlign: "center", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.1)" }}>
+                                    <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", margin: 0 }}>
+                                      Complete the Challenge Zone for this node to forge the Intel Card.
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* View History Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onNodeClick) onNodeClick(currentUnit.id, node.id);
+                                  }}
+                                  style={{
+                                    padding: "10px 16px",
+                                    backgroundColor: "transparent",
+                                    border: "1px solid rgba(255,255,255,0.1)",
+                                    color: "rgba(255,255,255,0.7)",
+                                    borderRadius: "8px",
+                                    cursor: "pointer",
+                                    fontSize: "12px",
+                                    fontWeight: 600,
+                                    letterSpacing: "1px",
+                                    textTransform: "uppercase",
+                                    alignSelf: "flex-start",
+                                    transition: "all 0.2s",
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = statusConfig.text; e.currentTarget.style.color = statusConfig.text; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                                >
+                                  View Core History →
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     );
                   })}

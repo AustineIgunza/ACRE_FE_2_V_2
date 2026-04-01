@@ -381,12 +381,23 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   // PHASE 5: SYNCHRONIZE AND ADVANCE
   // ═════════════════════════════════════════════
   synchronizeAndAdvance: () => {
-    const { document, currentNodeIndex, currentIntelCard, session, completedNodeIds, currentNode } = get();
+    const { document, currentNodeIndex, currentIntelCard, session, completedNodeIds, currentNode, userDominoChain } = get();
     if (!document || !session || !currentNode) return;
 
     const newCompleted = [...completedNodeIds, currentNode.id];
     const nextIndex = currentNodeIndex + 1;
     const hasMoreNodes = nextIndex < document.nodes.length;
+
+    // Update responses
+    const newResponse: UserResponse = {
+      id: `resp-${Date.now()}`,
+      nodeId: currentNode.id,
+      userDominoChain,
+      timestamp: Date.now(),
+      accuracy: currentIntelCard?.accuracy || "neutral",
+      intelCard: currentIntelCard,
+    };
+    const newResponses = [...session.responses, newResponse];
 
     // Update heat
     const heatDelta = currentIntelCard?.heatDelta || 0;
@@ -409,6 +420,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
             ...session,
             currentNodeIndex: nextIndex,
             completedNodeIds: newCompleted,
+            responses: newResponses,
             globalHeat: newGlobalHeat,
             updatedAt: Date.now(),
           },
@@ -417,10 +429,11 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         // All nodes complete
         set({
           completedNodeIds: newCompleted,
-          currentPhase: "input", // Reset to start
+          currentPhase: "debrief", // Move to Debrief summary
           session: {
             ...session,
             completedNodeIds: newCompleted,
+            responses: newResponses,
             globalHeat: newGlobalHeat,
             updatedAt: Date.now(),
           },

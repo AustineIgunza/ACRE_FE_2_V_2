@@ -10,6 +10,7 @@ import BreakthroughTransition from "@/components/learn/BreakthroughTransition";
 import IntelCardSanctuary from "@/components/learn/IntelCardSanctuary";
 import EvaluationSplitScreen from "@/components/learn/EvaluationSplitScreen";
 import Synchronization from "@/components/learn/Synchronization";
+import MissionDebrief from "@/components/learn/MissionDebrief";
 import { useRouter } from "next/navigation";
 
 export default function LearnPage() {
@@ -70,6 +71,7 @@ export default function LearnPage() {
       case "evaluation":
         return "#0a0a0c"; // left panel is dark
       case "synchronization":
+      case "debrief":
         return "#0a0a0c";
       default:
         return "var(--p-surface)";
@@ -146,6 +148,12 @@ export default function LearnPage() {
         {currentPhase === "synchronization" && (
           <motion.div key="synchronization">
             <Synchronization />
+          </motion.div>
+        )}
+
+        {currentPhase === "debrief" && (
+          <motion.div key="debrief">
+            <MissionDebrief />
           </motion.div>
         )}
       </AnimatePresence>

@@ -2,7 +2,7 @@ export interface Node {
   id: string;
   title: string;
   topic: string;
-  status: 'grey' | 'frost' | 'glow' | 'ignition'; // grey=new, frost=frozen, glow=decay warning, ignition=mastered
+  status: 'neutral' | 'frost' | 'warning' | 'ignition'; // neutral=new, frost=frozen, warning=decay warning, ignition=mastered
   heat: number; // 0-100
   integrity: number; // 0-100
   createdAt: Date;
@@ -52,35 +52,35 @@ export interface ThermalState {
 }
 
 export const NodeStatus = {
-  GREY: 'grey',      // New node
+  NEUTRAL: 'neutral',  // New node
   FROST: 'frost',    // Failed/Decay
-  GLOW: 'glow',      // Decay warning
+  WARNING: 'warning',      // Decay warning
   IGNITION: 'ignition' // Mastered
 } as const;
 
 export const StatusColors = {
-  grey: {
-    bg: 'bg-slate-200',
-    text: 'text-slate-600',
-    glow: 'shadow-slate-300/20',
+  neutral: {
+    bg: 'rgba(139, 92, 246, 0.1)',
+    text: '#8b5cf6',
+    glow: 'rgba(139, 92, 246, 0.2)',
     icon: '◯'
   },
   frost: {
-    bg: 'bg-blue-100',
-    text: 'text-blue-700',
-    glow: 'shadow-blue-300/40 animate-pulse',
+    bg: 'rgba(59, 130, 246, 0.1)',
+    text: '#3b82f6',
+    glow: 'rgba(59, 130, 246, 0.4)',
     icon: '❄️'
   },
-  glow: {
-    bg: 'bg-yellow-50',
-    text: 'text-yellow-700',
-    glow: 'shadow-yellow-400/40 animate-pulse',
-    icon: '🕯️'
+  warning: {
+    bg: 'rgba(245, 158, 11, 0.1)',
+    text: '#f59e0b',
+    glow: 'rgba(245, 158, 11, 0.4)',
+    icon: '⚠️'
   },
   ignition: {
-    bg: 'bg-red-100',
-    text: 'text-red-700',
-    glow: 'shadow-red-400/50',
+    bg: 'rgba(255, 92, 53, 0.1)',
+    text: '#ff5c35',
+    glow: 'rgba(255, 92, 53, 0.5)',
     icon: '🔥'
   }
 } as const;
