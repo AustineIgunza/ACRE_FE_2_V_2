@@ -57,7 +57,7 @@ export default function NodeGrid({ nodes, currentNodeId, onSelectNode }: NodeGri
                       height: '100%',
                       transition: 'all 0.2s',
                       backgroundColor: node.status === 'ignition' ? 'var(--snap)' :
-                                     node.status === 'glow' ? 'var(--xp)' :
+                                     node.status === 'warning' ? 'var(--xp)' :
                                      node.status === 'frost' ? 'var(--info)' :
                                      'var(--p-border)',
                       width: `${node.heat}%`
