@@ -9,63 +9,90 @@ import { NextRequest, NextResponse } from "next/server";
  * DYNAMIC CHUNKING: Break invariants into Logic Nodes (7±2 items)
  * 
  * Returns an array of Logic Nodes that become Crisis Scenarios in Phase 1
- * Each Logic Node becomes a Predictive Question (free-text, no multiple choice)
+ * Each Logic Node becomes a question relevant to the pasted text
  */
 
-// Mock Logic Nodes extracted from cell biology material
-// Each node is a fundamental invariant that drives the learning experience
-const logicNodes = [
-  {
-    id: "node-001",
-    title: "Cell Membrane Selectivity",
-    invariant: "The cell membrane controls all molecular exchange between cell and environment",
-    crisis_scenario: "A toxic chemical is attempting to enter a cell. The cell membrane must maintain a concentration gradient to survive. If the membrane loses its selective permeability, what happens to cellular homeostasis?",
-    domino_question: "Walk me through the Domino Effect: If the cell membrane becomes permeable to all molecules, what cascades do you predict? Start with what enters the cell, then describe the consequences.",
-    formal_mechanism: "Semipermeable Membrane → Selective Transport → Ionic Gradient Maintenance → Cellular Equilibrium",
-    latex_formula: "\\text{Selective Transport} \\implies \\text{Maintained Gradient} \\implies \\text{Cell Survival}",
-    so_what: "Without selective permeability, cells cannot maintain the chemical environment they need to function. This is the cheat code: control what crosses the boundary, control what happens inside.",
-  },
-  {
-    id: "node-002",
-    title: "Energy Paradox",
-    invariant: "Cells invest energy (ATP) to obtain more energy (through chemical reactions)",
-    crisis_scenario: "A cell suddenly loses access to glucose, its primary energy source. Mitochondria begin to fail. But wait—the cell has emergency stores of nutrients. The question: should the cell burn through those stores quickly, or ration them slowly?",
-    domino_question: "Walk me through the Domino Effect: If a cell rations energy too slowly, what happens to its ability to repair damage, synthesize proteins, and maintain ion pumps? If it burns reserves too fast, what's the endpoint?",
-    formal_mechanism: "Energy Investment → Metabolic Efficiency → Temporal Survival → Evolutionary Fitness",
-    latex_formula: "\\text{ATP Production} \\implies \\text{Active Transport} \\implies \\text{Cellular Work}",
-    so_what: "Cells are not simple consumers; they are strategic managers of energy budgets. Understanding this paradox explains why starvation and disease are deadly—the cell's economic system collapses.",
-  },
-  {
-    id: "node-003",
-    title: "Division Trade-Off",
-    invariant: "Cell division sacrifices individual cell complexity for population continuity",
-    crisis_scenario: "A cell is about to divide. It must decide: invest energy in perfect DNA replication and risk slower reproduction, or replicate quickly and risk errors that create mutations?",
-    domino_question: "Walk me through the Domino Effect: If a cell prioritizes speed over accuracy, what cascades? What about the opposite? Consider: short-term survival vs. long-term genetic integrity.",
-    formal_mechanism: "Replication Speed ↔ Accuracy Trade-off → Mutation Rate → Selection Pressure",
-    latex_formula: "\\text{Cell Division} \\implies (\\text{Population Growth} \\lor \\text{Genetic Stability})",
-    so_what: "Evolution is built on this tension. Cancer emerges when cells choose unchecked division. This is why replication is the most carefully monitored process in biology.",
-  },
-  {
-    id: "node-004",
-    title: "Photosynthetic Conversion",
-    invariant: "Light energy is converted into chemical energy (ATP/NADPH) through ordered electron transfer",
-    crisis_scenario: "A plant cell is exposed to intense light but cannot convert it fast enough. Excess photons build up as heat. If the photosynthetic machinery becomes too slow, what thermal damage occurs?",
-    domino_question: "Walk me through the Domino Effect: If light harvesting outpaces electron transfer, electrons become unstable and generate reactive oxygen. Describe the cascade: from photon to ROS to cellular damage.",
-    formal_mechanism: "Photon Absorption → Electron Excitation → Coupled Phosphorylation → ATP/NADPH Production",
-    latex_formula: "\\text{Light Energy} + \\text{Electron Transport Chain} \\implies \\text{ATP + NADPH}",
-    so_what: "Photosynthesis is not magic; it's a tightly coupled energy conversion system. Plants developed this precisely because chaos (free electrons) is fatal. Order = survival.",
-  },
-  {
-    id: "node-005",
-    title: "Osmotic Pressure Balance",
-    invariant: "Water passively flows toward regions of higher solute concentration; cells must maintain isotonic equilibrium",
-    crisis_scenario: "A cell is suddenly placed in a hypotonic solution (fewer solutes outside). Water rushes in. If the cell cannot actively regulate its internal osmotic pressure, it will lyse and rupture.",
-    domino_question: "Walk me through the Domino Effect: If a cell is in a hypotonic environment, water enters by osmosis. Describe what happens: internal pressure rises, the cell swells, the membrane stretches. What is the endpoint? How do cells normally prevent this?",
-    formal_mechanism: "Solute Gradient → Water Influx (Osmosis) → Internal Pressure → Active Ion Regulation → Equilibrium",
-    latex_formula: "\\Delta \\text{Osmotic Pressure} \\implies \\text{Water Movement} \\implies \\text{Cell Volume Control}",
-    so_what: "Osmotic balance is non-negotiable. This is why salt kills slugs, why IV drips must be isotonic, why cells die in distilled water. Understand osmosis, understand why organisms fail.",
-  },
-];
+// Helper function to extract key concepts from text
+function extractKeyConceptsFromText(text: string): string[] {
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const concepts: string[] = [];
+  
+  for (const sentence of sentences.slice(0, 5)) {
+    const words = sentence.trim().split(/\s+/).filter(w => w.length > 4);
+    if (words.length > 0) {
+      concepts.push(words.slice(0, 3).join(' '));
+    }
+  }
+  
+  return concepts.slice(0, 5);
+}
+
+// Helper to generate multiple choice options (3 options)
+function generateMultipleChoiceOptions(correctAnswer: string, topic: string): Array<{ id: string; text: string; is_correct: boolean }> {
+  const options = [
+    { id: "A", text: correctAnswer, is_correct: true },
+  ];
+  
+  // Generate 2 plausible but incorrect options based on the topic
+  const wrongAnswers = [
+    `It leads to decreased ${topic.toLowerCase()} efficiency`,
+    `It causes the ${topic.toLowerCase()} system to become unstable`,
+  ];
+  
+  options.push({ id: "B", text: wrongAnswers[0], is_correct: false });
+  options.push({ id: "C", text: wrongAnswers[1], is_correct: false });
+  
+  // Shuffle options but keep track of correct answer
+  return options.sort(() => Math.random() - 0.5).map((opt, i) => ({
+    ...opt,
+    id: String.fromCharCode(65 + i), // A, B, C
+  }));
+}
+
+// Generate logic nodes from user input
+function generateLogicNodesFromText(textInput: string, title: string): any[] {
+  const concepts = extractKeyConceptsFromText(textInput);
+  const nodes = [];
+  
+  // Generate 5-7 logic nodes based on extracted concepts
+  const nodeCount = Math.min(Math.max(concepts.length, 5), 7);
+  
+  for (let i = 0; i < nodeCount; i++) {
+    const concept = concepts[i] || `Concept ${i + 1}`;
+    const nodeId = `node-${String(i + 1).padStart(3, '0')}`;
+    
+    // Generate crisis scenario relevant to the concept
+    const crisisScenario = `You're working with ${concept}. A situation arises where you need to make a critical decision about how ${concept.toLowerCase()} operates. What happens next?`;
+    
+    // Generate domino question
+    const dominoQuestion = `Walk me through the Domino Effect: When ${concept.toLowerCase()} is applied, what cascades follow? Describe the chain reaction step by step.`;
+    
+    // Generate formal mechanism
+    const mechanism = `${concept} → Application → Consequence → Outcome`;
+    
+    // Multiple choice question about the concept
+    const mcQuestion = `What is the primary function of ${concept.toLowerCase()}?`;
+    const correctMC = `It ensures proper function and stability of the system`;
+    const options = generateMultipleChoiceOptions(correctMC, concept);
+    
+    nodes.push({
+      id: nodeId,
+      title: concept,
+      invariant: `Understanding ${concept.toLowerCase()} is fundamental to the domain`,
+      crisis_scenario: crisisScenario,
+      domino_question: dominoQuestion,
+      formal_mechanism: mechanism,
+      latex_formula: `\\text{${concept}} \\implies \\text{Functional Outcome}`,
+      so_what: `Mastering ${concept.toLowerCase()} allows you to predict and control complex scenarios in this domain.`,
+      // Add multiple choice question
+      multiple_choice_question: mcQuestion,
+      multiple_choice_options: options,
+      questionType: "multiple-choice",
+    });
+  }
+  
+  return nodes;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,11 +110,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Extract text content
+    let extractedText = textMaterial || "";
+    if (file) {
+      const buffer = await file.arrayBuffer();
+      extractedText = new TextDecoder().decode(buffer);
+    }
+
+    // Generate logic nodes from the actual user input
+    const logicNodes = generateLogicNodesFromText(extractedText, title);
+
     // Return Logic Nodes (Phase 0 output)
-    // In production, this would:
-    // 1. Extract content from input (text/url/file)
-    // 2. Strip entropy, identify invariants, create 7±2 nodes
-    // 3. Generate crisis scenarios and domino questions
     return NextResponse.json({
       success: true,
       source_title: title,
