@@ -91,7 +91,7 @@ export default function HeatmapPage() {
       `}</style>
       <Navbar />
 
-      <main role="main" style={{ padding: "48px 24px 80px", maxWidth: "1000px", margin: "0 auto" }}>
+      <main role="main" style={{ padding: "48px 24px 80px", maxWidth: "1200px", margin: "0 auto" }}>
         
         {/* Header */}
         <div style={{ marginBottom: "40px", animation: "slideUp 0.4s ease-out" }}>

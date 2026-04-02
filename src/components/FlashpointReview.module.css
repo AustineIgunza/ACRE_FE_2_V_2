@@ -34,7 +34,7 @@
 }
 
 .difficulty {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #ff5c35, #ff8c42);
   padding: 8px 16px;
   border-radius: 4px;
   color: white;
@@ -116,8 +116,8 @@
   align-items: center;
   gap: 15px;
   padding: 15px 20px;
-  background: rgba(102, 126, 234, 0.1);
-  border: 2px solid rgba(102, 126, 234, 0.3);
+  background: rgba(255, 92, 53, 0.1);
+  border: 2px solid rgba(255, 92, 53, 0.3);
   border-radius: 8px;
   color: #ffffff;
   cursor: pointer;
@@ -128,15 +128,15 @@
 }
 
 .option:hover {
-  background: rgba(102, 126, 234, 0.2);
-  border-color: rgba(102, 126, 234, 0.6);
+  background: rgba(255, 92, 53, 0.2);
+  border-color: rgba(255, 92, 53, 0.6);
   transform: translateX(5px);
 }
 
 .option.selected {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.4), rgba(118, 75, 162, 0.4));
-  border-color: #667eea;
-  box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, rgba(255, 92, 53, 0.4), rgba(255, 140, 66, 0.4));
+  border-color: #ff5c35;
+  box-shadow: 0 0 20px rgba(255, 92, 53, 0.4);
 }
 
 .optionCircle {
@@ -145,21 +145,21 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border: 2px solid rgba(102, 126, 234, 0.6);
+  border: 2px solid rgba(255, 92, 53, 0.6);
   border-radius: 50%;
   min-width: 24px;
   transition: all 0.3s ease;
 }
 
 .option.selected .optionCircle {
-  border-color: #667eea;
-  box-shadow: 0 0 10px rgba(102, 126, 234, 0.8);
+  border-color: #ff5c35;
+  box-shadow: 0 0 10px rgba(255, 92, 53, 0.8);
 }
 
 .optionDot {
   width: 10px;
   height: 10px;
-  background: #667eea;
+  background: #ff5c35;
   border-radius: 50%;
   animation: pulse 1s ease-in-out infinite;
 }
@@ -210,7 +210,7 @@
 .textarea {
   padding: 15px;
   background: rgba(0, 0, 0, 0.3);
-  border: 2px solid rgba(102, 126, 234, 0.3);
+  border: 2px solid rgba(255, 92, 53, 0.3);
   border-radius: 6px;
   color: #ffffff;
   font-family: "Space Mono", monospace;
@@ -222,9 +222,9 @@
 
 .textarea:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
-  background: rgba(102, 126, 234, 0.05);
+  border-color: #ff5c35;
+  box-shadow: 0 0 20px rgba(255, 92, 53, 0.3);
+  background: rgba(255, 92, 53, 0.05);
 }
 
 .textarea::placeholder {
@@ -241,7 +241,7 @@
 .questionInput {
   padding: 15px;
   background: rgba(0, 0, 0, 0.3);
-  border: 2px solid rgba(102, 126, 234, 0.3);
+  border: 2px solid rgba(255, 92, 53, 0.3);
   border-radius: 6px;
   color: #ffffff;
   font-family: "Space Mono", monospace;
@@ -251,9 +251,9 @@
 
 .questionInput:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
-  background: rgba(102, 126, 234, 0.05);
+  border-color: #ff5c35;
+  box-shadow: 0 0 20px rgba(255, 92, 53, 0.3);
+  background: rgba(255, 92, 53, 0.05);
 }
 
 .questionInput::placeholder {
@@ -263,7 +263,7 @@
 /* Buttons */
 .submitButton {
   padding: 12px 30px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #ff5c35, #ff8c42);
   border: 2px solid transparent;
   border-radius: 6px;
   color: white;
@@ -278,7 +278,7 @@
 
 .submitButton:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 20px rgba(255, 92, 53, 0.4);
 }
 
 .submitButton:disabled {
@@ -384,7 +384,7 @@
 
 .retryButton {
   padding: 12px 30px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #ff5c35, #ff8c42);
   border: 2px solid transparent;
   border-radius: 6px;
   color: white;
@@ -399,7 +399,7 @@
 
 .retryButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 20px rgba(255, 92, 53, 0.4);
 }
 
 .skipButton {
@@ -430,8 +430,8 @@
   left: 20px;
   width: 40px;
   height: 40px;
-  background: rgba(102, 126, 234, 0.2);
-  border: 2px solid rgba(102, 126, 234, 0.4);
+  background: rgba(255, 92, 53, 0.2);
+  border: 2px solid rgba(255, 92, 53, 0.4);
   border-radius: 50%;
   color: #ffffff;
   font-size: 24px;
@@ -443,9 +443,9 @@
 }
 
 .closeButton:hover {
-  background: rgba(102, 126, 234, 0.4);
-  border-color: #667eea;
-  box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
+  background: rgba(255, 92, 53, 0.4);
+  border-color: #ff5c35;
+  box-shadow: 0 0 15px rgba(255, 92, 53, 0.5);
   transform: rotate(90deg);
 }
 
