@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import { useArceStore } from "@/store/arceStore";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import RetryNodeModal from "@/components/RetryNodeModal";
 
 export default function HeatmapPage() {
   const { user, authInitialized, initAuth, fetchProgress, userProgress, progressDetails, nodeResults, scenarios } = useArceStore();
   const router = useRouter();
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedNodeData, setSelectedNodeData] = useState<any>(null);
+  const [isRetryModalOpen, setIsRetryModalOpen] = useState(false);
 
   useEffect(() => {
     initAuth();
@@ -21,6 +24,18 @@ export default function HeatmapPage() {
       fetchProgress();
     }
   }, [user, authInitialized, router, fetchProgress]);
+
+  const handleNodeClick = (nodeId: string, nodeData: any) => {
+    setSelectedNode(nodeId);
+    setSelectedNodeData(nodeData);
+    setIsRetryModalOpen(true);
+  };
+
+  const handleRetrySuccess = (result: any) => {
+    console.log("Review completed:", result);
+    // Refresh progress after successful review
+    fetchProgress();
+  };
 
   if (!authInitialized || !user) {
     return (
@@ -156,7 +171,10 @@ export default function HeatmapPage() {
                       return (
                         <div
                           key={node.nodeId}
-                          onClick={() => needsGlow && setSelectedNode(node.nodeId)}
+                          onClick={() => {
+                            const needsGlow = thermalState === "frost" || thermalState === "warning";
+                            if (needsGlow) handleNodeClick(node.nodeId, node);
+                          }}
                           style={{
                             padding: "16px",
                             borderRadius: "12px",
@@ -264,7 +282,11 @@ export default function HeatmapPage() {
                   return (
                     <div
                       key={node.nodeId}
-                      onClick={() => needsGlow && setSelectedNode(node.nodeId)}
+                      onClick={() => {
+                        const thermalState = getThermalState(node.heatScore);
+                        const needsGlow = thermalState === "frost" || thermalState === "warning";
+                        if (needsGlow) handleNodeClick(node.nodeId, node);
+                      }}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -367,6 +389,22 @@ export default function HeatmapPage() {
           </div>
         )}
       </main>
+
+      {/* Retry Node Modal */}
+      {selectedNodeData && (
+        <RetryNodeModal
+          nodeId={selectedNodeData.nodeId}
+          nodeName={selectedNodeData.title || selectedNodeData.nodeId}
+          heatScore={selectedNodeData.heatScore}
+          isOpen={isRetryModalOpen}
+          onClose={() => {
+            setIsRetryModalOpen(false);
+            setSelectedNode(null);
+            setSelectedNodeData(null);
+          }}
+          onSuccess={handleRetrySuccess}
+        />
+      )}
     </div>
   );
 }

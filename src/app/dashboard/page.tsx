@@ -187,31 +187,46 @@ export default function DashboardPage() {
               gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", 
               gap: "12px"
             }}>
-              {Object.entries(nodeResults || {}).map(([nodeId, result]) => (
-                <div 
-                  key={nodeId}
-                  className="folio-card" 
-                  style={{ 
-                    padding: "16px", 
-                    textAlign: "center",
-                    borderLeft: `4px solid ${
-                      result.accuracy === 'ignition' ? '#22c55e' : 
-                      result.accuracy === 'warning' ? '#f59e0b' : '#3b82f6'
-                    }`
-                  }}
-                >
-                  <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--t-muted)", marginBottom: "8px" }}>
-                    {nodeId.replace(/^(node|scenario)[-_]?/i, '').toUpperCase()}
+              {Object.entries(nodeResults || {}).map(([nodeId, result]) => {
+                const accuracyColor = result.accuracy === 'ignition' ? '#22c55e' : 
+                                    result.accuracy === 'warning' ? '#f59e0b' : '#3b82f6';
+                return (
+                  <div 
+                    key={nodeId}
+                    className="folio-card" 
+                    onClick={() => {
+                      // Navigate to heatmap to allow retry
+                      router.push(`/heatmap?nodeId=${nodeId}`);
+                    }}
+                    style={{ 
+                      padding: "16px", 
+                      textAlign: "center",
+                      borderLeft: `4px solid ${accuracyColor}`,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                      (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 16px ${accuracyColor}20`;
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                      (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
+                    }}
+                  >
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--t-muted)", marginBottom: "8px" }}>
+                      {nodeId.replace(/^(node|scenario)[-_]?/i, '').toUpperCase()}
+                    </div>
+                    <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--snap)", marginBottom: "4px" }}>
+                      {result.heatScore}%
+                    </div>
+                    <div style={{ fontSize: "11px", color: "var(--t-secondary)" }}>
+                      {result.accuracy === 'ignition' ? '🔥 Mastered' : 
+                       result.accuracy === 'warning' ? '⚠️ Progress' : '❄️ Learning'}
+                    </div>
                   </div>
-                  <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--snap)", marginBottom: "4px" }}>
-                    {result.heatScore}%
-                  </div>
-                  <div style={{ fontSize: "11px", color: "var(--t-secondary)" }}>
-                    {result.accuracy === 'ignition' ? '🔥 Mastered' : 
-                     result.accuracy === 'warning' ? '⚠️ Progress' : '❄️ Learning'}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </motion.div>
         )}
