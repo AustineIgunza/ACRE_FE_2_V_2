@@ -645,8 +645,33 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       
       const updatedNodeResults = {
         ...state.nodeResults,
-        [nodeId]: { accuracy: result.accuracy, heatScore, feedback: result.feedback }
+        [nodeId]: { accuracy: result.accuracy, heatScore, feedback: result.feedback, thermalState: result.thermalState }
       };
+
+      // Save to Supabase if user is authenticated
+      if (state.user) {
+        try {
+          const { error: saveError } = await supabase
+            .from('user_progress')
+            .upsert(
+              {
+                user_id: state.user.id,
+                node_id: nodeId,
+                heat_score: heatScore,
+                thermal_state: result.accuracy || result.thermalState,
+                is_ignited: result.accuracy === "ignition",
+                last_attempt: new Date().toISOString(),
+              },
+              { onConflict: 'user_id,node_id' }
+            );
+
+          if (saveError) {
+            console.warn("Warning saving to user_progress:", saveError);
+          }
+        } catch (err) {
+          console.warn("Error saving progress to Supabase:", err);
+        }
+      }
 
       // Advance to Phase 2: Breakthrough Transition
       set({

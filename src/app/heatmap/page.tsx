@@ -89,8 +89,12 @@ export default function HeatmapPage() {
     <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh", color: "var(--t-mid)" }}>
       <style>{`
         @keyframes glow {
-          0%, 100% { box-shadow: 0 0 16px currentColor40; }
-          50% { box-shadow: 0 0 24px currentColor60; }
+          0%, 100% { box-shadow: 0 0 16px currentColor40, inset 0 0 8px currentColor15; }
+          50% { box-shadow: 0 0 32px currentColor60, inset 0 0 12px currentColor25; }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-4px); }
         }
         @keyframes pulse {
           0%, 100% { opacity: 0.4; }
@@ -204,35 +208,50 @@ export default function HeatmapPage() {
                             (e.currentTarget as HTMLElement).style.boxShadow = "none";
                           }}
                         >
-                          {/* Background glow effect */}
+                          {/* Background glow effect - Enhanced */}
                           {needsGlow && (
-                            <div style={{
-                              position: "absolute",
-                              inset: 0,
-                              background: `radial-gradient(circle, ${nodeColor}10, transparent 70%)`,
-                              animation: `pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
-                              pointerEvents: "none",
-                            }} />
+                            <>
+                              {/* Outer glow ring */}
+                              <div style={{
+                                position: "absolute",
+                                inset: "-8px",
+                                borderRadius: "12px",
+                                background: `radial-gradient(circle at center, ${nodeColor}25, transparent 60%)`,
+                                animation: `glow 3s ease-in-out infinite`,
+                                pointerEvents: "none",
+                                zIndex: 0,
+                              }} />
+                              {/* Inner pulsing layer */}
+                              <div style={{
+                                position: "absolute",
+                                inset: 0,
+                                background: `radial-gradient(circle, ${nodeColor}15, transparent 70%)`,
+                                animation: `pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
+                                pointerEvents: "none",
+                                zIndex: 0,
+                              }} />
+                            </>
                           )}
 
                           {/* Content */}
                           <div style={{ zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                            {/* Icon */}
+                            {/* Icon with enhanced glow */}
                             <div style={{
-                              width: "52px", height: "52px", borderRadius: "10px",
-                              backgroundColor: needsGlow ? nodeColor + "15" : "transparent",
+                              width: "60px", height: "60px", borderRadius: "12px",
+                              backgroundColor: needsGlow ? nodeColor + "20" : "transparent",
                               color: nodeColor,
                               display: "flex", alignItems: "center", justifyContent: "center",
-                              fontSize: "24px", fontWeight: 700,
-                              border: `2px solid ${nodeColor}`,
-                              boxShadow: needsGlow ? `0 0 16px ${nodeColor}40` : "none",
-                              animation: needsGlow ? `glow 2s ease-in-out infinite` : "none",
+                              fontSize: "32px", fontWeight: 700,
+                              border: `3px solid ${nodeColor}`,
+                              boxShadow: needsGlow ? `0 0 12px ${nodeColor}60, inset 0 0 8px ${nodeColor}20` : "none",
+                              animation: needsGlow ? `glow 2.5s ease-in-out infinite, float 3s ease-in-out infinite` : "none",
+                              transition: "all 0.3s ease",
                             }}>
-                              {node.isIgnited ? "🔥" : needsGlow ? "⚡" : "○"}
+                              {node.isIgnited ? "🔥" : thermalState === "warning" ? "⚠️" : thermalState === "frost" ? "❄️" : "○"}
                             </div>
 
                             {/* Title */}
-                            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--t-deep)", lineHeight: 1.3 }}>
+                            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--t-deep)", lineHeight: 1.3, textAlign: "center" }}>
                               {node.nodeId
                                 .replace(/^(node|scenario|concept)[-_]?/i, "")
                                 .replace(/[-_]/g, " ")
@@ -243,7 +262,7 @@ export default function HeatmapPage() {
 
                             {/* Heat Score */}
                             <div style={{ 
-                              fontSize: "18px", 
+                              fontSize: "20px", 
                               fontWeight: 700, 
                               color: nodeColor,
                               marginTop: "4px"

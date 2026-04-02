@@ -25,6 +25,7 @@ export default function RetryNodeModal({
   const [isReviewing, setIsReviewing] = useState(false);
   const [reviewData, setReviewData] = useState<any>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewResult, setReviewResult] = useState<any>(null);
 
   const handleStartReview = async () => {
     setReviewLoading(true);
@@ -54,7 +55,32 @@ export default function RetryNodeModal({
   };
 
   const handleCompleteReview = async (result: any) => {
-    setIsReviewing(false);
+    // Save review result
+    setReviewResult(result);
+    
+    // Update heat score if successful
+    if (result.success || result.accuracy === "ignition") {
+      try {
+        const response = await fetch("/api/user/update-progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user?.id,
+            nodeId: nodeId,
+            heatScore: Math.min(100, heatScore + (result.score || 20)),
+            thermalState: result.accuracy || "ignition",
+            isIgnited: true,
+          }),
+        });
+        
+        if (response.ok) {
+          console.log("Review progress saved");
+        }
+      } catch (err) {
+        console.warn("Error saving review progress:", err);
+      }
+    }
+    
     if (onSuccess) {
       onSuccess(result);
     }
@@ -320,7 +346,7 @@ export default function RetryNodeModal({
               </div>
             ) : (
               // Review Component - Show result or loading
-              <div style={{ padding: "32px 24px" }}>
+              <div style={{ padding: "32px 24px", minHeight: "400px" }}>
                 <button
                   onClick={() => setIsReviewing(false)}
                   style={{
@@ -366,15 +392,176 @@ export default function RetryNodeModal({
                     }} />
                     <p style={{ color: "var(--t-muted)", fontWeight: 600 }}>Loading review scenario...</p>
                   </div>
-                ) : (
-                  <div>
-                    <h3 style={{ color: "var(--t-primary)", marginBottom: "20px" }}>
-                      Review Session for: {nodeName}
+                ) : reviewResult ? (
+                  // Show result feedback
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    style={{
+                      textAlign: "center",
+                      padding: "40px 24px",
+                    }}
+                  >
+                    <div style={{
+                      fontSize: "64px",
+                      marginBottom: "20px",
+                    }}>
+                      {reviewResult.success || reviewResult.score >= 70 ? "✨" : reviewResult.score >= 50 ? "🌟" : "💡"}
+                    </div>
+                    
+                    <h3 style={{ 
+                      fontSize: "24px", 
+                      fontWeight: 700, 
+                      color: reviewResult.success || reviewResult.score >= 70 ? "#22c55e" : "#f59e0b",
+                      marginBottom: "16px" 
+                    }}>
+                      {reviewResult.success || reviewResult.score >= 70 ? "Excellent!" : reviewResult.score >= 50 ? "Good Effort!" : "Keep Learning"}
                     </h3>
-                    <p style={{ color: "var(--t-muted)", marginBottom: "20px" }}>
-                      Review component will be embedded here.
+                    
+                    <p style={{ 
+                      fontSize: "16px", 
+                      color: "var(--t-mid)", 
+                      lineHeight: 1.6,
+                      marginBottom: "24px",
+                      fontWeight: 600
+                    }}>
+                      {reviewResult.feedback || "Your response has been evaluated."}
                     </p>
-                  </div>
+
+                    {/* Score Display */}
+                    <div style={{
+                      padding: "16px",
+                      borderRadius: "8px",
+                      backgroundColor: "var(--p-surface)",
+                      border: "1px solid var(--p-border)",
+                      marginBottom: "24px",
+                    }}>
+                      <p style={{ fontSize: "12px", color: "var(--t-muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                        Score
+                      </p>
+                      <div style={{ fontSize: "32px", fontWeight: 700, color: "#ff5c35" }}>
+                        {reviewResult.score}%
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setReviewResult(null);
+                        setIsReviewing(false);
+                        onClose();
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "12px 24px",
+                        borderRadius: "10px",
+                        border: "none",
+                        backgroundColor: "#ff5c35",
+                        color: "white",
+                        fontWeight: 700,
+                        fontSize: "13px",
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Close & Return
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <h3 style={{ color: "var(--t-primary)", marginBottom: "16px", fontSize: "20px", fontWeight: 700 }}>
+                      Scenario Challenge: {nodeName}
+                    </h3>
+                    
+                    {/* Crisis Scenario */}
+                    {reviewData.scenario && (
+                      <div style={{ marginBottom: "24px", padding: "16px", borderRadius: "8px", backgroundColor: "var(--p-surface)", border: "1px solid var(--p-border)" }}>
+                        <h4 style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", color: "var(--t-muted)", marginBottom: "8px", letterSpacing: "0.5px" }}>
+                          The Situation
+                        </h4>
+                        <p style={{ color: "var(--t-mid)", lineHeight: 1.6, marginBottom: "12px" }}>
+                          {reviewData.scenario}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Question to Answer */}
+                    {reviewData.question && (
+                      <div style={{ marginBottom: "24px", padding: "16px", borderRadius: "8px", backgroundColor: "rgba(255, 92, 53, 0.08)", border: "1px solid rgba(255, 92, 53, 0.2)" }}>
+                        <h4 style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", color: "#ff5c35", marginBottom: "8px", letterSpacing: "0.5px" }}>
+                          Your Challenge
+                        </h4>
+                        <p style={{ color: "var(--t-primary)", lineHeight: 1.6, fontWeight: 600 }}>
+                          {reviewData.question}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Answer Input */}
+                    <div style={{ marginBottom: "24px" }}>
+                      <textarea
+                        id="reviewAnswer"
+                        placeholder="Type your answer here... Explain your thinking step by step."
+                        style={{
+                          width: "100%",
+                          minHeight: "120px",
+                          padding: "12px",
+                          borderRadius: "8px",
+                          border: "1px solid var(--p-border)",
+                          backgroundColor: "var(--p-surface)",
+                          color: "var(--t-primary)",
+                          fontFamily: "inherit",
+                          fontSize: "14px",
+                          lineHeight: 1.6,
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+
+                    {/* Submit Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={async () => {
+                        const textarea = document.getElementById("reviewAnswer") as HTMLTextAreaElement;
+                        if (textarea && textarea.value.trim()) {
+                          // Call evaluation endpoint
+                          const evalResponse = await fetch("/api/flashpoint/evaluate-response", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              phase: reviewData.phase || "phase-1",
+                              userResponse: textarea.value,
+                              evaluationRubric: reviewData.evaluationRubric || "",
+                            }),
+                          });
+                          
+                          const result = await evalResponse.json();
+                          handleCompleteReview(result);
+                        }
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "14px 24px",
+                        borderRadius: "10px",
+                        border: "none",
+                        backgroundColor: "#ff5c35",
+                        color: "white",
+                        fontWeight: 700,
+                        fontSize: "13px",
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Submit Answer
+                    </motion.button>
+                  </motion.div>
                 )}
               </div>
             )}

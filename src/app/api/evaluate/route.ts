@@ -32,10 +32,72 @@ function isGibberish(text: string): boolean {
   return false;
 }
 
+// Extract key concepts from the question/scenario context
+function extractConceptsFromQuestion(question: string): string[] {
+  // Split into words, remove common words, and extract potential concepts
+  const stopWords = new Set(["the", "a", "an", "is", "are", "what", "when", "where", "why", "how", "what", "describe", "explain", "walk", "through", "me", "step", "by", "and", "or", "in", "of", "to", "for"]);
+  
+  const words = question.toLowerCase()
+    .split(/[\s\.,!?;:]+/)
+    .filter(w => w.length > 3 && !stopWords.has(w));
+  
+  return [...new Set(words)]; // Deduplicate
+}
+
+// Semantic similarity: Count how many key words from question appear in prediction
+function calculateSemanticScore(prediction: string, question: string): number {
+  const predictionWords = new Set(prediction.toLowerCase().split(/[\s\.,!?;:]+/));
+  const concepts = extractConceptsFromQuestion(question);
+  
+  let matchCount = 0;
+  for (const concept of concepts) {
+    if (predictionWords.has(concept)) {
+      matchCount++;
+    }
+  }
+  
+  // Score: what percentage of key concepts were mentioned
+  return concepts.length > 0 ? (matchCount / concepts.length) * 100 : 0;
+}
+
+// Check for causal/chain reasoning indicators
+function calculateCausalReasoningScore(prediction: string): number {
+  const causalPhrases = [
+    "causes", "leads to", "results in", "results", "triggers", "initiates",
+    "then", "therefore", "because", "due to", "as a result", "consequence",
+    "effect", "impact", "cascade", "chain", "follows", "sequence",
+    "chain reaction", "domino", "spreads", "propagates", "escalates"
+  ];
+  
+  const predictionLower = prediction.toLowerCase();
+  let causalCount = 0;
+  
+  for (const phrase of causalPhrases) {
+    if (predictionLower.includes(phrase)) {
+      causalCount++;
+    }
+  }
+  
+  // Maximum of 40% based on causal phrases (at least need semantic score)
+  return Math.min(40, (causalCount / causalPhrases.length) * 100);
+}
+
+// Check for depth and detail
+function calculateDetailScore(prediction: string): number {
+  const sentences = prediction.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const avgWordsPerSentence = prediction.split(/\s+/).length / sentences.length;
+  
+  // Prefer longer, more detailed answers
+  if (avgWordsPerSentence < 10) return 10; // Too short
+  if (avgWordsPerSentence < 20) return 30; // Minimal detail
+  if (avgWordsPerSentence < 40) return 60; // Good detail
+  return 100; // Excellent detail
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { nodeId, prediction, question } = body;
+    const { nodeId, prediction, question, originalText } = body;
 
     console.log("Evaluating:", { nodeId, prediction, question });
 
@@ -52,84 +114,43 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Define expected keywords/concepts for each node
-    const nodeKeywords: Record<string, { keywords: string[]; concepts: string[] }> = {
-      "node-001": {
-        keywords: ["membrane", "permeable", "gradient", "ion", "osmotic", "selective", "diffusion", "active transport"],
-        concepts: ["cell death", "lysis", "equilibration", "concentration gradient", "Na+", "K+", "homeostasis"],
-      },
-      "node-002": {
-        keywords: ["ATP", "energy", "mitochondria", "metabolic", "glucose", "respiration", "damage", "protein synthesis"],
-        concepts: ["cellular death", "energy collapse", "organ failure", "metabolic shutdown", "starvation", "organ damage"],
-      },
-      "node-003": {
-        keywords: ["mutation", "accuracy", "replication", "speed", "error", "cancer", "division", "DNA", "genetic"],
-        concepts: ["genetic instability", "cancer", "evolution", "selection pressure", "mutation rate", "fidelity"],
-      },
-      "node-004": {
-        keywords: ["photon", "electron", "ROS", "reactive oxygen", "damage", "thermal", "energy conversion", "ATP", "NADPH"],
-        concepts: ["oxidative stress", "membrane damage", "protein damage", "photoinhibition", "excess energy", "heat"],
-      },
-      "node-005": {
-        keywords: ["osmotic", "water", "solute", "hypotonic", "lysis", "pressure", "ion", "equilibrium", "active regulation"],
-        concepts: ["cell rupture", "swelling", "pressure gradient", "ion pumps", "regulatory volume decrease", "turgor"],
-      },
-    };
+    // Use dynamic evaluation based on the actual question/scenario
+    const semanticScore = calculateSemanticScore(prediction, question || "");
+    const causalScore = calculateCausalReasoningScore(prediction);
+    const detailScore = calculateDetailScore(prediction);
+    
+    // Weighted score: 40% semantic, 40% causal reasoning, 20% detail
+    const overallScore = (semanticScore * 0.4) + (causalScore * 0.4) + (detailScore * 0.2);
 
-    const nodeConfig = nodeKeywords[nodeId] || nodeKeywords["node-001"];
-    const predictionLower = prediction.toLowerCase();
+    console.log("Scoring:", { semanticScore, causalScore, detailScore, overallScore });
 
-    // Score based on keyword presence and concept coverage
-    let score = 0;
-    let foundKeywords = 0;
-    let foundConcepts = 0;
-
-    // Check for keywords (core vocabulary)
-    for (const keyword of nodeConfig.keywords) {
-      if (predictionLower.includes(keyword)) {
-        foundKeywords++;
-      }
-    }
-
-    // Check for concepts (deeper understanding)
-    for (const concept of nodeConfig.concepts) {
-      if (predictionLower.includes(concept)) {
-        foundConcepts++;
-      }
-    }
-
-    // Calculate accuracy
-    const keywordScore = (foundKeywords / nodeConfig.keywords.length) * 100;
-    const conceptScore = (foundConcepts / nodeConfig.concepts.length) * 100;
-    const overallScore = (keywordScore * 0.6 + conceptScore * 0.4); // Weight keywords more heavily
-
-    console.log("Scoring:", { keywordScore, conceptScore, overallScore, foundKeywords, foundConcepts });
-
-    // Determine accuracy level with more granular feedback
-    let accuracy = "frost";
+    // Determine thermal state with granular feedback based on actual score ranges
+    let accuracy: "ignition" | "warning" | "frost" = "frost";
     let feedback = "The answer doesn't show sufficient understanding of the causal chain.";
 
-    if (overallScore >= 70) {
+    if (overallScore >= 75) {
       accuracy = "ignition";
-      feedback = "Excellent prediction! You've identified the key cascade and consequences.";
-    } else if (overallScore >= 45) {
+      feedback = "🔥 Excellent! You've identified the key cascade and traced the chain reactions clearly. Your causal reasoning is outstanding.";
+    } else if (overallScore >= 60) {
       accuracy = "warning";
-      feedback = "Good understanding, but you missed some key implications in the domino chain.";
-    } else if (overallScore >= 25) {
+      feedback = "⚠️ Good understanding! You identified the core mechanism, but could strengthen the causal chain. Try adding more steps to show how one event leads to the next.";
+    } else if (overallScore >= 40) {
       accuracy = "frost";
-      feedback = "You identified some elements, but the causal logic needs more development. Try again.";
+      feedback = "❄️ You're on the right track and identified some key elements, but the causal logic needs more development. Show me how each step leads to the next consequence.";
     } else {
       accuracy = "frost";
-      feedback = "The response doesn't adequately trace the domino effect. Review the mechanism and try again.";
+      feedback = "❄️ The response doesn't adequately trace the domino effect. Try to identify the initial trigger, then show step-by-step how it cascades. Review the mechanism and try again.";
     }
 
     return NextResponse.json({
       accuracy,
       feedback,
       score: Math.round(overallScore),
+      thermalState: accuracy,
       details: {
-        keywordsFound: foundKeywords,
-        conceptsFound: foundConcepts,
+        semanticRelevance: Math.round(semanticScore),
+        causalReasoning: Math.round(causalScore),
+        detail: Math.round(detailScore),
       }
     });
   } catch (error) {
