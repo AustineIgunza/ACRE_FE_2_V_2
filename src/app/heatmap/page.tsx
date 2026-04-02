@@ -122,10 +122,137 @@ export default function HeatmapPage() {
           </div>
         </div>
 
-        {/* Node List from Database */}
+        {/* Node Grid Heatmap with Dynamic Grid Size */}
         {displayNodes.length > 0 ? (
           <div style={{ animation: "slideUp 0.6s ease-out" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "16px" }}>All Concept Nodes</h3>
+            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "16px" }}>Mastery Heatmap Grid</h3>
+            
+            {/* Calculate optimal grid size (2x2, 3x3, 4x4, etc.) */}
+            {(() => {
+              const nodeCount = displayNodes.length;
+              // Determine optimal grid columns: sqrt(nodeCount) rounded appropriately
+              let cols = Math.ceil(Math.sqrt(nodeCount));
+              // Ensure at least 2x2 and cap at reasonable size (6x6)
+              cols = Math.min(Math.max(cols, 2), 6);
+              
+              return (
+                <div 
+                  className="folio-card"
+                  style={{ 
+                    padding: "24px", 
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                    gap: "16px",
+                    marginBottom: "32px",
+                  }}
+                >
+                  {displayNodes
+                    .sort((a: any, b: any) => b.heatScore - a.heatScore)
+                    .map((node: any) => {
+                      const thermalState = getThermalState(node.heatScore);
+                      const nodeColor = getHeatColor(node.heatScore);
+                      const needsGlow = thermalState === "frost" || thermalState === "warning";
+                      
+                      return (
+                        <div
+                          key={node.nodeId}
+                          onClick={() => needsGlow && setSelectedNode(node.nodeId)}
+                          style={{
+                            padding: "16px",
+                            borderRadius: "12px",
+                            backgroundColor: selectedNode === node.nodeId ? "rgba(255, 92, 53, 0.15)" : "var(--p-frost)",
+                            border: `2px solid ${selectedNode === node.nodeId ? nodeColor : "var(--p-border)"}`,
+                            cursor: needsGlow ? "pointer" : "default",
+                            transition: "all 0.3s ease",
+                            position: "relative",
+                            overflow: "hidden",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            textAlign: "center",
+                            minHeight: "140px",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (needsGlow) {
+                              (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255, 92, 53, 0.1)";
+                              (e.currentTarget as HTMLElement).style.transform = "scale(1.05)";
+                              (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${nodeColor}40`;
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.backgroundColor = selectedNode === node.nodeId ? "rgba(255, 92, 53, 0.15)" : "var(--p-frost)";
+                            (e.currentTarget as HTMLElement).style.transform = "scale(1)";
+                            (e.currentTarget as HTMLElement).style.boxShadow = "none";
+                          }}
+                        >
+                          {/* Background glow effect */}
+                          {needsGlow && (
+                            <div style={{
+                              position: "absolute",
+                              inset: 0,
+                              background: `radial-gradient(circle, ${nodeColor}10, transparent 70%)`,
+                              animation: `pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
+                              pointerEvents: "none",
+                            }} />
+                          )}
+
+                          {/* Content */}
+                          <div style={{ zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                            {/* Icon */}
+                            <div style={{
+                              width: "52px", height: "52px", borderRadius: "10px",
+                              backgroundColor: needsGlow ? nodeColor + "15" : "transparent",
+                              color: nodeColor,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: "24px", fontWeight: 700,
+                              border: `2px solid ${nodeColor}`,
+                              boxShadow: needsGlow ? `0 0 16px ${nodeColor}40` : "none",
+                              animation: needsGlow ? `glow 2s ease-in-out infinite` : "none",
+                            }}>
+                              {node.isIgnited ? "🔥" : needsGlow ? "⚡" : "○"}
+                            </div>
+
+                            {/* Title */}
+                            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--t-deep)", lineHeight: 1.3 }}>
+                              {node.nodeId
+                                .replace(/^(node|scenario|concept)[-_]?/i, "")
+                                .replace(/[-_]/g, " ")
+                                .replace(/\b\w/g, (c: string) => c.toUpperCase())
+                                .substring(0, 20) + (node.nodeId.length > 20 ? "..." : "")
+                                || `Concept`}
+                            </span>
+
+                            {/* Heat Score */}
+                            <div style={{ 
+                              fontSize: "18px", 
+                              fontWeight: 700, 
+                              color: nodeColor,
+                              marginTop: "4px"
+                            }}>
+                              {node.heatScore}%
+                            </div>
+
+                            {/* State Badge */}
+                            <div style={{ 
+                              fontSize: "10px", 
+                              color: nodeColor, 
+                              textTransform: "uppercase",
+                              fontWeight: 600,
+                              letterSpacing: "0.5px"
+                            }}>
+                              {thermalState}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              );
+            })()}
+
+            {/* List view below grid */}
+            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "16px", marginTop: "32px" }}>Detailed View</h3>
             <div className="folio-card" style={{ padding: "0", overflow: "hidden" }}>
               {displayNodes
                 .sort((a: any, b: any) => b.heatScore - a.heatScore)

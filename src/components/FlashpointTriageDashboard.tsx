@@ -41,18 +41,30 @@ export default function FlashpointTriageDashboard({ userId, onSelectReview }: Pr
   const fetchDueReviews = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/flashpoint/due-reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: userId || 'demo-user',
-          conceptTrackings: [],
-        }),
-      });
-
+      // Use GET with userId query param — API implemented as GET
+      const uid = encodeURIComponent(userId || 'demo-user');
+      const response = await fetch(`/api/flashpoint/due-reviews?userId=${uid}`);
       const data = await response.json();
-      setDueReviews(data.dueToday || []);
-      setStats(data.statistics || null);
+
+      // API may return { due_reviews: [...] } or { dueToday: [...] } depending on implementation
+      const due = data.due_reviews || data.dueToday || [];
+      setDueReviews(due || []);
+
+      // Build lightweight stats if API didn't return statistics
+      if (data.statistics) {
+        setStats(data.statistics);
+      } else {
+        const total = due.length;
+        const mastered = due.filter((d: any) => d.current_interval && d.current_interval > 30).length;
+        const avgSuccess = total > 0 ? Math.round((due.reduce((s: number, r: any) => s + (r.successRate || 75), 0) / total)) : 100;
+        setStats({
+          totalConcepts: total,
+          conceptsDueToday: total,
+          masteredConcepts: mastered,
+          needsReviewConcepts: total - mastered,
+          averageSuccessRate: avgSuccess,
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch due reviews:', error);
     } finally {
