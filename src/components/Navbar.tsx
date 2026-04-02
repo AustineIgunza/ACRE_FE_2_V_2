@@ -46,7 +46,7 @@ export default function Navbar() {
     >
       {/* Logo + Nav Links */}
       <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
-        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none", transition: "transform 0.2s ease" }}
+        <Link href="/learn" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none", transition: "transform 0.2s ease" }}
           onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
           onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}>
           <span className="nav-logo-accent" />
