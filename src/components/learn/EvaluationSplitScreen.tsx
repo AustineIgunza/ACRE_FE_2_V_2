@@ -15,22 +15,44 @@ function renderLatex(formula: string): string {
 }
 
 export default function EvaluationSplitScreen() {
-  const { currentScenario, isLoading } = useArceStore();
+  const { currentScenario, isLoading, submitDefense } = useArceStore();
   const [stressResponse, setStressResponse] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [validationFeedback, setValidationFeedback] = useState<string>("");
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
   if (!currentScenario) return null;
 
   const latexHtml = renderLatex(currentScenario.latexFormula || "");
 
-  const handleStressSubmit = () => {
+  const handleStressSubmit = async () => {
     setSubmitted(true);
-    console.log("Stress test submitted, advancing to synchronization in 2s...");
-    // After a brief moment, synchronize
-    setTimeout(() => {
-      console.log("Setting phase to synchronization");
-      useArceStore.setState({ currentPhase: "synchronization" });
-    }, 2000);
+    console.log("Stress test submitted, validating response...");
+    
+    try {
+      // Call submitDefense to validate the user's answer
+      const result = await submitDefense(stressResponse);
+      
+      if (result) {
+        setValidationFeedback(result.feedback);
+        setIsCorrect(result.thermalState === "ignition" || result.thermalState === "warning");
+        console.log("Validation result:", { thermalState: result.thermalState, feedback: result.feedback });
+      }
+      
+      // After showing feedback, advance to synchronization
+      setTimeout(() => {
+        console.log("Advancing to synchronization phase");
+        useArceStore.setState({ currentPhase: "synchronization" });
+      }, 2500);
+    } catch (error) {
+      console.error("Error during answer validation:", error);
+      setValidationFeedback("⚠️ Error validating response. Please try again.");
+      setIsCorrect(false);
+      
+      setTimeout(() => {
+        useArceStore.setState({ currentPhase: "synchronization" });
+      }, 2500);
+    }
   };
 
   return (
@@ -172,15 +194,17 @@ export default function EvaluationSplitScreen() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleStressSubmit}
+              disabled={isLoading || stressResponse.trim().length === 0}
               style={{
                 marginTop: "16px", width: "100%",
                 padding: "14px 32px", fontSize: "13px", fontWeight: 700,
                 letterSpacing: "1px", textTransform: "uppercase",
                 color: "#fff", backgroundColor: "#ff5c35",
-                border: "none", borderRadius: "10px", cursor: "pointer",
+                border: "none", borderRadius: "10px", cursor: isLoading ? "not-allowed" : "pointer",
+                opacity: isLoading ? 0.6 : 1,
               }}
             >
-              COMPLETE NODE
+              {isLoading ? "VALIDATING..." : "COMPLETE NODE"}
             </motion.button>
           </motion.div>
         ) : (
@@ -190,26 +214,62 @@ export default function EvaluationSplitScreen() {
             style={{
               padding: "20px",
               borderRadius: "12px",
-              backgroundColor: "rgba(34,197,94,0.1)",
-              border: "1px solid rgba(34,197,94,0.2)",
+              backgroundColor: isCorrect 
+                ? "rgba(34,197,94,0.1)" 
+                : isCorrect === false 
+                ? "rgba(239,68,68,0.1)"
+                : "rgba(34,197,94,0.1)",
+              border: isCorrect
+                ? "1px solid rgba(34,197,94,0.2)"
+                : isCorrect === false
+                ? "1px solid rgba(239,68,68,0.2)"
+                : "1px solid rgba(34,197,94,0.2)",
               textAlign: "center",
             }}
           >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "50%",
-                border: "3px solid rgba(34,197,94,0.3)",
-                borderTopColor: "#22c55e",
-                margin: "0 auto 12px",
-              }}
-            />
-            <p style={{ color: "#22c55e", fontWeight: 700, fontSize: "14px", margin: 0 }}>
-              ✓ Synchronizing...
-            </p>
+            {validationFeedback ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <p style={{
+                  color: isCorrect ? "#22c55e" : isCorrect === false ? "#ef4444" : "#22c55e",
+                  fontWeight: 700,
+                  fontSize: "14px",
+                  margin: "0 0 8px 0",
+                  whiteSpace: "pre-wrap",
+                }}>
+                  {validationFeedback}
+                </p>
+                <p style={{
+                  color: "rgba(255,255,255,0.5)",
+                  fontSize: "12px",
+                  margin: 0,
+                  fontStyle: "italic",
+                }}>
+                  Advancing to next phase...
+                </p>
+              </motion.div>
+            ) : (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    border: "3px solid rgba(34,197,94,0.3)",
+                    borderTopColor: "#22c55e",
+                    margin: "0 auto 12px",
+                  }}
+                />
+                <p style={{ color: "#22c55e", fontWeight: 700, fontSize: "14px", margin: 0 }}>
+                  ✓ Validating Response...
+                </p>
+              </>
+            )}
           </motion.div>
         )}
       </motion.div>
