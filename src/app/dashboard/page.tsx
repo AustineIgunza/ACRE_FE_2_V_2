@@ -176,6 +176,45 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
+        {/* Recent Progress Section */}
+        {Object.keys(nodeResults || {}).length > 0 && (
+          <motion.div style={{ gridColumn: "1 / -1", marginBottom: "20px" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "16px" }}>
+              📊 Recent Learning Progress
+            </h2>
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", 
+              gap: "12px"
+            }}>
+              {Object.entries(nodeResults || {}).map(([nodeId, result]) => (
+                <div 
+                  key={nodeId}
+                  className="folio-card" 
+                  style={{ 
+                    padding: "16px", 
+                    textAlign: "center",
+                    borderLeft: `4px solid ${
+                      result.accuracy === 'ignition' ? '#22c55e' : 
+                      result.accuracy === 'warning' ? '#f59e0b' : '#3b82f6'
+                    }`
+                  }}
+                >
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--t-muted)", marginBottom: "8px" }}>
+                    {nodeId.replace(/^(node|scenario)[-_]?/i, '').toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--snap)", marginBottom: "4px" }}>
+                    {result.heatScore}%
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--t-secondary)" }}>
+                    {result.accuracy === 'ignition' ? '🔥 Mastered' : 
+                     result.accuracy === 'warning' ? '⚠️ Progress' : '❄️ Learning'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
         <Link href="/learn" style={{ textDecoration: "none" }}>
           <div className="folio-card" style={{ padding: "32px", height: "100%", display: "flex", flexDirection: "column", transition: "all 0.2s", cursor: "pointer" }}>
             <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "var(--snap-tint)", color: "var(--snap)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", marginBottom: "20px" }}>
