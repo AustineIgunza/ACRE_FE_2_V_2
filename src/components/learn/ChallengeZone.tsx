@@ -7,6 +7,8 @@ import { useArceStore } from "@/store/arceStore";
 export default function ChallengeZone() {
   const { currentScenario, scenarios, isLoading, error, submitDominoPrediction } = useArceStore();
   const [dominoResponse, setDominoResponse] = useState<string>("");
+  const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
+  const [questionType, setQuestionType] = useState<"domino" | "multiple-choice">("domino");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   if (!currentScenario) return null;
@@ -15,10 +17,21 @@ export default function ChallengeZone() {
   const totalScenarios = scenarios.length;
   const progress = totalScenarios > 0 ? ((scenarioIndex + 1) / totalScenarios) * 100 : 0;
 
+  // Determine question type based on index (alternate between domino and MC)
+  const effectiveQuestionType = scenarioIndex % 2 === 0 ? "domino" : "multiple-choice";
+  const mcOptions = (currentScenario as any)?.multiple_choice_options || [];
+  const mcQuestion = (currentScenario as any)?.multiple_choice_question || "";
+
   const handleSubmit = async () => {
-    if (!dominoResponse.trim()) return;
-    console.log("Submitting domino prediction:", dominoResponse);
-    await submitDominoPrediction(dominoResponse);
+    if (effectiveQuestionType === "domino") {
+      if (!dominoResponse.trim()) return;
+      console.log("Submitting domino prediction:", dominoResponse);
+      await submitDominoPrediction(dominoResponse);
+    } else {
+      if (!selectedChoice) return;
+      console.log("Submitting multiple choice:", selectedChoice);
+      await submitDominoPrediction(selectedChoice);
+    }
   };
 
   return (
@@ -110,7 +123,7 @@ export default function ChallengeZone() {
             style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#ef4444" }}
           />
           <span style={{ fontSize: "13px", color: "#ff8860", fontWeight: 600, fontFamily: "monospace" }}>
-            LEARNING CHALLENGE
+            {effectiveQuestionType === "multiple-choice" ? "MULTIPLE CHOICE" : "LEARNING CHALLENGE"}
           </span>
         </motion.div>
 
@@ -149,70 +162,146 @@ export default function ChallengeZone() {
           {currentScenario.crisisText}
         </motion.p>
 
-        {/* Domino Question */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          style={{
-            width: "100%",
-            padding: "20px 24px",
-            borderRadius: "12px",
-            backgroundColor: "rgba(255,92,53,0.08)",
-            border: "1px solid rgba(255,92,53,0.2)",
-            marginBottom: "24px",
-          }}
-        >
-          <p style={{ fontSize: "13px", color: "#ff8860", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
-            DOMINO EFFECT PREDICTION
-          </p>
-          <p style={{ fontSize: "15px", color: "#f0f2ec", fontWeight: 500, lineHeight: 1.6 }}>
-            {currentScenario.dominoQuestion || "Predict what happens next in this chain of events."}
-          </p>
-        </motion.div>
+        {effectiveQuestionType === "domino" ? (
+          <>
+            {/* Domino Question */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              style={{
+                width: "100%",
+                padding: "20px 24px",
+                borderRadius: "12px",
+                backgroundColor: "rgba(255,92,53,0.08)",
+                border: "1px solid rgba(255,92,53,0.2)",
+                marginBottom: "24px",
+              }}
+            >
+              <p style={{ fontSize: "13px", color: "#ff8860", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
+                DOMINO EFFECT PREDICTION
+              </p>
+              <p style={{ fontSize: "15px", color: "#f0f2ec", fontWeight: 500, lineHeight: 1.6 }}>
+                {currentScenario.dominoQuestion || "Predict what happens next in this chain of events."}
+              </p>
+            </motion.div>
 
-        {/* Free-text Input Textarea */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.55 }}
-          style={{ width: "100%" }}
-        >
-          <textarea
-            ref={textareaRef}
-            value={dominoResponse}
-            onChange={(e) => setDominoResponse(e.target.value)}
-            placeholder="Enter your prediction... What chains of consequences do you foresee?"
-            style={{
-              width: "100%",
-              height: "140px",
-              padding: "16px 20px",
-              fontSize: "14px",
-              lineHeight: 1.6,
-              fontFamily: "inherit",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.15)",
-              backgroundColor: "rgba(255,255,255,0.04)",
-              color: "#f0f2ec",
-              resize: "vertical",
-              boxSizing: "border-box",
-              transition: "all 0.2s",
-              outline: "none",
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = "rgba(255,92,53,0.4)";
-              e.currentTarget.style.backgroundColor = "rgba(255,92,53,0.06)";
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
-              e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)";
-            }}
-          />
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
-            <span>{dominoResponse.length} characters</span>
-            <span>{dominoResponse.trim().split(/\s+/).filter(w => w).length} words</span>
-          </div>
-        </motion.div>
+            {/* Free-text Input Textarea */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.55 }}
+              style={{ width: "100%" }}
+            >
+              <textarea
+                ref={textareaRef}
+                value={dominoResponse}
+                onChange={(e) => setDominoResponse(e.target.value)}
+                placeholder="Enter your prediction... What chains of consequences do you foresee?"
+                style={{
+                  width: "100%",
+                  height: "140px",
+                  padding: "16px 20px",
+                  fontSize: "14px",
+                  lineHeight: 1.6,
+                  fontFamily: "inherit",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  backgroundColor: "rgba(255,255,255,0.04)",
+                  color: "#f0f2ec",
+                  resize: "vertical",
+                  boxSizing: "border-box",
+                  transition: "all 0.2s",
+                  outline: "none",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255,92,53,0.4)";
+                  e.currentTarget.style.backgroundColor = "rgba(255,92,53,0.06)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+                  e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)";
+                }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
+                <span>{dominoResponse.length} characters</span>
+                <span>{dominoResponse.trim().split(/\s+/).filter(w => w).length} words</span>
+              </div>
+            </motion.div>
+          </>
+        ) : (
+          <>
+            {/* Multiple Choice Question */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              style={{
+                width: "100%",
+                padding: "20px 24px",
+                borderRadius: "12px",
+                backgroundColor: "rgba(255,92,53,0.08)",
+                border: "1px solid rgba(255,92,53,0.2)",
+                marginBottom: "24px",
+              }}
+            >
+              <p style={{ fontSize: "15px", color: "#f0f2ec", fontWeight: 500, lineHeight: 1.6 }}>
+                {mcQuestion || "Select the best answer:"}
+              </p>
+            </motion.div>
+
+            {/* Multiple Choice Options */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.55 }}
+              style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}
+            >
+              {mcOptions.map((option: any, index: number) => (
+                <motion.button
+                  key={option.id}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.55 + index * 0.1 }}
+                  onClick={() => setSelectedChoice(option.id)}
+                  style={{
+                    padding: "16px 20px",
+                    borderRadius: "10px",
+                    border: selectedChoice === option.id 
+                      ? "2px solid #ff5c35" 
+                      : "1px solid rgba(255,255,255,0.15)",
+                    backgroundColor: selectedChoice === option.id
+                      ? "rgba(255,92,53,0.15)"
+                      : "rgba(255,255,255,0.04)",
+                    color: "#f0f2ec",
+                    fontSize: "14px",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    fontWeight: selectedChoice === option.id ? 600 : 400,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedChoice !== option.id) {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,92,53,0.08)";
+                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,92,53,0.3)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedChoice !== option.id) {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.04)";
+                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.15)";
+                    }
+                  }}
+                >
+                  <span style={{ fontWeight: 700, marginRight: "12px", color: "#ff5c35" }}>
+                    {option.id}.
+                  </span>
+                  {option.text}
+                </motion.button>
+              ))}
+            </motion.div>
+          </>
+        )}
 
         {/* Error */}
         {error && (
@@ -230,7 +319,7 @@ export default function ChallengeZone() {
           whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(255,92,53,0.3)" }}
           whileTap={{ scale: 0.98 }}
           onClick={handleSubmit}
-          disabled={isLoading || !dominoResponse.trim()}
+          disabled={isLoading || (effectiveQuestionType === "domino" ? !dominoResponse.trim() : !selectedChoice)}
           style={{
             marginTop: "32px",
             width: "100%",
@@ -241,14 +330,14 @@ export default function ChallengeZone() {
             letterSpacing: "1px",
             textTransform: "uppercase",
             color: "#fff",
-            backgroundColor: dominoResponse.trim() ? "#ff5c35" : "rgba(255,92,53,0.3)",
+            backgroundColor: (effectiveQuestionType === "domino" ? dominoResponse.trim() : selectedChoice) ? "#ff5c35" : "rgba(255,92,53,0.3)",
             border: "none",
             borderRadius: "10px",
-            cursor: isLoading || !dominoResponse.trim() ? "not-allowed" : "pointer",
+            cursor: isLoading || (effectiveQuestionType === "domino" ? !dominoResponse.trim() : !selectedChoice) ? "not-allowed" : "pointer",
             transition: "all 0.3s",
           }}
         >
-          {isLoading ? "ANALYZING..." : "SUBMIT PREDICTION"}
+          {isLoading ? "ANALYZING..." : "SUBMIT ANSWER"}
         </motion.button>
       </div>
     </motion.div>
