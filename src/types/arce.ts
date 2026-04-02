@@ -61,6 +61,70 @@ export interface FlashpointReviewSession {
 // ── THERMAL STATES ──
 export type ThermalState = "frost" | "warning" | "ignition" | "neutral";
 
+// ── TOPIC WITH HEATMAP ──
+export interface Topic {
+  id: string;
+  title: string;
+  description?: string;
+  unitId: string;
+  sourceUrl?: string; // URL to video, PDF, or text content
+  sourceType: "text" | "pdf" | "video" | "url";
+  contentLength: number; // Length in characters/bytes
+  nodeCount: number; // Dynamically calculated based on content
+  nodes: ConceptNode[]; // Concepts within this topic
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ── CONCEPT NODE (replaces LogicNode for clarity) ──
+export interface ConceptNode {
+  id: string;
+  topicId: string;
+  title: string;
+  description: string;
+  core_logic: string;
+  latex_formula: string;
+  so_what: string;
+  dominoQuestion: string;
+  multiple_choice_question?: string;
+  multiple_choice_options?: Array<{
+    id: string;
+    text: string;
+    is_correct?: boolean;
+  }>;
+  heatScore: number; // 0-100
+  thermalState: ThermalState;
+  mastered: boolean;
+  lastReviewedAt: number;
+}
+
+// ── UNIT (contains multiple topics/heatmaps) ──
+export interface Unit {
+  id: string;
+  title: string;
+  description?: string;
+  userId: string;
+  topics: Topic[]; // Multiple heatmaps per unit
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ── USER PROGRESS TRACKING (persistent across sessions) ──
+export interface UserProgressRecord {
+  id: string;
+  userId: string;
+  unitId: string;
+  topicId: string;
+  nodeId: string;
+  heatScore: number; // 0-100
+  thermalState: ThermalState;
+  mastered: boolean;
+  attemptsCount: number;
+  lastAttemptAt: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 // ── LOGIC NODE (Atomic Extraction Output) ──
 export interface LogicNode {
   id: string;

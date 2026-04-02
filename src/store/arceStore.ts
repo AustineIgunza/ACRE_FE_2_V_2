@@ -61,6 +61,10 @@ interface ArceStore {
   
   // Progress Actions
   fetchProgress: () => Promise<void>;
+  saveProgressToDatabase: (nodeId: string, heatScore: number, thermalState: ThermalState) => Promise<void>;
+  saveUnitData: (unitId: string, unitData: any) => Promise<void>;
+  loadUserUnits: () => Promise<any[]>;
+  loadUserTopics: (unitId: string) => Promise<any[]>;
 }
 
 export const useArceStore = create<ArceStore>((set, get) => ({
@@ -724,6 +728,113 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       console.log("Heatmap data saved successfully");
     } catch (error) {
       console.error("Error saving heatmap data:", error);
+    }
+  },
+
+  // Save user progress to Supabase (persistent across sessions)
+  saveProgressToDatabase: async (nodeId: string, heatScore: number, thermalState: ThermalState) => {
+    const { user } = get();
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_progress')
+        .upsert({
+          user_id: user.id,
+          node_id: nodeId,
+          heat_score: heatScore,
+          is_ignited: thermalState === 'ignition',
+          thermal_state: thermalState,
+          last_attempt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,node_id' });
+
+      if (error) {
+        console.error("Error saving progress:", error);
+      } else {
+        console.log("Progress saved for node:", nodeId, "Heat:", heatScore);
+      }
+    } catch (err) {
+      console.warn("Failed to save progress:", err);
+    }
+  },
+
+  // Save unit data (topic collection)
+  saveUnitData: async (unitId: string, unitData: any) => {
+    const { user } = get();
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_units')
+        .upsert({
+          id: unitId,
+          user_id: user.id,
+          title: unitData.title,
+          description: unitData.description,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          data: unitData,
+        }, { onConflict: 'id,user_id' });
+
+      if (error) {
+        console.error("Error saving unit:", error);
+      } else {
+        console.log("Unit saved:", unitId);
+      }
+    } catch (err) {
+      console.warn("Failed to save unit:", err);
+    }
+  },
+
+  // Load all user units
+  loadUserUnits: async () => {
+    const { user } = get();
+    if (!user) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('user_units')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) {
+        if (error.code !== 'PGRST205') {
+          console.error("Error loading units:", error);
+        }
+        return [];
+      }
+
+      return data || [];
+    } catch (err) {
+      console.warn("Failed to load units:", err);
+      return [];
+    }
+  },
+
+  // Load all topics for a unit
+  loadUserTopics: async (unitId: string) => {
+    const { user } = get();
+    if (!user) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('user_topics')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('unit_id', unitId);
+
+      if (error) {
+        if (error.code !== 'PGRST205') {
+          console.error("Error loading topics:", error);
+        }
+        return [];
+      }
+
+      return data || [];
+    } catch (err) {
+      console.warn("Failed to load topics:", err);
+      return [];
     }
   },
 }));

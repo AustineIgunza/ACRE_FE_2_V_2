@@ -4,27 +4,51 @@ import { NextRequest, NextResponse } from "next/server";
  * POST /api/generate-scenarios
  * 
  * Implements Phase 0 of the Arcé Iteration Engine: Atomic Logic Extraction
+ * DYNAMIC SCALING: Node count based on content length
  * STRIP ENTROPY: Remove all fluff, anecdotes, filler
  * IDENTIFY INVARIANTS: Extract fundamental rules/logic that never change
- * DYNAMIC CHUNKING: Break invariants into Logic Nodes (7±2 items)
+ * DYNAMIC CHUNKING: Break invariants into Logic Nodes (scales with content)
  * 
  * Returns an array of Logic Nodes that become Crisis Scenarios in Phase 1
  * Each Logic Node becomes a question relevant to the pasted text
  */
 
+// Calculate optimal node count based on content length
+function calculateNodeCount(textLength: number): number {
+  // Minimum 3 nodes, maximum 15 nodes
+  // Scaling: every 1000 characters = ~1 node (average)
+  // Formula: floor(contentLength / 1000) + 3, capped at 15
+  
+  if (textLength < 500) return 3; // Very short content
+  if (textLength < 1000) return 4;
+  if (textLength < 2000) return 5;
+  if (textLength < 3000) return 6;
+  if (textLength < 4000) return 7;
+  if (textLength < 5000) return 8;
+  if (textLength < 7000) return 9;
+  if (textLength < 10000) return 10;
+  if (textLength < 15000) return 12;
+  if (textLength < 20000) return 14;
+  return 15; // Cap at 15 for very long content
+}
+
 // Helper function to extract key concepts from text
-function extractKeyConceptsFromText(text: string): string[] {
+function extractKeyConceptsFromText(text: string, nodeCount: number): string[] {
   const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
   const concepts: string[] = [];
   
-  for (const sentence of sentences.slice(0, 5)) {
-    const words = sentence.trim().split(/\s+/).filter(w => w.length > 4);
+  // Extract enough unique concepts for the node count
+  const conceptsNeeded = Math.min(nodeCount, sentences.length);
+  
+  for (let i = 0; i < conceptsNeeded; i++) {
+    const sentence = sentences[i]?.trim() || "";
+    const words = sentence.split(/\s+/).filter(w => w.length > 4);
     if (words.length > 0) {
       concepts.push(words.slice(0, 3).join(' '));
     }
   }
   
-  return concepts.slice(0, 5);
+  return concepts.slice(0, nodeCount);
 }
 
 // Helper to generate multiple choice options (3 options)
@@ -50,13 +74,13 @@ function generateMultipleChoiceOptions(correctAnswer: string, topic: string): Ar
 }
 
 // Generate logic nodes from user input
-function generateLogicNodesFromText(textInput: string, title: string): any[] {
-  const concepts = extractKeyConceptsFromText(textInput);
+function generateLogicNodesFromText(textInput: string, title: string, contentLength: number): any[] {
+  // Calculate node count based on content length
+  const nodeCount = calculateNodeCount(contentLength);
+  const concepts = extractKeyConceptsFromText(textInput, nodeCount);
   const nodes = [];
   
-  // Generate 5-7 logic nodes based on extracted concepts
-  const nodeCount = Math.min(Math.max(concepts.length, 5), 7);
-  
+  // Generate nodes based on dynamically calculated count
   for (let i = 0; i < nodeCount; i++) {
     const concept = concepts[i] || `Concept ${i + 1}`;
     const nodeId = `node-${String(i + 1).padStart(3, '0')}`;
@@ -118,7 +142,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate logic nodes from the actual user input
-    const logicNodes = generateLogicNodesFromText(extractedText, title);
+    // Pass content length for dynamic node count calculation
+    const logicNodes = generateLogicNodesFromText(extractedText, title, extractedText.length);
 
     // Return Logic Nodes (Phase 0 output)
     return NextResponse.json({
@@ -126,7 +151,9 @@ export async function POST(request: NextRequest) {
       source_title: title,
       phase: "phase-0-extraction",
       logic_nodes: logicNodes,
-      note: "Phase 0 complete: Atomic logic extracted. Ready for Phase 1: Challenge Zone.",
+      nodeCount: logicNodes.length,
+      contentLength: extractedText.length,
+      note: `Phase 0 complete: Extracted ${logicNodes.length} concepts from ${extractedText.length} characters. Ready for Phase 1: Challenge Zone.`,
     });
   } catch (error) {
     console.error("Error generating scenarios:", error);
