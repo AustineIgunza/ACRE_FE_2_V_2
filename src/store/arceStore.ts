@@ -186,7 +186,10 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         latexFormula: node.latex_formula,
         soWhat: node.so_what,
         actionButtons: [], // No buttons for Phase 1
-        difficulty: 'level-1'
+        difficulty: 'level-1',
+        // Include multiple choice data from API
+        multiple_choice_question: node.multiple_choice_question,
+        multiple_choice_options: node.multiple_choice_options,
       }));
 
       const aiClusterNodes: CausalAnchor[] = data.logic_nodes.map((node: any, index: number) => ({

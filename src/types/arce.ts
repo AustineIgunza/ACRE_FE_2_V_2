@@ -168,6 +168,14 @@ export interface CrisisScenario {
   latexFormula?: string;
   soWhat?: string;
   
+  // Multiple-choice questions
+  multiple_choice_question?: string;
+  multiple_choice_options?: Array<{
+    id: string;
+    text: string;
+    is_correct?: boolean;
+  }>;
+  
   // Multiple-choice (used in some phases, not Phase 1)
   actionButtons?: {
     id: string;
