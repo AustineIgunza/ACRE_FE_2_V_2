@@ -46,12 +46,3 @@ next-env.d.ts
 .idea/
 *.swp
 *.swo
-
-# local documentation & scripts (not for version control)
-STARTUP_GUIDE.md
-CONNECTION_SETUP.md
-SETUP_COMPLETE.md
-README_SETUP.txt
-QUICK_START.md
-START_ALL.bat
-START_ALL.ps1

@@ -19,19 +19,26 @@ function renderLatex(formula: string): string {
 }
 
 export default function IntelCardSanctuary() {
-  const { currentIntelCard, currentNode, generateStressTest, isLoading } = useArceStore();
+  const { currentScenario, scenarios, isLoading } = useArceStore();
 
-  if (!currentIntelCard || !currentNode) return null;
+  if (!currentScenario || !scenarios) return null;
 
-  const isIgnition = currentIntelCard.accuracy === "ignition";
-  const isWarning = currentIntelCard.accuracy === "warning";
-  const isFrost = currentIntelCard.accuracy === "frost";
+  // Get current Logic Node title from scenario
+  const nodeTitle = currentScenario.nodeId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  
+  // Extract invariant-like text from crisis scenario for display
+  const invariantText = `When ${nodeTitle.toLowerCase()} occurs, the system experiences a critical state transition.`;
+
+  // Determine accuracy level based on user's response (placeholder logic)
+  const isIgnition = true; // TODO: Evaluate user response
+  const isWarning = false;
+  const isFrost = false;
 
   const accuracyColor = isIgnition ? "#22c55e" : isWarning ? "#f59e0b" : "#ef4444";
   const accuracyLabel = isIgnition ? "IGNITION" : isWarning ? "WARNING" : "FROST";
   const accuracyEmoji = isIgnition ? "🔥" : isWarning ? "⚠️" : "❄️";
 
-  const latexHtml = renderLatex(currentIntelCard.latexFormula || currentNode.latex_formula || "A \\implies B");
+  const latexHtml = renderLatex(currentScenario.latexFormula || "A \\implies B");
 
   return (
     <motion.div
@@ -107,7 +114,7 @@ export default function IntelCardSanctuary() {
               color: "var(--t-primary)",
               marginTop: "4px",
             }}>
-              {currentIntelCard.title}
+              {nodeTitle}
             </h3>
           </div>
           <div style={{
@@ -121,7 +128,7 @@ export default function IntelCardSanctuary() {
           </div>
         </div>
 
-        {/* Chain Analysis */}
+        {/* Invariant Logic */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -135,12 +142,12 @@ export default function IntelCardSanctuary() {
             fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase",
             color: "var(--t-muted)", fontWeight: 600, display: "block", marginBottom: "8px",
           }}>
-            YOUR CHAIN ANALYSIS
+            THE INVARIANT
           </span>
           <p style={{
             fontSize: "14px", lineHeight: 1.7, color: "var(--t-mid)", margin: 0,
           }}>
-            {currentIntelCard.chainAnalysis}
+            {invariantText}
           </p>
         </motion.div>
 
@@ -158,12 +165,12 @@ export default function IntelCardSanctuary() {
             fontSize: "10px", letterSpacing: "2.5px", textTransform: "uppercase",
             color: "var(--t-muted)", fontWeight: 600, display: "block", marginBottom: "8px",
           }}>
-            THE CORE LOGIC
+            THE FORMAL MECHANISM
           </span>
           <p style={{
             fontSize: "15px", lineHeight: 1.7, color: "var(--t-primary)", margin: 0, fontWeight: 500,
           }}>
-            {currentIntelCard.formalMechanism}
+            {currentScenario.formalMechanism}
           </p>
         </motion.div>
 
@@ -207,11 +214,11 @@ export default function IntelCardSanctuary() {
             fontFamily: "Georgia, serif",
             fontStyle: "italic",
           }}>
-            {currentIntelCard.soWhat}
+            {currentScenario.soWhat}
           </p>
         </motion.div>
 
-        {/* Keywords */}
+        {/* Tags from title */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -223,7 +230,7 @@ export default function IntelCardSanctuary() {
             gap: "8px",
           }}
         >
-          {currentIntelCard.keywords.map((kw, i) => (
+          {nodeTitle.split(" ").map((word: string, i: number) => (
             <span key={i} style={{
               padding: "4px 12px",
               borderRadius: "6px",
@@ -232,7 +239,7 @@ export default function IntelCardSanctuary() {
               fontSize: "12px",
               fontWeight: 600,
             }}>
-              {kw}
+              {word}
             </span>
           ))}
         </motion.div>
@@ -245,7 +252,9 @@ export default function IntelCardSanctuary() {
         transition={{ delay: 1.8 }}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        onClick={generateStressTest}
+        onClick={() => {
+          useArceStore.setState({ currentPhase: "evaluation" });
+        }}
         disabled={isLoading}
         style={{
           marginTop: "32px",
@@ -270,7 +279,9 @@ export default function IntelCardSanctuary() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 2.0 }}
-        onClick={() => useArceStore.getState().synchronizeAndAdvance()}
+        onClick={() => {
+          useArceStore.setState({ currentPhase: "synchronization" });
+        }}
         style={{
           marginTop: "12px",
           background: "none",

@@ -1,49 +1,23 @@
-import { useEffect, useState } from "react";
+"use client";
+
 import { useCombatStore } from "@/store/combatStore";
-import { useThermalStore } from "@/store/thermalStore";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 interface BattleResultProps {
   onReset: () => void;
 }
 
 export default function BattleResult({ onReset }: BattleResultProps) {
-  const { battle_state, nodeContext } = useCombatStore();
-  const { updateNodeStats, fetchThermalLibrary } = useThermalStore();
-  const router = useRouter();
-  const [hasUpdated, setHasUpdated] = useState(false);
-
-  const isVictory = battle_state?.is_victory || false;
-  const correctAnswers = battle_state?.battle_log.filter(
-    (log) => log.was_correct
-  ).length || 0;
-  const totalEncounters = battle_state?.boss.encounters.length || 0;
-  const accuracy = totalEncounters > 0 ? Math.round((correctAnswers / totalEncounters) * 100) : 0;
-
-  // Sync stats to db on victory screen
-  useEffect(() => {
-    if (battle_state && nodeContext && !hasUpdated) {
-      const isSuccess = accuracy >= 70;
-      updateNodeStats(nodeContext.unitId, nodeContext.nodeId, isSuccess).then(() => {
-        fetchThermalLibrary();
-      });
-      setHasUpdated(true);
-    } else if (battle_state && !hasUpdated && !nodeContext) {
-      // Just fetch if there's no node context to update
-      fetchThermalLibrary();
-      setHasUpdated(true);
-    }
-  }, [battle_state, nodeContext, hasUpdated, updateNodeStats, fetchThermalLibrary, accuracy]);
+  const { battle_state } = useCombatStore();
 
   if (!battle_state) return null;
 
-  const handleCloseQuiz = () => {
-    // Navigate with a small delay to ensure state is updated
-    setTimeout(() => {
-      router.push("/heatmap");
-    }, 100);
-  };
+  const isVictory = battle_state.is_victory;
+  const correctAnswers = battle_state.battle_log.filter(
+    (log) => log.was_correct
+  ).length;
+  const totalEncounters = battle_state.boss.encounters.length;
+  const accuracy = totalEncounters > 0 ? Math.round((correctAnswers / totalEncounters) * 100) : 0;
 
   return (
     <div style={{ maxWidth: "700px", margin: "0 auto" }}>
@@ -150,59 +124,19 @@ export default function BattleResult({ onReset }: BattleResultProps) {
         {/* Message */}
         <p style={{ fontSize: "16px", color: "var(--t-mid)", marginBottom: "32px" }}>
           {isVictory
-            ? nodeContext
-              ? "🎯 Node quiz completed! Your mastery score has been updated."
-              : "You've proven your mastery! Share your victory or challenge yourself again."
-            : nodeContext
-              ? "Learn from this quiz. Review the concept and try again."
-              : "Learn from this defeat. Review the concepts and return stronger."}
+            ? "You've proven your mastery! Share your victory or challenge yourself again."
+            : "Learn from this defeat. Review the concepts and return stronger."}
         </p>
 
-        {/* Node Context Display */}
-        {nodeContext && (
-          <div style={{
-            marginBottom: "24px",
-            padding: "12px",
-            backgroundColor: "var(--p-surface)",
-            borderRadius: "8px",
-            borderLeft: "4px solid var(--snap)",
-            fontSize: "13px",
-            color: "var(--t-secondary)",
-          }}>
-            <strong style={{ color: "var(--t-primary)" }}>📌 {nodeContext.nodeTopic}</strong> — {nodeContext.nodeTitle}
-          </div>
-        )}
-
-        <div style={{ display: "grid", gridTemplateColumns: isVictory ? "1fr 1fr 1fr" : "1fr 1fr", gap: "16px" }}>
-          {nodeContext && isVictory && (
-            <button 
-              onClick={handleCloseQuiz}
-              style={{
-                width: "100%",
-                padding: "12px",
-                backgroundColor: "var(--error)",
-                color: "white",
-                borderRadius: "8px",
-                fontWeight: 700,
-                fontSize: "14px",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.opacity = "0.9")}
-              onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
-              title="Close and return to heatmap"
-            >
-              ✕ Close
-            </button>
-          )}
-          <Link href={nodeContext ? "/heatmap" : "/dashboard"}>
+        {/* Actions */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <Link href="/dashboard">
             <button className="btn-ghost" style={{ width: "100%" }}>
-              ← {nodeContext ? "Heatmap" : "Dashboard"}
+              ← Dashboard
             </button>
           </Link>
           <button onClick={onReset} className="btn-primary" style={{ width: "100%" }}>
-            {isVictory ? (nodeContext ? "🎯 Another Quiz" : "⚔️ New Battle") : "⚔️ Try Again"}
+            {isVictory ? "⚔️ New Battle" : "⚔️ Try Again"}
           </button>
         </div>
       </div>

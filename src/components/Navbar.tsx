@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useArceStore } from "@/store/arceStore";
 import { usePathname } from "next/navigation";
 
@@ -11,15 +12,15 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "🏠" },
   { label: "Learn", href: "/learn", icon: "⚡" },
   { label: "Heatmap", href: "/heatmap", icon: "🗺️" },
-  { label: "Battle", href: "/battle", icon: "⚔️" },
+  { label: "Dashboard", href: "/dashboard", icon: "🏠" },
 ];
 
 export default function Navbar() {
   const { user, logout } = useArceStore();
   const pathname = usePathname();
+  const [hoveredNav, setHoveredNav] = useState<string | null>(null);
 
   const handleLogout = async () => {
     await logout();
@@ -45,7 +46,9 @@ export default function Navbar() {
     >
       {/* Logo + Nav Links */}
       <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
-        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}>
+        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none", transition: "transform 0.2s ease" }}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}>
           <span className="nav-logo-accent" />
           <span
             style={{
@@ -64,11 +67,13 @@ export default function Navbar() {
         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
+            const isHovered = hoveredNav === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="nav-link-hover"
+                onMouseEnter={() => setHoveredNav(item.href)}
+                onMouseLeave={() => setHoveredNav(null)}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -77,31 +82,15 @@ export default function Navbar() {
                   borderRadius: "8px",
                   fontSize: "14px",
                   fontWeight: isActive ? 700 : 500,
-                  color: isActive ? "var(--snap)" : "var(--t-secondary)",
-                  backgroundColor: isActive ? "var(--snap-tint)" : "transparent",
+                  color: isHovered && !isActive ? "var(--snap)" : isActive ? "var(--snap)" : "var(--t-secondary)",
+                  backgroundColor: isHovered && !isActive ? "rgba(255, 92, 53, 0.08)" : isActive ? "var(--snap-tint)" : "transparent",
                   textDecoration: "none",
-                  transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                  cursor: "pointer",
-                  transform: "translateY(0)",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.backgroundColor = "var(--snap-tint)";
-                    e.currentTarget.style.color = "var(--snap)";
-                    e.currentTarget.style.fontWeight = "600";
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.color = "var(--t-secondary)";
-                    e.currentTarget.style.fontWeight = "500";
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }
+                  transition: "all 0.2s ease",
+                  transform: isHovered ? "translateY(-2px)" : "translateY(0)",
+                  boxShadow: isHovered && !isActive ? "0 4px 12px rgba(255, 92, 53, 0.1)" : "none",
                 }}
               >
-                <span style={{ fontSize: "16px" }}>{item.icon}</span>
+                <span style={{ fontSize: "14px", transition: "transform 0.2s ease", transform: isHovered ? "scale(1.15)" : "scale(1)" }}>{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -119,6 +108,16 @@ export default function Navbar() {
             padding: "6px 12px",
             borderRadius: "8px",
             backgroundColor: "var(--p-surface)",
+            transition: "all 0.2s ease",
+            cursor: "pointer",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255, 92, 53, 0.05)";
+            (e.currentTarget as HTMLElement).style.transform = "scale(1.02)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = "var(--p-surface)";
+            (e.currentTarget as HTMLElement).style.transform = "scale(1)";
           }}
         >
           <div
@@ -135,10 +134,10 @@ export default function Navbar() {
               fontWeight: 700,
             }}
           >
-            {(user.name?.[0] || user.email?.[0] || "U").toUpperCase()}
+            {(user.user_metadata?.full_name?.[0] || user.email?.[0] || "U").toUpperCase()}
           </div>
           <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--t-deep)" }}>
-            {user.name || user.email?.split("@")[0] || "User"}
+            {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
           </span>
         </div>
         <button
@@ -152,7 +151,19 @@ export default function Navbar() {
             color: "var(--t-secondary)",
             border: "1px solid var(--p-border)",
             cursor: "pointer",
-            transition: "all 0.15s ease",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255, 92, 53, 0.1)";
+            (e.currentTarget as HTMLElement).style.borderColor = "var(--snap)";
+            (e.currentTarget as HTMLElement).style.color = "var(--snap)";
+            (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+            (e.currentTarget as HTMLElement).style.borderColor = "var(--p-border)";
+            (e.currentTarget as HTMLElement).style.color = "var(--t-secondary)";
+            (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
           }}
         >
           Sign Out

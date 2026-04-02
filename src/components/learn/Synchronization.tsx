@@ -1,15 +1,36 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useEffect } from "react";
 import { useArceStore } from "@/store/arceStore";
 
 export default function Synchronization() {
-  const { currentNode, currentIntelCard, document, currentNodeIndex, completedNodeIds } = useArceStore();
+  const { scenarios, currentScenario } = useArceStore();
 
-  if (!currentNode) return null;
+  const totalNodes = scenarios.length || 0;
+  const currentNodeIndex = scenarios.findIndex((s) => s.id === currentScenario?.id) || 0;
+  const isLastNode = currentNodeIndex >= totalNodes - 1;
 
-  const totalNodes = document?.nodes.length || 0;
-  const completedCount = completedNodeIds.length + 1; // +1 for the current one being synced
+  useEffect(() => {
+    // After synchronization animation (3 seconds), advance to next node or debrief
+    const timer = setTimeout(() => {
+      if (isLastNode) {
+        // All nodes complete - go to debrief
+        useArceStore.setState({ currentPhase: "debrief" });
+      } else {
+        // Move to next node - go back to challenge zone
+        const nextScenario = scenarios[currentNodeIndex + 1];
+        if (nextScenario) {
+          useArceStore.setState({
+            currentScenario: nextScenario,
+            currentPhase: "challenge",
+          });
+        }
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [currentNodeIndex, isLastNode, scenarios]);
 
   return (
     <motion.div
@@ -56,13 +77,13 @@ export default function Synchronization() {
           fontFamily: "Georgia, serif", fontSize: "18px", fontWeight: 400,
           color: "#f0f2ec", marginBottom: "4px",
         }}>
-          {currentIntelCard?.title || currentNode.title}
+          Logic Node #{currentNodeIndex + 1}
         </h3>
         <span style={{
           fontSize: "11px", letterSpacing: "2px", textTransform: "uppercase",
           color: "#22c55e", fontWeight: 600,
         }}>
-          MASTERED
+          SYNCHRONIZED
         </span>
       </motion.div>
 
@@ -96,8 +117,8 @@ export default function Synchronization() {
       >
         {/* Node slots */}
         {Array.from({ length: totalNodes }).map((_, i) => {
-          const isCompleted = i < completedCount;
-          const isCurrent = i === completedCount - 1;
+          const isCompleted = i < currentNodeIndex;
+          const isCurrent = i === currentNodeIndex;
 
           return (
             <motion.div
@@ -140,7 +161,7 @@ export default function Synchronization() {
           fontSize: "14px",
           marginBottom: "4px",
         }}>
-          {completedCount} of {totalNodes} nodes synchronized
+          {currentNodeIndex + 1} of {totalNodes} nodes synchronized
         </p>
         <motion.p
           animate={{ opacity: [0.4, 1, 0.4] }}
@@ -153,7 +174,7 @@ export default function Synchronization() {
             textTransform: "uppercase",
           }}
         >
-          {completedCount < totalNodes ? "ADVANCING TO NEXT NODE..." : "ALL NODES COMPLETE"}
+          {isLastNode ? "ALL NODES COMPLETE" : "ADVANCING TO NEXT NODE..."}
         </motion.p>
       </motion.div>
 

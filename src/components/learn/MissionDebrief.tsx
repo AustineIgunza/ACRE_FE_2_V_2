@@ -6,17 +6,35 @@ import { useArceStore } from "@/store/arceStore";
 import { useRouter } from "next/navigation";
 
 export default function MissionDebrief() {
-  const { session, document, resetGame } = useArceStore();
+  const { gameSession, scenarios, resetGame, saveHeatmapData, nodeResults } = useArceStore();
   const router = useRouter();
 
   const [displayedHeat, setDisplayedHeat] = useState(0);
   const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
 
-  // Animated heat counter
+  // Save heatmap data when mission completes
   useEffect(() => {
-    if (!session) return;
-    const targetHeat = session.globalHeat;
-    if (targetHeat <= 0) { setDisplayedHeat(0); return; }
+    if (gameSession) {
+      saveHeatmapData();
+    }
+  }, [gameSession, saveHeatmapData]);
+
+  // Animated heat counter - calculate from nodeResults
+  useEffect(() => {
+    if (!nodeResults || Object.keys(nodeResults).length === 0) {
+      setDisplayedHeat(0);
+      return;
+    }
+
+    // Calculate total heat from all nodes
+    const totalHeat = Object.values(nodeResults).reduce((sum, result) => sum + result.heatScore, 0);
+    const targetHeat = totalHeat || 0;
+
+    if (targetHeat <= 0) {
+      setDisplayedHeat(0);
+      return;
+    }
+
     let start = 0;
     const increment = targetHeat / (1500 / 16);
 
@@ -31,9 +49,42 @@ export default function MissionDebrief() {
     }, 16);
 
     return () => clearInterval(timer);
-  }, [session]);
+  }, [nodeResults]);
 
-  if (!session || !document) return null;
+  if (!gameSession) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#0a0a0c",
+        color: "#f0f2ec",
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <h2>Mission Complete!</h2>
+          <button
+            onClick={() => router.push("/learn")}
+            style={{
+              marginTop: "24px",
+              padding: "12px 32px",
+              fontSize: "14px",
+              fontWeight: "700",
+              backgroundColor: "#ff5c35",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
+          >
+            Return to Learn
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const totalNodes = scenarios.length;
 
   const toggleAccordion = (nodeId: string) => {
     setExpandedNodeId((prev) => (prev === nodeId ? null : nodeId));
@@ -102,7 +153,7 @@ export default function MissionDebrief() {
             transition={{ delay: 0.3 }}
             style={{ fontFamily: "Georgia, serif", fontSize: "36px", fontWeight: 400, color: "#fff", marginBottom: "24px", lineHeight: 1.2 }}
           >
-            {document.topic_title}
+            {gameSession.sourceTitle || "Learning Complete"}
           </motion.h1>
 
           {/* Glowing Heat Counter */}
@@ -135,32 +186,28 @@ export default function MissionDebrief() {
             textTransform: "uppercase", marginBottom: "24px", textAlign: "center",
             borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "16px",
           }}>
-            Forged Intel Matrix ({session.responses.length} Nodes)
+            Learning Session ({totalNodes} Nodes)
           </h3>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {session.responses.map((response, index) => {
-              const card = response.intelCard;
-              if (!card) return null;
-
-              const isExpanded = expandedNodeId === card.nodeId;
-              const color = getAccuracyColor(card.accuracy);
+            {scenarios.map((scenario: any, index: number) => {
+              const isExpanded = expandedNodeId === scenario.nodeId;
 
               return (
                 <motion.div
-                  key={card.nodeId}
+                  key={scenario.nodeId}
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.6 + index * 0.1 }}
                   style={{
                     backgroundColor: isExpanded ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.02)",
-                    border: `1px solid ${isExpanded ? color : "rgba(255,255,255,0.08)"}`,
+                    border: `1px solid ${isExpanded ? "#ff5c35" : "rgba(255,255,255,0.08)"}`,
                     borderRadius: "12px", overflow: "hidden", transition: "all 0.3s ease",
                   }}
                 >
                   {/* Header row */}
                   <button
-                    onClick={() => toggleAccordion(card.nodeId)}
+                    onClick={() => toggleAccordion(scenario.nodeId)}
                     style={{
                       width: "100%", padding: "20px 24px",
                       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -171,20 +218,20 @@ export default function MissionDebrief() {
                     <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                       <div style={{
                         width: "32px", height: "32px", borderRadius: "50%",
-                        backgroundColor: `${color}15`,
+                        backgroundColor: "#ff5c3520",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        color, fontSize: "12px", fontFamily: "monospace", fontWeight: 700,
+                        color: "#ff5c35", fontSize: "12px", fontFamily: "monospace", fontWeight: 700,
                       }}>
                         {String(index + 1).padStart(2, "0")}
                       </div>
                       <span style={{ fontSize: "16px", fontWeight: 500, fontFamily: "Georgia, serif" }}>
-                        {card.title}
+                        {scenario.nodeId}
                       </span>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                      <span style={{ fontSize: "12px", fontWeight: 600, color, textTransform: "uppercase", letterSpacing: "1px" }}>
-                        {getAccuracyLabel(card.accuracy)} (+{card.heatDelta})
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "#22c55e", textTransform: "uppercase", letterSpacing: "1px" }}>
+                        COMPLETE
                       </span>
                       <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} style={{ color: "rgba(255,255,255,0.3)" }}>
                         ▼
@@ -214,7 +261,7 @@ export default function MissionDebrief() {
                               Formal Mechanism
                             </span>
                             <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.7)", lineHeight: 1.6, margin: 0 }}>
-                              {card.formalMechanism}
+                              {scenario.formalMechanism}
                             </p>
                           </div>
 
@@ -225,12 +272,12 @@ export default function MissionDebrief() {
                             </span>
                             <div style={{
                               padding: "16px",
-                              backgroundColor: `${color}10`,
-                              borderLeft: `2px solid ${color}`,
+                              backgroundColor: "#ff5c3510",
+                              borderLeft: "2px solid #ff5c35",
                               color: "#f0f2ec", fontSize: "15px", lineHeight: 1.6,
                               fontFamily: "Georgia, serif", fontStyle: "italic",
                             }}>
-                              {card.soWhat}
+                              {scenario.soWhat}
                             </div>
                           </div>
                         </div>

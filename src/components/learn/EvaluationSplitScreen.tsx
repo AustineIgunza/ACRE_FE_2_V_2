@@ -15,19 +15,21 @@ function renderLatex(formula: string): string {
 }
 
 export default function EvaluationSplitScreen() {
-  const { currentNode, currentIntelCard, currentStressTest, synchronizeAndAdvance, isLoading } = useArceStore();
+  const { currentScenario, isLoading } = useArceStore();
   const [stressResponse, setStressResponse] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  if (!currentNode || !currentIntelCard || !currentStressTest) return null;
+  if (!currentScenario) return null;
 
-  const latexHtml = renderLatex(currentIntelCard.latexFormula || "");
+  const latexHtml = renderLatex(currentScenario.latexFormula || "");
 
   const handleStressSubmit = () => {
     setSubmitted(true);
+    console.log("Stress test submitted, advancing to synchronization in 2s...");
     // After a brief moment, synchronize
     setTimeout(() => {
-      synchronizeAndAdvance();
+      console.log("Setting phase to synchronization");
+      useArceStore.setState({ currentPhase: "synchronization" });
     }, 2000);
   };
 
@@ -94,7 +96,7 @@ export default function EvaluationSplitScreen() {
             style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#ef4444" }}
           />
           <span style={{ fontSize: "13px", color: "#f87171", fontWeight: 600, fontFamily: "monospace" }}>
-            {currentStressTest.updatedDashboardIndicator}
+            STRESS TEST: Can this logic survive counter-evidence?
           </span>
         </motion.div>
 
@@ -108,7 +110,7 @@ export default function EvaluationSplitScreen() {
             marginBottom: "24px",
           }}
         >
-          <strong style={{ color: "#f59e0b" }}>Counter-Variable:</strong> {currentStressTest.counterVariable}
+          <strong style={{ color: "#f59e0b" }}>Counter-Variable:</strong> What if the initial assumptions change?
         </motion.p>
 
         {/* Stress Question */}
@@ -132,7 +134,7 @@ export default function EvaluationSplitScreen() {
             lineHeight: 1.7,
             margin: 0,
           }}>
-            {currentStressTest.stressQuestion}
+            How does your Domino Effect chain hold up when variables change? Where is the weakest link?
           </p>
         </motion.div>
 
@@ -148,7 +150,7 @@ export default function EvaluationSplitScreen() {
             marginBottom: "24px",
           }}
         >
-          💡 {currentStressTest.hint}
+          💡 Consider what assumptions your logic depends on. What if one changes?
         </motion.p>
 
         {/* Response Input or Submitted State */}
@@ -193,8 +195,20 @@ export default function EvaluationSplitScreen() {
               textAlign: "center",
             }}
           >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                border: "3px solid rgba(34,197,94,0.3)",
+                borderTopColor: "#22c55e",
+                margin: "0 auto 12px",
+              }}
+            />
             <p style={{ color: "#22c55e", fontWeight: 700, fontSize: "14px", margin: 0 }}>
-              ✓ Node Complete — Synchronizing...
+              ✓ Synchronizing...
             </p>
           </motion.div>
         )}
@@ -209,73 +223,63 @@ export default function EvaluationSplitScreen() {
           width: "420px",
           backgroundColor: "var(--p-white)",
           borderLeft: "1px solid var(--p-border)",
-          padding: "40px 28px",
+          padding: "32px 24px",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
+          justifyContent: "flex-start",
           overflow: "auto",
+          maxHeight: "100vh",
         }}
       >
         <span style={{
-          fontSize: "10px", letterSpacing: "3px", textTransform: "uppercase",
-          color: "var(--t-muted)", fontWeight: 600, marginBottom: "20px",
+          fontSize: "9px", letterSpacing: "2px", textTransform: "uppercase",
+          color: "var(--t-muted)", fontWeight: 600, marginBottom: "16px",
         }}>
-          INTEL CARD — REFERENCE
+          REFERENCE CARD
         </span>
 
         {/* Mini Intel Card */}
         <div style={{
-          borderRadius: "12px",
+          borderRadius: "10px",
           border: "1px solid var(--p-border)",
           backgroundColor: "var(--p-sheet)",
           overflow: "hidden",
         }}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--p-border)" }}>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--p-border)" }}>
             <h4 style={{
-              fontFamily: "Georgia, serif", fontSize: "18px", fontWeight: 400,
-              letterSpacing: "-0.3px", color: "var(--t-primary)", margin: 0,
+              fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: 400,
+              letterSpacing: "-0.2px", color: "var(--t-primary)", margin: 0,
             }}>
-              {currentIntelCard.title}
+              Logic Reference
             </h4>
           </div>
 
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--p-border)" }}>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--p-border)", maxHeight: "110px", overflow: "auto" }}>
             <p style={{ fontSize: "13px", lineHeight: 1.7, color: "var(--t-mid)", margin: 0 }}>
-              {currentIntelCard.formalMechanism}
+              {currentScenario.formalMechanism}
             </p>
           </div>
 
           <div style={{
-            padding: "16px 20px",
+            padding: "14px 16px",
             backgroundColor: "var(--p-surface)",
             display: "flex",
             justifyContent: "center",
             borderBottom: "1px solid var(--p-border)",
+            maxHeight: "100px",
+            overflow: "auto",
           }}>
             <div dangerouslySetInnerHTML={{ __html: latexHtml }} style={{ fontSize: "14px" }} />
           </div>
 
-          <div style={{ padding: "16px 20px" }}>
+          <div style={{ padding: "14px 16px", maxHeight: "120px", overflow: "auto" }}>
             <p style={{
               fontSize: "13px", lineHeight: 1.7, color: "var(--t-deep)", margin: 0,
               fontStyle: "italic", fontFamily: "Georgia, serif",
             }}>
-              {currentIntelCard.soWhat}
+              {currentScenario.soWhat}
             </p>
           </div>
-        </div>
-
-        {/* Keywords */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "16px" }}>
-          {currentIntelCard.keywords.map((kw, i) => (
-            <span key={i} style={{
-              padding: "3px 10px", borderRadius: "5px",
-              backgroundColor: "var(--focus-tint)", color: "var(--focus)",
-              fontSize: "11px", fontWeight: 600,
-            }}>
-              {kw}
-            </span>
-          ))}
         </div>
       </motion.div>
     </motion.div>

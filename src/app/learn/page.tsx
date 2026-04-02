@@ -19,8 +19,6 @@ export default function LearnPage() {
     user,
     authInitialized,
     initAuth,
-    testMode,
-    toggleTestMode,
   } = useArceStore();
   const router = useRouter();
 
@@ -28,7 +26,12 @@ export default function LearnPage() {
     initAuth();
   }, [initAuth]);
 
-  // Loading state while checking auth
+  useEffect(() => {
+    if (authInitialized && !user) {
+      router.push("/signin");
+    }
+  }, [authInitialized, user, router]);
+
   if (!authInitialized) {
     return (
       <div style={{
@@ -51,13 +54,10 @@ export default function LearnPage() {
     );
   }
 
-  // Require Auth  
   if (!user) {
-    router.push("/signin");
     return null;
   }
 
-  // Determine background based on phase
   const getBackgroundColor = () => {
     switch (currentPhase) {
       case "input":
@@ -69,7 +69,7 @@ export default function LearnPage() {
       case "sanctuary":
         return "var(--p-white)";
       case "evaluation":
-        return "#0a0a0c"; // left panel is dark
+        return "#0a0a0c";
       case "synchronization":
       case "debrief":
         return "#0a0a0c";
@@ -84,36 +84,8 @@ export default function LearnPage() {
       minHeight: "100vh",
       transition: "background-color 0.6s ease",
     }}>
-      {/* Navbar: only show in input and sanctuary phases */}
       {(currentPhase === "input" || currentPhase === "extracting") && <Navbar />}
 
-      {/* Test Mode Toggle */}
-      <div style={{
-        position: "fixed",
-        bottom: "16px",
-        right: "16px",
-        zIndex: 300,
-      }}>
-        <button
-          onClick={toggleTestMode}
-          type="button"
-          style={{
-            padding: "8px 16px",
-            borderRadius: "8px",
-            fontWeight: 700,
-            fontSize: "12px",
-            transition: "all 0.2s",
-            background: testMode ? "var(--xp)" : "rgba(255,255,255,0.08)",
-            color: testMode ? "#000" : "rgba(255,255,255,0.4)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            cursor: "pointer",
-          }}
-        >
-          {testMode ? "TEST ON" : "TEST OFF"}
-        </button>
-      </div>
-
-      {/* Phase Router */}
       <AnimatePresence mode="wait">
         {(currentPhase === "input" || currentPhase === "extracting") && (
           <motion.div key="input" exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>

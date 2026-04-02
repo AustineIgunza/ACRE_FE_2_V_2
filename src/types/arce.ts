@@ -1,6 +1,7 @@
 /**
  * ARCÉ: The Iteration Engine - Type Definitions (v3.0)
  * 5-Phase Learning Flow: Extraction → Challenge → Sanctuary → Evaluation → Synchronization
+ * Flashpoint Review Engine: SM-2 Spaced Repetition with Phase-based Difficulty Scaling
  */
 
 // ── PHASE STATE MACHINE ──
@@ -13,6 +14,49 @@ export type LearnPhase =
   | "evaluation"     // Phase 4: Split-Screen Stress Test
   | "synchronization" // Phase 5: Card plugs into dashboard
   | "debrief";       // Phase 6: Session Summary / After Action Report
+
+// ── FLASHPOINT REVIEW ENGINE ──
+export type ReviewPhase = "phase-1" | "phase-2" | "phase-3"; // Days 1-3, 7-14, 30-90
+export type ReviewDifficulty = "multiple-choice" | "text-input" | "blindspot";
+
+export interface ConceptReviewTracking {
+  conceptId: string;
+  userId: string;
+  last_reviewed_timestamp: number;
+  current_interval: number; // Days until next review
+  ease_multiplier: number; // Starts at 2.5, adjusts based on performance
+  next_due_timestamp: number; // Unix timestamp when review is due
+  review_phase: ReviewPhase;
+  quality_of_response: number; // 0-5: Quality rating for SM-2 algorithm
+  total_reviews: number;
+}
+
+export interface FlashpointDashboardItem {
+  conceptId: string;
+  title: string;
+  current_interval: number;
+  next_due_timestamp: number;
+  review_phase: ReviewPhase;
+  daysUntilReview: number;
+  urgency: "critical" | "high" | "medium" | "low";
+}
+
+export interface FlashpointReviewSession {
+  id: string;
+  userId: string;
+  conceptId: string;
+  reviewPhase: ReviewPhase;
+  difficulty: ReviewDifficulty;
+  content: {
+    crisis_scenario: string; // The scenario text
+    options?: { id: string; label: string }[]; // Phase 1 only
+    guidance_text?: string; // Phase 2 proposal to correct
+    missing_variable?: string; // Phase 3 missing data hint
+  };
+  userResponse: string;
+  isCorrect: boolean;
+  timestamp: number;
+}
 
 // ── THERMAL STATES ──
 export type ThermalState = "frost" | "warning" | "ignition" | "neutral";
@@ -115,11 +159,22 @@ export interface CrisisScenario {
   nodeId: string;
   crisisText: string;
   questionType: QuestionType;
+  
+  // Phase 1: Challenge Zone (free-text domino question)
+  dominoQuestion?: string;
+  
+  // Phase 3: Intel Card Sanctuary (formal mechanism & formula)
+  formalMechanism?: string;
+  latexFormula?: string;
+  soWhat?: string;
+  
+  // Multiple-choice (used in some phases, not Phase 1)
   actionButtons?: {
     id: string;
     label: string;
     order: number;
   }[];
+  
   expectedDefense?: string;
   difficulty: "level-1" | "level-2" | "level-3";
 }

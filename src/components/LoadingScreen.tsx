@@ -99,29 +99,6 @@ export default function LoadingScreen({
         </p>
 
         {/* Progress Bar */}
-        <div style={{ width: "100%", maxWidth: "300px", marginBottom: "24px" }}>
-          <div style={{ 
-            height: "6px", 
-            borderRadius: "3px", 
-            backgroundColor: "var(--p-border)", 
-            overflow: "hidden",
-            marginBottom: "8px"
-          }}>
-            <div style={{
-              height: "100%",
-              width: `${Math.min(progress, 100)}%`,
-              backgroundColor: "var(--snap)",
-              transition: "width 0.3s ease-out",
-              borderRadius: "3px",
-              boxShadow: "0 0 8px rgba(255, 193, 7, 0.5)"
-            }} />
-          </div>
-          <p style={{ fontSize: "12px", color: "var(--t-muted)", margin: 0, textAlign: "center" }}>
-            {Math.round(Math.min(progress, 100))}%
-          </p>
-        </div>
-
-        {/* Progress Bar */}
         <div style={{ marginBottom: "24px" }}>
           <div className="progress-container" style={{ height: "6px", marginBottom: "12px" }}>
             <div className="progress-fill" style={{ width: `${progress}%` }} />

@@ -132,7 +132,6 @@ export interface CombatStore {
   battle_state: BattleState | null;
   is_loading: boolean;
   error: string | null;
-  nodeContext: { nodeId: string; nodeTitle: string; nodeTopic: string; unitId: string } | null;
 
   // Actions
   startBattle: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => Promise<void>;
@@ -141,7 +140,6 @@ export interface CombatStore {
     choice: "A" | "B" | "C" | "D"
   ) => Promise<void>;
   resetBattle: () => void;
-  setNodeContext: (context: { nodeId: string; nodeTitle: string; nodeTopic: string; unitId: string } | null) => void;
 
 
 }

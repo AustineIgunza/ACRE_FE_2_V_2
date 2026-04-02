@@ -1,17 +1,34 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useArceStore } from "@/store/arceStore";
-import { useFlashpointStore } from "@/store/flashpointStore";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import FlashpointRenderer from "@/components/dashboard/FlashpointRenderer";
+import { FlashpointDashboardItem } from "@/types/arce";
+import Link from "next/link";
+import FlashpointTriageDashboard from "@/components/FlashpointTriageDashboard";
+import FlashpointReview from "@/components/FlashpointReview";
 import { motion, AnimatePresence } from "framer-motion";
 
+interface DueReview {
+  conceptId: string;
+  conceptTitle: string;
+  phase: "phase-1" | "phase-2" | "phase-3";
+  difficulty: "multiple-choice" | "text-input" | "blindspot";
+  daysOverdue: number;
+  daysUntilDue: number;
+  successRate: number;
+  totalReviews: number;
+}
+
 export default function DashboardPage() {
-  const { user, authInitialized, initAuth } = useArceStore();
-  const { triageQueue, fetchTriage, isLoading, currentNodeId, startReview } = useFlashpointStore();
+  const { user, authInitialized, initAuth, nodeResults, scenarios } = useArceStore();
   const router = useRouter();
+  const [dueReviews, setDueReviews] = useState<FlashpointDashboardItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedReview, setSelectedReview] = useState<DueReview | null>(null);
+  const [reviewData, setReviewData] = useState<any>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
     initAuth();
@@ -24,90 +41,165 @@ export default function DashboardPage() {
   }, [user, authInitialized, router]);
 
   useEffect(() => {
-    if (user) {
-      fetchTriage();
+    if (!user) return;
+
+    // Fetch due reviews from backend
+    const fetchDueReviews = async () => {
+      try {
+        const response = await fetch(`/api/flashpoint/due-reviews?userId=${user.id}`);
+        const data = await response.json();
+        setDueReviews(data.due_reviews || []);
+      } catch (error) {
+        console.error("Failed to fetch due reviews:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDueReviews();
+  }, [user]);
+
+  // Handler when user selects a review from the triage dashboard
+  const handleSelectReview = async (review: DueReview) => {
+    setSelectedReview(review);
+    setReviewLoading(true);
+
+    try {
+      let endpoint = "";
+      if (review.phase === "phase-1") {
+        endpoint = "/api/flashpoint/phase-1-crisis";
+      } else if (review.phase === "phase-2") {
+        endpoint = "/api/flashpoint/phase-2-diagnostic";
+      } else if (review.phase === "phase-3") {
+        endpoint = "/api/flashpoint/phase-3-blindspot";
+      }
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conceptId: review.conceptId,
+          difficulty: review.difficulty,
+        }),
+      });
+
+      const data = await response.json();
+      setReviewData(data);
+    } catch (error) {
+      console.error("Failed to load review scenario:", error);
+    } finally {
+      setReviewLoading(false);
     }
-  }, [user, fetchTriage]);
+  };
+
+  // Handler when review is submitted
+  const handleSubmitReview = async (response: string | number) => {
+    if (!selectedReview || !reviewData) return;
+
+    try {
+      const apiResponse = await fetch("/api/flashpoint/evaluate-response", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phase: selectedReview.phase,
+          userResponse: response,
+          evaluationRubric: reviewData._metadata?.evaluation_rubric,
+          missingVariable: reviewData._metadata?.missing_variable,
+          successCondition: reviewData._metadata?.success_condition,
+        }),
+      });
+
+      const result = await apiResponse.json();
+      return result;
+    } catch (error) {
+      console.error("Failed to evaluate response:", error);
+      return { success: false, feedback: "Error evaluating response", score: 0 };
+    }
+  };
+
+  // Handler to close review modal
+  const handleCloseReview = () => {
+    setSelectedReview(null);
+    setReviewData(null);
+  };
 
   if (!authInitialized || !user) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--p-surface)" }}>
-        <div style={{ width: "40px", height: "40px", borderRadius: "50%", border: "3px solid var(--p-border)", borderTopColor: "var(--snap)", animation: "spin 0.6s linear infinite" }} />
+        <div style={{
+          width: "40px", height: "40px", borderRadius: "50%",
+          border: "3px solid var(--p-border)", borderTopColor: "var(--snap)",
+          animation: "spin 0.6s linear infinite"
+        }} />
       </div>
     );
-  }
-
-  // If we are reviewing a node, hijack the screen
-  if (currentNodeId) {
-    return <FlashpointRenderer />;
   }
 
   return (
     <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh", color: "var(--t-mid)" }}>
       <Navbar />
 
-      <main role="main" style={{ padding: "48px 24px 80px", maxWidth: "1000px", margin: "0 auto" }}>
-        <div style={{ marginBottom: "40px", animation: "slideUp 0.4s ease-out" }}>
-          <span className="eyebrow" style={{ marginBottom: "12px", display: "inline-block", color: "var(--snap)" }}>
-            FLASHPOINT TARGETS
-          </span>
-          <h1 style={{ fontSize: "36px", letterSpacing: "-1px", color: "var(--t-primary)", marginBottom: "8px" }}>
-            Triage Dashboard
-          </h1>
-          <p style={{ fontSize: "17px", color: "var(--t-secondary)" }}>
-            Review strictly prioritized interventions based on predictive decay models.
-          </p>
-        </div>
+      {/* Flashpoint Triage Dashboard - Main Content */}
+      <FlashpointTriageDashboard 
+        userId={user?.id} 
+        onSelectReview={handleSelectReview}
+      />
 
-        {isLoading && triageQueue.length === 0 ? (
-           <div style={{ textAlign: "center", padding: "40px", color: "var(--t-muted)" }}>Scanning vectors...</div>
-        ) : triageQueue.length === 0 ? (
-          <div style={{ 
-            textAlign: "center", padding: "80px 24px", color: "var(--success)", 
-            border: "1px dashed var(--p-border)", borderRadius: "12px" 
-          }}>
-            <h2 style={{ fontSize: "24px", marginBottom: "8px" }}>All Clear</h2>
-            <p style={{ color: "var(--t-secondary)" }}>No concepts are mathematically decaying today. You are at full situational awareness.</p>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: "16px" }}>
-            {triageQueue.map((node: any, index: number) => (
-              <motion.div
-                key={node.node_id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => startReview(node.node_id)}
-                style={{
-                  padding: "24px",
-                  backgroundColor: "var(--p-white)",
-                  border: "1px solid var(--p-border)",
-                  borderLeft: "4px solid var(--snap)",
-                  borderRadius: "12px",
-                  cursor: "pointer",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  transition: "all 0.2s"
-                }}
-                whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(0,0,0,0.08)" }}
-              >
-                <div>
-                  <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--t-primary)", marginBottom: "4px" }}>
-                    {node.title}
-                  </h3>
-                  <div style={{ fontSize: "13px", color: "var(--t-muted)" }}>
-                    Interval Phase: {node.current_interval} Days • Heat Integrity: {node.heat_score}%
-                  </div>
-                </div>
-                <button className="button-primary" style={{ padding: "8px 24px" }}>
-                  INTERVENE
-                </button>
-              </motion.div>
-            ))}
-          </div>
+      {/* Review Modal */}
+      <AnimatePresence mode="wait">
+        {selectedReview && reviewData && (
+          <FlashpointReview
+            key="flashpoint-review"
+            phase={selectedReview.phase}
+            difficulty={selectedReview.difficulty}
+            crisisAlert={reviewData.crisis_alert || reviewData.crisis_text || "Crisis Alert"}
+            options={reviewData.options}
+            flawedProposal={reviewData.flawed_proposal}
+            uiPrompt={reviewData.ui_prompt}
+            onSubmit={handleSubmitReview}
+            onClose={handleCloseReview}
+          />
         )}
-      </main>
+      </AnimatePresence>
+
+      {/* Action Grid - Below Triage */}
+      <motion.div 
+        style={{ 
+          maxWidth: "1200px", 
+          margin: "60px auto 40px", 
+          padding: "0 20px",
+          display: "grid", 
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", 
+          gap: "24px"
+        }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <Link href="/learn" style={{ textDecoration: "none" }}>
+          <div className="folio-card" style={{ padding: "32px", height: "100%", display: "flex", flexDirection: "column", transition: "all 0.2s", cursor: "pointer" }}>
+            <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "var(--snap-tint)", color: "var(--snap)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", marginBottom: "20px" }}>
+              ⚡
+            </div>
+            <h3 style={{ fontSize: "20px", marginBottom: "8px", color: "var(--t-deep)" }}>New Learning Session</h3>
+            <p style={{ color: "var(--t-mid)", lineHeight: 1.6, flexGrow: 1, fontSize: "14px" }}>
+              Paste material and extract logic nodes for mastery learning.
+            </p>
+          </div>
+        </Link>
+
+        <Link href="/heatmap" style={{ textDecoration: "none" }}>
+          <div className="folio-card" style={{ padding: "32px", height: "100%", display: "flex", flexDirection: "column", transition: "all 0.2s", cursor: "pointer" }}>
+            <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "var(--success-bg)", color: "var(--success)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", marginBottom: "20px" }}>
+              🗺️
+            </div>
+            <h3 style={{ fontSize: "20px", marginBottom: "8px", color: "var(--t-deep)" }}>Heatmap</h3>
+            <p style={{ color: "var(--t-mid)", lineHeight: 1.6, flexGrow: 1, fontSize: "14px" }}>
+              Visualize all concepts and their mastery progress.
+            </p>
+          </div>
+        </Link>
+      </motion.div>
     </div>
   );
 }

@@ -1,8 +1,22 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { useArceStore } from "@/store/arceStore";
 
 export default function BreakthroughTransition() {
+  const { currentPhase } = useArceStore();
+
+  useEffect(() => {
+    // After transition animation completes (2.5s total), advance to sanctuary
+    const timer = setTimeout(() => {
+      if (currentPhase === "transition") {
+        useArceStore.setState({ currentPhase: "sanctuary" });
+      }
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [currentPhase]);
   return (
     <motion.div
       initial={{ opacity: 1 }}

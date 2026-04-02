@@ -1,31 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
 
 export default function ChallengeZone() {
-  const {
-    currentNode,
-    document,
-    currentNodeIndex,
-    userDominoChain,
-    setUserDominoChain,
-    submitDominoChain,
-    isLoading,
-    error,
-    completedNodeIds,
-  } = useArceStore();
+  const { currentScenario, scenarios, isLoading, error, submitDominoPrediction } = useArceStore();
+  const [dominoResponse, setDominoResponse] = useState<string>("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [showPulse, setShowPulse] = useState(true);
+  if (!currentScenario) return null;
 
-  if (!currentNode) return null;
-
-  const totalNodes = document?.nodes.length || 0;
-  const progress = totalNodes > 0 ? ((currentNodeIndex) / totalNodes) * 100 : 0;
+  const scenarioIndex = scenarios.findIndex((s) => s.id === currentScenario.id);
+  const totalScenarios = scenarios.length;
+  const progress = totalScenarios > 0 ? ((scenarioIndex + 1) / totalScenarios) * 100 : 0;
 
   const handleSubmit = async () => {
-    await submitDominoChain();
+    if (!dominoResponse.trim()) return;
+    console.log("Submitting domino prediction:", dominoResponse);
+    await submitDominoPrediction(dominoResponse);
   };
 
   return (
@@ -52,7 +45,7 @@ export default function ChallengeZone() {
         pointerEvents: "none",
       }} />
 
-      {/* Top Bar: Progress + Node Counter */}
+      {/* Top Bar: Progress + Scenario Counter */}
       <div style={{
         padding: "16px 24px",
         display: "flex",
@@ -72,7 +65,7 @@ export default function ChallengeZone() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
-            NODE {currentNodeIndex + 1} / {totalNodes}
+            CONCEPT {scenarioIndex + 1} / {totalScenarios}
           </span>
           <div style={{ width: "120px", height: "3px", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: "2px", overflow: "hidden" }}>
             <motion.div
@@ -97,7 +90,7 @@ export default function ChallengeZone() {
         margin: "0 auto",
         width: "100%",
       }}>
-        {/* Dashboard Indicator */}
+        {/* Scenario Alert */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -117,11 +110,11 @@ export default function ChallengeZone() {
             style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#ef4444" }}
           />
           <span style={{ fontSize: "13px", color: "#ff8860", fontWeight: 600, fontFamily: "monospace" }}>
-            {currentNode.dashboard_indicator || "SYSTEM ALERT"}
+            LEARNING CHALLENGE
           </span>
         </motion.div>
 
-        {/* Node Title */}
+        {/* Scenario Title */}
         <motion.h2
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -136,10 +129,10 @@ export default function ChallengeZone() {
             marginBottom: "16px",
           }}
         >
-          {currentNode.title}
+          {currentScenario.nodeId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
         </motion.h2>
 
-        {/* Crisis Context */}
+        {/* Scenario Context */}
         <motion.p
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -153,7 +146,7 @@ export default function ChallengeZone() {
             maxWidth: "650px",
           }}
         >
-          {currentNode.crisis_context}
+          {currentScenario.crisisText}
         </motion.p>
 
         {/* Domino Question */}
@@ -163,67 +156,61 @@ export default function ChallengeZone() {
           transition={{ delay: 0.5 }}
           style={{
             width: "100%",
-            padding: "24px",
+            padding: "20px 24px",
             borderRadius: "12px",
-            backgroundColor: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            backgroundColor: "rgba(255,92,53,0.08)",
+            border: "1px solid rgba(255,92,53,0.2)",
             marginBottom: "24px",
           }}
         >
-          <span style={{ fontSize: "10px", letterSpacing: "3px", textTransform: "uppercase", color: "#ff5c35", fontWeight: 600, display: "block", marginBottom: "12px" }}>
-            PREDICTIVE QUESTION
-          </span>
-          <p style={{
-            fontFamily: "Georgia, serif",
-            fontSize: "17px",
-            fontWeight: 500,
-            color: "#f0f2ec",
-            lineHeight: 1.7,
-            margin: 0,
-          }}>
-            {currentNode.domino_question}
+          <p style={{ fontSize: "13px", color: "#ff8860", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
+            DOMINO EFFECT PREDICTION
+          </p>
+          <p style={{ fontSize: "15px", color: "#f0f2ec", fontWeight: 500, lineHeight: 1.6 }}>
+            {currentScenario.dominoQuestion || "Predict what happens next in this chain of events."}
           </p>
         </motion.div>
 
-        {/* Domino Chain Input */}
+        {/* Free-text Input Textarea */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.55 }}
           style={{ width: "100%" }}
         >
           <textarea
-            value={userDominoChain}
-            onChange={(e) => setUserDominoChain(e.target.value)}
-            placeholder="Trace the Domino Effect... What happens first? Then what? Follow the chain."
-            disabled={isLoading}
+            ref={textareaRef}
+            value={dominoResponse}
+            onChange={(e) => setDominoResponse(e.target.value)}
+            placeholder="Enter your prediction... What chains of consequences do you foresee?"
             style={{
               width: "100%",
-              minHeight: "140px",
-              padding: "20px",
-              fontSize: "15px",
-              lineHeight: 1.7,
-              color: "#f0f2ec",
-              backgroundColor: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "12px",
-              resize: "vertical",
+              height: "140px",
+              padding: "16px 20px",
+              fontSize: "14px",
+              lineHeight: 1.6,
               fontFamily: "inherit",
+              borderRadius: "10px",
+              border: "1px solid rgba(255,255,255,0.15)",
+              backgroundColor: "rgba(255,255,255,0.04)",
+              color: "#f0f2ec",
+              resize: "vertical",
+              boxSizing: "border-box",
+              transition: "all 0.2s",
               outline: "none",
-              transition: "border-color 0.2s",
             }}
-            onFocus={(e) => { e.target.style.borderColor = "rgba(255,92,53,0.4)"; }}
-            onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255,92,53,0.4)";
+              e.currentTarget.style.backgroundColor = "rgba(255,92,53,0.06)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+              e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)";
+            }}
           />
-
-          {/* Character Counter */}
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
-            <span style={{ fontSize: "12px", color: userDominoChain.length < 20 ? "rgba(255,92,53,0.6)" : "rgba(255,255,255,0.2)" }}>
-              {userDominoChain.length < 20 ? `${20 - userDominoChain.length} more characters needed` : "✓ Ready"}
-            </span>
-            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>
-              {userDominoChain.length} chars
-            </span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
+            <span>{dominoResponse.length} characters</span>
+            <span>{dominoResponse.trim().split(/\s+/).filter(w => w).length} words</span>
           </div>
         </motion.div>
 
@@ -239,28 +226,29 @@ export default function ChallengeZone() {
         <motion.button
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.7 }}
+          transition={{ delay: 0.6 }}
           whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(255,92,53,0.3)" }}
           whileTap={{ scale: 0.98 }}
           onClick={handleSubmit}
-          disabled={isLoading || userDominoChain.trim().length < 20}
+          disabled={isLoading || !dominoResponse.trim()}
           style={{
-            marginTop: "24px",
+            marginTop: "32px",
             width: "100%",
+            maxWidth: "300px",
             padding: "16px 32px",
             fontSize: "14px",
             fontWeight: 700,
             letterSpacing: "1px",
             textTransform: "uppercase",
             color: "#fff",
-            backgroundColor: userDominoChain.trim().length >= 20 ? "#ff5c35" : "rgba(255,92,53,0.3)",
+            backgroundColor: dominoResponse.trim() ? "#ff5c35" : "rgba(255,92,53,0.3)",
             border: "none",
             borderRadius: "10px",
-            cursor: isLoading || userDominoChain.trim().length < 20 ? "not-allowed" : "pointer",
+            cursor: isLoading || !dominoResponse.trim() ? "not-allowed" : "pointer",
             transition: "all 0.3s",
           }}
         >
-          {isLoading ? "ANALYZING CHAIN..." : "SUBMIT DOMINO CHAIN"}
+          {isLoading ? "ANALYZING..." : "SUBMIT PREDICTION"}
         </motion.button>
       </div>
     </motion.div>
