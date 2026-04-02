@@ -97,10 +97,31 @@ function calculateDetailScore(prediction: string): number {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { nodeId, prediction, question, originalText } = body;
+    const { nodeId, prediction, question, originalText, isMultipleChoice, correctAnswer } = body;
 
-    console.log("Evaluating:", { nodeId, prediction, question });
+    console.log("Evaluating:", { nodeId, prediction, question, isMultipleChoice });
 
+    // Handle multiple choice questions
+    if (isMultipleChoice) {
+      // Check if the selected answer matches the correct answer
+      const isCorrect = prediction === correctAnswer;
+      
+      return NextResponse.json({
+        accuracy: isCorrect ? "ignition" : "frost",
+        feedback: isCorrect 
+          ? "🔥 Correct! You've demonstrated your understanding of this concept."
+          : "❄️ That's not quite right. Review the concept and try again.",
+        score: isCorrect ? 100 : 30,
+        thermalState: isCorrect ? "ignition" : "frost",
+        details: {
+          isCorrect: isCorrect,
+          selectedAnswer: prediction,
+          correctAnswer: correctAnswer,
+        }
+      });
+    }
+
+    // Handle free-text domino questions
     // Check for gibberish first
     if (isGibberish(prediction)) {
       return NextResponse.json({

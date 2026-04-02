@@ -30,7 +30,47 @@ export default function ChallengeZone() {
     } else {
       if (!selectedChoice) return;
       console.log("Submitting multiple choice:", selectedChoice);
-      await submitDominoPrediction(selectedChoice);
+      // For MC, find the correct answer from options
+      const correctOption = mcOptions.find((opt: any) => opt.is_correct === true);
+      const correctAnswer = correctOption?.id || "A"; // Default to "A" if not marked
+      
+      // Pass MC-specific evaluation data
+      const evalResponse = await fetch("/api/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nodeId: currentScenario.nodeId,
+          prediction: selectedChoice,
+          isMultipleChoice: true,
+          correctAnswer: correctAnswer,
+          question: mcQuestion,
+        }),
+      });
+
+      if (evalResponse.ok) {
+        const result = await evalResponse.json();
+        // Call submitDominoPrediction with the MC result
+        // This will handle the state update properly
+        const nodeId = currentScenario.nodeId || currentScenario.id;
+        
+        // Update node results in store manually
+        const state = useArceStore.getState();
+        const updatedNodeResults = {
+          ...state.nodeResults,
+          [nodeId]: { 
+            accuracy: result.accuracy, 
+            heatScore: result.score, 
+            feedback: result.feedback,
+            thermalState: result.thermalState
+          }
+        };
+        
+        useArceStore.setState({
+          isLoading: false,
+          currentPhase: "transition",
+          nodeResults: updatedNodeResults,
+        });
+      }
     }
   };
 
