@@ -15,9 +15,10 @@ function renderLatex(formula: string): string {
 }
 
 export default function EvaluationSplitScreen() {
-  const { currentScenario, isLoading, submitDefense } = useArceStore();
+  const { currentScenario } = useArceStore();
   const [stressResponse, setStressResponse] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
   const [validationFeedback, setValidationFeedback] = useState<string>("");
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
@@ -26,33 +27,39 @@ export default function EvaluationSplitScreen() {
   const latexHtml = renderLatex(currentScenario.latexFormula || "");
 
   const handleStressSubmit = async () => {
+    if (!stressResponse.trim()) return;
     setSubmitted(true);
-    console.log("Stress test submitted, validating response...");
-    
+    setIsEvaluating(true);
+
     try {
-      // Call submitDefense to validate the user's answer
-      const result = await submitDefense(stressResponse);
-      
-      if (result) {
-        setValidationFeedback(result.feedback);
-        setIsCorrect(result.thermalState === "ignition" || result.thermalState === "warning");
-        console.log("Validation result:", { thermalState: result.thermalState, feedback: result.feedback });
+      const res = await fetch("/api/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nodeId: currentScenario.nodeId,
+          prediction: stressResponse,
+          question: currentScenario.stressTest || currentScenario.formalMechanism || "Apply the invariant to the counter-variable.",
+        }),
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        setValidationFeedback(result.feedback || "Logic evaluated.");
+        setIsCorrect(result.accuracy === "ignition" || result.accuracy === "warning");
+      } else {
+        setValidationFeedback("Response recorded. Advancing...");
+        setIsCorrect(true);
       }
-      
-      // After showing feedback, advance to synchronization
-      setTimeout(() => {
-        console.log("Advancing to synchronization phase");
-        useArceStore.setState({ currentPhase: "synchronization" });
-      }, 2500);
-    } catch (error) {
-      console.error("Error during answer validation:", error);
-      setValidationFeedback("⚠️ Error validating response. Please try again.");
-      setIsCorrect(false);
-      
-      setTimeout(() => {
-        useArceStore.setState({ currentPhase: "synchronization" });
-      }, 2500);
+    } catch {
+      setValidationFeedback("Response recorded. Advancing...");
+      setIsCorrect(true);
+    } finally {
+      setIsEvaluating(false);
     }
+
+    setTimeout(() => {
+      useArceStore.setState({ currentPhase: "synchronization" });
+    }, 2500);
   };
 
   return (
@@ -98,7 +105,7 @@ export default function EvaluationSplitScreen() {
           ⚡ STRESS TEST
         </span>
 
-        {/* Updated Dashboard Indicator */}
+        {/* Alert bar */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -118,24 +125,11 @@ export default function EvaluationSplitScreen() {
             style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#ef4444" }}
           />
           <span style={{ fontSize: "13px", color: "#f87171", fontWeight: 600, fontFamily: "monospace" }}>
-            STRESS TEST: Can this logic survive counter-evidence?
+            COUNTER-VARIABLE DETECTED — Apply your Intel Card
           </span>
         </motion.div>
 
-        {/* Counter Variable */}
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          style={{
-            fontSize: "14px", lineHeight: 1.7, color: "rgba(255,255,255,0.5)",
-            marginBottom: "24px",
-          }}
-        >
-          <strong style={{ color: "#f59e0b" }}>Counter-Variable:</strong> What if the initial assumptions change?
-        </motion.p>
-
-        {/* Stress Question */}
+        {/* Dynamic Stress Test Question */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -144,19 +138,23 @@ export default function EvaluationSplitScreen() {
             padding: "24px",
             borderRadius: "12px",
             backgroundColor: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,92,53,0.15)",
             marginBottom: "24px",
           }}
         >
+          <p style={{ fontSize: "11px", letterSpacing: "2px", color: "#ef4444", fontWeight: 700, textTransform: "uppercase", marginBottom: "12px" }}>
+            THE CHALLENGE
+          </p>
           <p style={{
             fontFamily: "Georgia, serif",
             fontSize: "17px",
             fontWeight: 500,
             color: "#f0f2ec",
-            lineHeight: 1.7,
+            lineHeight: 1.75,
             margin: 0,
           }}>
-            How does your Domino Effect chain hold up when variables change? Where is the weakest link?
+            {currentScenario.stressTest ||
+              `Your Intel Card maps the invariant. Now a counter-variable enters the picture — one that your chain did not account for. Where does the logic hold, and where does it break?`}
           </p>
         </motion.div>
 
@@ -172,7 +170,7 @@ export default function EvaluationSplitScreen() {
             marginBottom: "24px",
           }}
         >
-          💡 Consider what assumptions your logic depends on. What if one changes?
+          💡 Use the Intel Card on the right as your reference. Your Intel Card is the weapon — now wield it.
         </motion.p>
 
         {/* Response Input or Submitted State */}
@@ -194,17 +192,17 @@ export default function EvaluationSplitScreen() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleStressSubmit}
-              disabled={isLoading || stressResponse.trim().length === 0}
+              disabled={isEvaluating || stressResponse.trim().length === 0}
               style={{
                 marginTop: "16px", width: "100%",
                 padding: "14px 32px", fontSize: "13px", fontWeight: 700,
                 letterSpacing: "1px", textTransform: "uppercase",
                 color: "#fff", backgroundColor: "#ff5c35",
-                border: "none", borderRadius: "10px", cursor: isLoading ? "not-allowed" : "pointer",
-                opacity: isLoading ? 0.6 : 1,
+                border: "none", borderRadius: "10px", cursor: isEvaluating ? "not-allowed" : "pointer",
+                opacity: isEvaluating ? 0.6 : 1,
               }}
             >
-              {isLoading ? "VALIDATING..." : "COMPLETE NODE"}
+              {isEvaluating ? "VALIDATING..." : "COMPLETE NODE"}
             </motion.button>
           </motion.div>
         ) : (

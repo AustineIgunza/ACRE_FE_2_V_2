@@ -22,7 +22,7 @@ export default function SignInPage() {
         password,
       });
       if (signInError) throw signInError;
-      window.location.href = "/dashboard";
+      window.location.href = "/learn";
     } catch (err: any) {
       setError(err.message || "An error occurred during sign in");
       setIsLoading(false);
@@ -45,7 +45,7 @@ export default function SignInPage() {
         <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", textDecoration: "none" }}>
           <span className="nav-logo-accent" />
           <span style={{ fontFamily: "Georgia, serif", fontSize: "24px", fontWeight: 400, color: "var(--t-primary)", letterSpacing: "-0.5px" }}>
-            Learn Forge
+            ARCÉ
           </span>
         </Link>
       </div>

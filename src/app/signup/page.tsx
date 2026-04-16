@@ -28,12 +28,12 @@ export default function SignUpPage() {
         }
       });
       if (signUpError) throw signUpError;
-      setSuccess("Account created successfully! Redirecting to dashboard...");
+      setSuccess("Account created successfully! Redirecting to learn...");
       setIsLoading(false);
       
       // Auto-redirect if email confirmation is off, but better to keep success message visible
       setTimeout(() => {
-        window.location.href = "/dashboard";
+        window.location.href = "/learn";
       }, 1500);
     } catch (err: any) {
       setError(err.message || "An error occurred during sign up");
@@ -57,7 +57,7 @@ export default function SignUpPage() {
         <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", textDecoration: "none" }}>
           <span className="nav-logo-accent" />
           <span style={{ fontFamily: "Georgia, serif", fontSize: "24px", fontWeight: 400, color: "var(--t-primary)", letterSpacing: "-0.5px" }}>
-            Learn Forge
+            ARCÉ
           </span>
         </Link>
       </div>

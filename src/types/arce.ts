@@ -231,6 +231,9 @@ export interface CrisisScenario {
   formalMechanism?: string;
   latexFormula?: string;
   soWhat?: string;
+
+  // Phase 4: Evaluation Stress Test (adaptive per-node counter-variable challenge)
+  stressTest?: string;
   
   // Multiple-choice questions
   multiple_choice_question?: string;

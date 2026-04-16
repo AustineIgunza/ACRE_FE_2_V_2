@@ -12,6 +12,7 @@ import {
 } from "@/types/arce";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
+import { saveNodeProgress, initNodeSRS, loadAllProgress } from "@/utils/progressStorage";
 
 interface ArceStore {
   // Session state
@@ -33,6 +34,10 @@ interface ArceStore {
   sessionToken: string | null;
   authInitialized: boolean;
 
+  // Hierarchy labels for current session
+  currentUnitName: string;
+  currentTopicName: string;
+
   // UI state
   showLogo: boolean; // Logo only at start and end
   currentPhase: "input" | "playing" | "results" | "extracting" | "challenge" | "transition" | "sanctuary" | "evaluation" | "synchronization" | "debrief"; // input = textarea, playing = action/defense, results = mastery cards
@@ -43,7 +48,7 @@ interface ArceStore {
 
   // Actions
   startGame: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => Promise<void>;
-  extractLogic: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => Promise<void>;
+  extractLogic: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string, unitName?: string) => Promise<void>;
   selectAction: (buttonId: string) => void;
   showDefense: () => void;
   submitDefense: (defense: string) => Promise<{ thermalState: ThermalState, feedback: string, keywords: string[], formalDefinition: string } | undefined>;
@@ -79,6 +84,8 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   userProgress: {},
   progressDetails: [],
   nodeResults: {},
+  currentUnitName: "",
+  currentTopicName: "",
   showLogo: true, // Show logo at start
   currentPhase: "input",
   selectedActionButton: null,
@@ -120,64 +127,39 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   },
 
   fetchProgress: async () => {
-    const { user } = get();
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('user_progress')
-      .select('node_id, heat_score, is_ignited, last_attempt');
-      
-    if (error) {
-      // Silently fail if table doesn't exist - this is expected during initial setup
-      if (error.code === 'PGRST205') {
-        console.log("user_progress table not yet created. This is normal for first-time setup.");
-        return;
-      }
-      console.error("Failed to fetch progress:", error.message);
-      return;
-    }
-    
-    if (data) {
-      const progressMap: Record<string, number> = {};
-      const details = data.map((row: any) => {
-        progressMap[row.node_id] = row.heat_score;
-        return {
-          nodeId: row.node_id,
-          heatScore: row.heat_score,
-          isIgnited: row.is_ignited,
-          lastAttempt: row.last_attempt,
-        };
-      });
-      set({ userProgress: progressMap, progressDetails: details });
-    }
+    // Primary: load from localStorage (works without auth/database)
+    const all = loadAllProgress();
+    const progressMap: Record<string, number> = {};
+    const details = Object.values(all).map((node) => {
+      progressMap[node.nodeId] = node.heatScore;
+      return {
+        nodeId: node.nodeId,
+        heatScore: node.heatScore,
+        isIgnited: node.isIgnited,
+        lastAttempt: node.lastAttempt,
+      };
+    });
+    set({ userProgress: progressMap, progressDetails: details });
   },
 
   // New: Extract logic for Arcé iteration engine
-  extractLogic: async (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => {
+  extractLogic: async (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string, unitName?: string) => {
     set({ isLoading: true, error: null, currentPhase: "extracting" });
 
     try {
-      const { sessionToken } = get();
-
       const formData = new FormData();
       if (payload.text) formData.append("text_material", payload.text);
       if (payload.url) formData.append("url", payload.url);
       if (payload.file) formData.append("file", payload.file);
       if (sourceTitle) formData.append("title", sourceTitle);
 
-      console.log("Calling generate-scenarios API with:", { payload, sourceTitle });
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-scenarios`, {
-         method: 'POST',
-         headers: { 
-           ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
-         },
-         body: formData
+      const res = await fetch("/api/generate-scenarios", {
+        method: "POST",
+        body: formData,
       });
-      console.log("API Response status:", res.status);
-      
-      if (!res.ok) throw new Error(`Failed to extract logic from backend. Status: ${res.status}`);
+
+      if (!res.ok) throw new Error(`Failed to extract logic. Status: ${res.status}`);
       const data = await res.json();
-      console.log("API Response data:", data);
       
       // Map Logic Nodes to Arcé Phase 1 structure (free-text domino questions)
       const mappedScenarios: CrisisScenario[] = data.logic_nodes.map((node: any, index: number) => ({
@@ -189,6 +171,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         formalMechanism: node.formal_mechanism,
         latexFormula: node.latex_formula,
         soWhat: node.so_what,
+        stressTest: node.stress_test,
         actionButtons: [], // No buttons for Phase 1
         difficulty: 'level-1',
         // Include multiple choice data from API
@@ -239,6 +222,8 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         isLoading: false,
         currentPhase: "challenge",
         showLogo: false,
+        currentTopicName: sourceTitle || "",
+        currentUnitName: unitName || "",
       });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "Failed to extract logic", isLoading: false, currentPhase: "input" });
@@ -646,35 +631,40 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       const nodeId = state.currentScenario.nodeId || state.currentScenario.id;
       // Use the actual score from evaluation (0-100), not fixed accuracy mapping
       const heatScore = result.score || (result.accuracy === "ignition" ? 100 : result.accuracy === "warning" ? 50 : 25);
-      
+
       const updatedNodeResults = {
         ...state.nodeResults,
         [nodeId]: { accuracy: result.accuracy, heatScore, feedback: result.feedback, thermalState: result.thermalState }
       };
 
-      // Save to Supabase if user is authenticated
-      if (state.user) {
-        try {
-          const { error: saveError } = await supabase
-            .from('user_progress')
-            .upsert(
-              {
-                user_id: state.user.id,
-                node_id: nodeId,
-                heat_score: heatScore,
-                thermal_state: result.accuracy || result.thermalState,
-                is_ignited: result.accuracy === "ignition",
-                last_attempt: new Date().toISOString(),
-              },
-              { onConflict: 'user_id,node_id' }
-            );
-
-          if (saveError) {
-            console.warn("Warning saving to user_progress:", saveError);
-          }
-        } catch (err) {
-          console.warn("Error saving progress to Supabase:", err);
-        }
+      // Save to localStorage (primary persistence — survives page refresh)
+      {
+        const cluster = state.gameSession?.clusters[state.gameSession.currentClusterIndex];
+        const clusterNode = cluster?.nodes.find((n: any) => n.id === nodeId);
+        const title = clusterNode?.title || nodeId;
+        const thermalStateVal = result.accuracy === "ignition" ? "ignition"
+          : result.accuracy === "warning" ? "warning" : "frost";
+        saveNodeProgress(nodeId, {
+          nodeId,
+          title,
+          heatScore,
+          thermalState: thermalStateVal,
+          isIgnited: result.accuracy === "ignition",
+          lastAttempt: new Date().toISOString(),
+          unitName: state.currentUnitName || undefined,
+          unitId: state.currentUnitName ? state.currentUnitName.toLowerCase().replace(/\s+/g, '-') : undefined,
+          topicName: state.currentTopicName || undefined,
+          topicId: state.currentTopicName ? state.currentTopicName.toLowerCase().replace(/\s+/g, '-') : nodeId.split('-').slice(0, 2).join('-'),
+          crisisText: state.currentScenario.crisisText,
+          formalMechanism: state.currentScenario.formalMechanism,
+          latexFormula: state.currentScenario.latexFormula,
+          soWhat: state.currentScenario.soWhat,
+          stressTest: state.currentScenario.stressTest,
+          dominoQuestion: state.currentScenario.dominoQuestion,
+          multiple_choice_question: state.currentScenario.multiple_choice_question,
+          multiple_choice_options: state.currentScenario.multiple_choice_options,
+        });
+        initNodeSRS(nodeId, heatScore);
       }
 
       // Advance to Phase 2: Breakthrough Transition
@@ -696,39 +686,26 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   // Save heatmap data when all nodes are complete
   saveHeatmapData: async () => {
     const state = useArceStore.getState();
-    if (!state.user || !state.gameSession) return;
+    if (!state.gameSession) return;
 
-    try {
-      // Calculate heatmap data from nodeResults
-      const heatmapData = Object.entries(state.nodeResults).map(([nodeId, result]) => ({
-        node_id: nodeId,
-        heat_score: result.heatScore,
-        is_ignited: result.accuracy === "ignition",
-        last_attempt: new Date().toISOString(),
-      }));
-
-      // Insert or update user progress in Supabase
-      for (const data of heatmapData) {
-        const { error } = await supabase
-          .from('user_progress')
-          .upsert(
-            {
-              user_id: state.user.id,
-              node_id: data.node_id,
-              heat_score: data.heat_score,
-              is_ignited: data.is_ignited,
-              last_attempt: data.last_attempt,
-            },
-            { onConflict: 'user_id,node_id' }
-          );
-
-        if (error) console.error("Error saving heatmap data:", error);
-      }
-
-      console.log("Heatmap data saved successfully");
-    } catch (error) {
-      console.error("Error saving heatmap data:", error);
-    }
+    // Persist all node results to localStorage
+    Object.entries(state.nodeResults).forEach(([nodeId, result]) => {
+      const cluster = state.gameSession?.clusters[state.gameSession.currentClusterIndex];
+      const clusterNode = cluster?.nodes.find((n: any) => n.id === nodeId);
+      const title = clusterNode?.title || nodeId;
+      saveNodeProgress(nodeId, {
+        nodeId,
+        title,
+        heatScore: result.heatScore,
+        thermalState: result.accuracy === "ignition" ? "ignition" : result.accuracy === "warning" ? "warning" : "frost",
+        isIgnited: result.accuracy === "ignition",
+        lastAttempt: new Date().toISOString(),
+        unitName: state.currentUnitName || undefined,
+        unitId: state.currentUnitName ? state.currentUnitName.toLowerCase().replace(/\s+/g, '-') : undefined,
+        topicName: state.currentTopicName || undefined,
+        topicId: state.currentTopicName ? state.currentTopicName.toLowerCase().replace(/\s+/g, '-') : undefined,
+      });
+    });
   },
 
   // Save user progress to Supabase (persistent across sessions)

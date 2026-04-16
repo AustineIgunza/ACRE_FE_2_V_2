@@ -19,20 +19,19 @@ function renderLatex(formula: string): string {
 }
 
 export default function IntelCardSanctuary() {
-  const { currentScenario, scenarios, isLoading } = useArceStore();
+  const { currentScenario, scenarios, isLoading, nodeResults } = useArceStore();
 
   if (!currentScenario || !scenarios) return null;
 
   // Get current Logic Node title from scenario
   const nodeTitle = currentScenario.nodeId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  
-  // Extract invariant-like text from crisis scenario for display
-  const invariantText = `When ${nodeTitle.toLowerCase()} occurs, the system experiences a critical state transition.`;
 
-  // Determine accuracy level based on user's response (placeholder logic)
-  const isIgnition = true; // TODO: Evaluate user response
-  const isWarning = false;
-  const isFrost = false;
+  // Read thermal state from actual evaluation result
+  const nodeResult = nodeResults?.[currentScenario.nodeId];
+  const thermalState = nodeResult?.accuracy || "neutral";
+  const isIgnition = thermalState === "ignition";
+  const isWarning = thermalState === "warning";
+  const isFrost = thermalState === "frost";
 
   const accuracyColor = isIgnition ? "#22c55e" : isWarning ? "#f59e0b" : "#ef4444";
   const accuracyLabel = isIgnition ? "IGNITION" : isWarning ? "WARNING" : "FROST";
@@ -147,7 +146,7 @@ export default function IntelCardSanctuary() {
           <p style={{
             fontSize: "14px", lineHeight: 1.7, color: "var(--t-mid)", margin: 0,
           }}>
-            {invariantText}
+            {currentScenario.formalMechanism}
           </p>
         </motion.div>
 

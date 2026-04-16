@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
+import { saveNodeProgress, initNodeSRS } from "@/utils/progressStorage";
 
 export default function ChallengeZone() {
   const { currentScenario, scenarios, isLoading, error, submitDominoPrediction } = useArceStore();
@@ -49,27 +50,44 @@ export default function ChallengeZone() {
 
       if (evalResponse.ok) {
         const result = await evalResponse.json();
-        // Call submitDominoPrediction with the MC result
-        // This will handle the state update properly
         const nodeId = currentScenario.nodeId || currentScenario.id;
-        
-        // Update node results in store manually
+        const heatScore = result.score ?? (result.accuracy === "ignition" ? 100 : result.accuracy === "warning" ? 50 : 25);
+        const thermalStateVal = result.accuracy === "ignition" ? "ignition"
+          : result.accuracy === "warning" ? "warning" : "frost";
+
+        // Save to localStorage (survives page refresh)
         const state = useArceStore.getState();
+        const cluster = state.gameSession?.clusters[state.gameSession.currentClusterIndex];
+        const clusterNode = cluster?.nodes.find((n: any) => n.id === nodeId);
+        const title = clusterNode?.title || nodeId;
+        saveNodeProgress(nodeId, {
+          nodeId,
+          title,
+          heatScore,
+          thermalState: thermalStateVal,
+          isIgnited: result.accuracy === "ignition",
+          lastAttempt: new Date().toISOString(),
+          unitName: state.currentUnitName || undefined,
+          unitId: state.currentUnitName ? state.currentUnitName.toLowerCase().replace(/\s+/g, '-') : undefined,
+          topicName: state.currentTopicName || undefined,
+          topicId: state.currentTopicName ? state.currentTopicName.toLowerCase().replace(/\s+/g, '-') : undefined,
+          crisisText: currentScenario.crisisText,
+          formalMechanism: currentScenario.formalMechanism,
+          latexFormula: currentScenario.latexFormula,
+          soWhat: currentScenario.soWhat,
+          stressTest: (currentScenario as any).stressTest,
+          dominoQuestion: currentScenario.dominoQuestion,
+          multiple_choice_question: (currentScenario as any).multiple_choice_question,
+          multiple_choice_options: (currentScenario as any).multiple_choice_options,
+        });
+        initNodeSRS(nodeId, heatScore);
+
+        // Update store state
         const updatedNodeResults = {
           ...state.nodeResults,
-          [nodeId]: { 
-            accuracy: result.accuracy, 
-            heatScore: result.score, 
-            feedback: result.feedback,
-            thermalState: result.thermalState
-          }
+          [nodeId]: { accuracy: result.accuracy, heatScore, feedback: result.feedback, thermalState: result.thermalState }
         };
-        
-        useArceStore.setState({
-          isLoading: false,
-          currentPhase: "transition",
-          nodeResults: updatedNodeResults,
-        });
+        useArceStore.setState({ isLoading: false, currentPhase: "transition", nodeResults: updatedNodeResults });
       }
     }
   };

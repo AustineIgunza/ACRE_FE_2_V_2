@@ -5,423 +5,577 @@ import { useArceStore } from "@/store/arceStore";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import RetryNodeModal from "@/components/RetryNodeModal";
+import { loadAllProgress, NodeProgressData } from "@/utils/progressStorage";
+
+type ViewLevel = "units" | "topics" | "nodes";
+
+function getHeatColor(heat: number) {
+  if (heat >= 85) return "#b91c1c"; // deep crimson — peak ignition
+  if (heat >= 70) return "#ef4444"; // standard red — ignition
+  if (heat > 45) return "#f59e0b";
+  if (heat > 0) return "#3b82f6";
+  return "#6b7280";
+}
+
+function getThermalEmoji(heat: number) {
+  if (heat >= 70) return "🔥";
+  if (heat > 45) return "⚠️";
+  if (heat > 0) return "❄️";
+  return "○";
+}
+
+function getThermalLabel(heat: number) {
+  if (heat >= 85) return "CRITICAL MASS";
+  if (heat >= 70) return "IGNITION";
+  if (heat > 45) return "WARNING";
+  if (heat > 0) return "FROST";
+  return "INACTIVE";
+}
+
+/** Which glow animation class to apply based on heat */
+function getGlowClass(heat: number) {
+  if (heat >= 85) return "glow-critical";   // deep crimson, more aggressive
+  if (heat >= 70) return "glow-ignition";   // standard red pulse
+  if (heat > 45) return "glow-warning";
+  if (heat > 0) return "glow-frost";
+  return "";
+}
+
+function avg(scores: number[]) {
+  if (!scores.length) return 0;
+  return Math.round(scores.reduce((s, x) => s + x, 0) / scores.length);
+}
+
+const GLOW_CSS = `
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Critical Mass (85+): deep crimson, fast and intense */
+  @keyframes pulse-critical {
+    0%, 100% { box-shadow: 0 0 12px 4px rgba(185,28,28,0.5),  0 0 32px 8px rgba(185,28,28,0.28), 0 0 64px 16px rgba(185,28,28,0.1), inset 0 0 14px rgba(185,28,28,0.12); }
+    50%       { box-shadow: 0 0 28px 10px rgba(185,28,28,0.75), 0 0 60px 18px rgba(185,28,28,0.42), 0 0 100px 28px rgba(185,28,28,0.16), inset 0 0 24px rgba(185,28,28,0.2); }
+  }
+  /* Ignition (70–84): standard red pulse */
+  @keyframes pulse-ignition {
+    0%, 100% { box-shadow: 0 0 8px 2px rgba(239,68,68,0.35), 0 0 24px 4px rgba(239,68,68,0.18), inset 0 0 10px rgba(239,68,68,0.08); }
+    50%       { box-shadow: 0 0 20px 6px rgba(239,68,68,0.6),  0 0 48px 12px rgba(239,68,68,0.28), inset 0 0 18px rgba(239,68,68,0.14); }
+  }
+  /* Warning: amber flicker */
+  @keyframes pulse-warning {
+    0%, 100% { box-shadow: 0 0 6px 2px rgba(245,158,11,0.3), 0 0 20px 4px rgba(245,158,11,0.14), inset 0 0 8px rgba(245,158,11,0.06); }
+    50%       { box-shadow: 0 0 16px 5px rgba(245,158,11,0.55), 0 0 40px 10px rgba(245,158,11,0.22), inset 0 0 14px rgba(245,158,11,0.1); }
+  }
+  /* Frost: cool blue shimmer */
+  @keyframes pulse-frost {
+    0%, 100% { box-shadow: 0 0 6px 2px rgba(59,130,246,0.25), 0 0 18px 3px rgba(59,130,246,0.1), inset 0 0 6px rgba(59,130,246,0.05); }
+    50%       { box-shadow: 0 0 14px 4px rgba(59,130,246,0.45), 0 0 32px 8px rgba(59,130,246,0.18), inset 0 0 12px rgba(59,130,246,0.08); }
+  }
+
+  .glow-critical  { animation: pulse-critical  1.4s ease-in-out infinite; }
+  .glow-ignition  { animation: pulse-ignition  2s   ease-in-out infinite; }
+  .glow-warning   { animation: pulse-warning   2.5s ease-in-out infinite; }
+  .glow-frost     { animation: pulse-frost     3.2s ease-in-out infinite; }
+
+  /* Mini bar inside TopicCard */
+  @keyframes pulse-bar-critical {
+    0%, 100% { opacity: 0.8;  filter: drop-shadow(0 0 5px rgba(185,28,28,0.9)); }
+    50%       { opacity: 1;   filter: drop-shadow(0 0 9px rgba(185,28,28,1)); }
+  }
+  @keyframes pulse-bar-ignition {
+    0%, 100% { opacity: 0.75; }
+    50%       { opacity: 1; filter: drop-shadow(0 0 4px rgba(239,68,68,0.8)); }
+  }
+  @keyframes pulse-bar-warning {
+    0%, 100% { opacity: 0.7; }
+    50%       { opacity: 1; filter: drop-shadow(0 0 3px rgba(245,158,11,0.7)); }
+  }
+  @keyframes pulse-bar-frost {
+    0%, 100% { opacity: 0.6; }
+    50%       { opacity: 0.9; filter: drop-shadow(0 0 3px rgba(59,130,246,0.6)); }
+  }
+
+  .bar-critical { animation: pulse-bar-critical 1.4s ease-in-out infinite; }
+  .bar-ignition { animation: pulse-bar-ignition 2s   ease-in-out infinite; }
+  .bar-warning  { animation: pulse-bar-warning  2.5s ease-in-out infinite; }
+  .bar-frost    { animation: pulse-bar-frost    3.2s ease-in-out infinite; }
+
+  /* Node card hover lift */
+  .node-card { transition: transform 0.18s ease, border-color 0.18s ease; }
+  .node-card:hover { transform: scale(1.06); }
+
+  /* Unit/topic card lift */
+  .heat-card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+`;
 
 export default function HeatmapPage() {
-  const { user, authInitialized, initAuth, fetchProgress, userProgress, progressDetails, nodeResults, scenarios } = useArceStore();
+  const { user, authInitialized, initAuth } = useArceStore();
   const router = useRouter();
+  const [view, setView] = useState<ViewLevel>("units");
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedNodeData, setSelectedNodeData] = useState<any>(null);
   const [isRetryModalOpen, setIsRetryModalOpen] = useState(false);
+  const [allNodes, setAllNodes] = useState<NodeProgressData[]>([]);
 
-  useEffect(() => {
-    initAuth();
-  }, [initAuth]);
-
-  useEffect(() => {
-    if (authInitialized && !user) {
-      router.push("/signin");
-    } else if (authInitialized && user) {
-      fetchProgress();
-    }
-  }, [user, authInitialized, router, fetchProgress]);
-
-  const handleNodeClick = (nodeId: string, nodeData: any) => {
-    setSelectedNode(nodeId);
-    setSelectedNodeData(nodeData);
-    setIsRetryModalOpen(true);
-  };
-
-  const handleRetrySuccess = (result: any) => {
-    console.log("Review completed:", result);
-    // Refresh progress after successful review
-    fetchProgress();
-  };
+  useEffect(() => { initAuth(); }, [initAuth]);
+  useEffect(() => { if (authInitialized && !user) router.push("/signin"); }, [user, authInitialized, router]);
+  useEffect(() => { const all = loadAllProgress(); setAllNodes(Object.values(all)); }, [isRetryModalOpen]);
 
   if (!authInitialized || !user) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--p-surface)" }}>
-        <div style={{
-          width: "40px", height: "40px", borderRadius: "50%",
-          border: "3px solid var(--p-border)", borderTopColor: "var(--snap)",
-          animation: "spin 0.6s linear infinite"
-        }} />
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ width: "40px", height: "40px", borderRadius: "50%", border: "3px solid var(--p-border)", borderTopColor: "var(--snap)", animation: "spin 0.6s linear infinite" }} />
       </div>
     );
   }
 
-  // Convert nodeResults from current session to display format
-  const sessionNodes = Object.entries(nodeResults || {}).map(([nodeId, result]) => {
-    const scenario = scenarios.find(s => s.nodeId === nodeId);
+  // ── Build hierarchy ──────────────────────────────────────────────────────────
+  const unitMap: Record<string, { unitName: string; nodes: NodeProgressData[] }> = {};
+  for (const node of allNodes) {
+    const uid = node.unitId || "uncategorized";
+    if (!unitMap[uid]) unitMap[uid] = { unitName: node.unitName || "Uncategorized", nodes: [] };
+    unitMap[uid].nodes.push(node);
+  }
+
+  const units = Object.entries(unitMap).map(([unitId, { unitName, nodes }]) => {
+    const topicMap: Record<string, { topicName: string; nodes: NodeProgressData[] }> = {};
+    for (const n of nodes) {
+      const tid = n.topicId || "general";
+      if (!topicMap[tid]) topicMap[tid] = { topicName: n.topicName || "General", nodes: [] };
+      topicMap[tid].nodes.push(n);
+    }
+    const topics = Object.entries(topicMap).map(([topicId, { topicName, nodes: tnodes }]) => ({
+      topicId, topicName, nodes: tnodes,
+      avgHeat: avg(tnodes.map(n => n.heatScore)),
+      masteredCount: tnodes.filter(n => n.isIgnited).length,
+    }));
     return {
-      nodeId: nodeId,
-      title: scenario?.nodeId || nodeId,
-      heatScore: result.heatScore,
-      isIgnited: result.accuracy === "ignition",
-      lastAttempt: new Date().toISOString(),
-      accuracy: result.accuracy,
-      feedback: result.feedback,
+      unitId, unitName, topics,
+      avgHeat: avg(nodes.map(n => n.heatScore)),
+      masteredCount: nodes.filter(n => n.isIgnited).length,
+      totalNodes: nodes.length,
     };
   });
 
-  // Use session data if available, otherwise fall back to database data
-  const displayNodes = sessionNodes.length > 0 ? sessionNodes : progressDetails;
-  const totalConcepts = displayNodes.length;
-  const masteredCount = displayNodes.filter(n => n.isIgnited).length;
-  const averageHeat = totalConcepts > 0
-    ? Math.round(displayNodes.reduce((sum, n) => sum + n.heatScore, 0) / totalConcepts)
-    : 0;
+  const selectedUnit = units.find(u => u.unitId === selectedUnitId);
+  const selectedTopic = selectedUnit?.topics.find(t => t.topicId === selectedTopicId);
 
-  const getHeatColor = (heat: number) => {
-    if (heat >= 70) return "#22c55e"; // Green - Ignition
-    if (heat > 45) return "#f59e0b"; // Orange - Warning
-    if (heat > 0) return "#3b82f6"; // Blue - Frost
-    return "#9ca3af"; // Gray - Inactive
+  const breadcrumb = [
+    { label: "Units", onClick: () => { setView("units"); setSelectedUnitId(null); setSelectedTopicId(null); } },
+    ...(selectedUnit ? [{ label: selectedUnit.unitName, onClick: () => { setView("topics"); setSelectedTopicId(null); } }] : []),
+    ...(selectedTopic ? [{ label: selectedTopic.topicName, onClick: () => {} }] : []),
+  ];
+
+  const totalAll = allNodes.length;
+  const ignitedAll = allNodes.filter(n => n.isIgnited).length;
+  const avgAll = avg(allNodes.map(n => n.heatScore));
+
+  // ── Sub-components ───────────────────────────────────────────────────────────
+  const NodeCard = ({ node }: { node: NodeProgressData }) => {
+    const color = getHeatColor(node.heatScore);
+    const glowClass = getGlowClass(node.heatScore);
+    const label = getThermalLabel(node.heatScore);
+    const canReview = node.heatScore < 70;
+
+    return (
+      <div
+        className={`node-card ${glowClass}`}
+        onClick={() => { if (canReview) { setSelectedNode(node.nodeId); setSelectedNodeData(node); setIsRetryModalOpen(true); } }}
+        style={{
+          padding: "20px 16px",
+          borderRadius: "14px",
+          backgroundColor: node.heatScore >= 85
+            ? `rgba(185,28,28,0.1)`
+            : node.heatScore >= 70
+            ? `rgba(239,68,68,0.07)`
+            : node.heatScore > 45
+            ? `rgba(245,158,11,0.06)`
+            : node.heatScore > 0
+            ? `rgba(59,130,246,0.06)`
+            : "var(--p-sheet)",
+          border: `2px solid ${color}50`,
+          cursor: canReview ? "pointer" : "default",
+          display: "flex", flexDirection: "column", alignItems: "center",
+          gap: "10px", textAlign: "center", minHeight: "150px",
+          position: "relative", overflow: "hidden",
+        }}
+      >
+        {/* Radial bg glow */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          background: `radial-gradient(circle at 50% 30%, ${color}18 0%, transparent 70%)`,
+        }} />
+
+        {/* Emoji */}
+        <div style={{
+          fontSize: "32px", lineHeight: 1,
+          filter: node.heatScore >= 85
+            ? "drop-shadow(0 0 10px rgba(185,28,28,1)) drop-shadow(0 0 20px rgba(185,28,28,0.6))"
+            : node.heatScore >= 70
+            ? "drop-shadow(0 0 8px rgba(239,68,68,0.8))"
+            : node.heatScore > 45
+            ? "drop-shadow(0 0 6px rgba(245,158,11,0.7))"
+            : node.heatScore > 0
+            ? "drop-shadow(0 0 5px rgba(59,130,246,0.6))"
+            : "none",
+        }}>
+          {getThermalEmoji(node.heatScore)}
+        </div>
+
+        {/* Title */}
+        <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--t-primary)", lineHeight: 1.35, zIndex: 1 }}>
+          {(node.title || node.nodeId).replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).substring(0, 26)}
+        </div>
+
+        {/* Score */}
+        <div style={{
+          fontSize: "22px", fontWeight: 800, color,
+          textShadow: node.heatScore > 0 ? `0 0 12px ${color}80` : "none",
+          zIndex: 1,
+        }}>
+          {node.heatScore}%
+        </div>
+
+        {/* State badge */}
+        <div style={{
+          fontSize: "10px", fontWeight: 700, letterSpacing: "1.5px",
+          color, backgroundColor: `${color}18`,
+          padding: "3px 10px", borderRadius: "20px",
+          border: `1px solid ${color}30`, zIndex: 1,
+        }}>
+          {label}
+        </div>
+
+        {/* Review hint */}
+        {canReview && (
+          <div style={{ fontSize: "10px", color: "var(--snap)", fontWeight: 600, zIndex: 1 }}>
+            Tap to review →
+          </div>
+        )}
+      </div>
+    );
   };
 
-  const getThermalState = (heat: number) => {
-    if (heat >= 70) return "ignition";
-    if (heat > 45) return "warning";
-    if (heat > 0) return "frost";
-    return "inactive";
+  const UnitCard = ({ unit }: { unit: typeof units[0] }) => {
+    const color = getHeatColor(unit.avgHeat);
+    const glowClass = getGlowClass(unit.avgHeat);
+    return (
+      <div
+        className={`heat-card ${glowClass}`}
+        onClick={() => { setSelectedUnitId(unit.unitId); setView("topics"); }}
+        style={{
+          padding: "28px 24px", borderRadius: "16px",
+          backgroundColor: unit.avgHeat >= 85
+            ? "rgba(185,28,28,0.09)" : unit.avgHeat >= 70
+            ? "rgba(239,68,68,0.06)" : unit.avgHeat > 45
+            ? "rgba(245,158,11,0.05)" : unit.avgHeat > 0
+            ? "rgba(59,130,246,0.05)" : "var(--p-sheet)",
+          border: `1.5px solid ${color}45`,
+          cursor: "pointer", position: "relative", overflow: "hidden",
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; (e.currentTarget as HTMLElement).style.borderColor = color; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.borderColor = `${color}45`; }}
+      >
+        {/* Ambient bg */}
+        <div style={{
+          position: "absolute", top: "-40px", right: "-40px",
+          width: "160px", height: "160px", borderRadius: "50%",
+          background: `radial-gradient(circle, ${color}20 0%, transparent 70%)`,
+          pointerEvents: "none",
+        }} />
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+          <div>
+            <div style={{ fontSize: "11px", letterSpacing: "2px", color: "var(--t-muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: "6px" }}>UNIT</div>
+            <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--t-primary)", letterSpacing: "-0.3px" }}>{unit.unitName}</div>
+          </div>
+          <div style={{
+            fontSize: "34px", fontWeight: 800, color,
+            textShadow: unit.avgHeat > 0 ? `0 0 16px ${color}90` : "none",
+          }}>
+            {unit.avgHeat}%
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "16px", fontSize: "13px", color: "var(--t-secondary)", marginBottom: "14px" }}>
+          <span>{unit.topics.length} topics</span>
+          <span>{unit.totalNodes} nodes</span>
+          <span style={{ color: "#22c55e", fontWeight: 600 }}>{unit.masteredCount} 🔥</span>
+        </div>
+
+        {/* Heat bar */}
+        <div style={{ height: "5px", borderRadius: "3px", backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+          <div
+            className={unit.avgHeat >= 85 ? "bar-critical" : unit.avgHeat >= 70 ? "bar-ignition" : unit.avgHeat > 45 ? "bar-warning" : unit.avgHeat > 0 ? "bar-frost" : ""}
+            style={{ width: `${unit.avgHeat}%`, height: "100%", backgroundColor: color, borderRadius: "3px", transition: "width 0.6s ease" }}
+          />
+        </div>
+        <div style={{ marginTop: "10px", fontSize: "12px", color: "var(--t-muted)" }}>Click to explore topics →</div>
+      </div>
+    );
+  };
+
+  const TopicCard = ({ topic }: { topic: typeof units[0]["topics"][0] }) => {
+    const color = getHeatColor(topic.avgHeat);
+    const glowClass = getGlowClass(topic.avgHeat);
+    const cols = Math.min(Math.max(Math.ceil(Math.sqrt(topic.nodes.length)), 2), 6);
+    return (
+      <div
+        className={`heat-card ${glowClass}`}
+        onClick={() => { setSelectedTopicId(topic.topicId); setView("nodes"); }}
+        style={{
+          padding: "24px", borderRadius: "16px",
+          backgroundColor: topic.avgHeat >= 85
+            ? "rgba(185,28,28,0.09)" : topic.avgHeat >= 70
+            ? "rgba(239,68,68,0.06)" : topic.avgHeat > 45
+            ? "rgba(245,158,11,0.05)" : topic.avgHeat > 0
+            ? "rgba(59,130,246,0.05)" : "var(--p-sheet)",
+          border: `1.5px solid ${color}45`,
+          cursor: "pointer", position: "relative", overflow: "hidden",
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.borderColor = color; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.borderColor = `${color}45`; }}
+      >
+        <div style={{
+          position: "absolute", bottom: "-30px", left: "-30px",
+          width: "120px", height: "120px", borderRadius: "50%",
+          background: `radial-gradient(circle, ${color}15 0%, transparent 70%)`,
+          pointerEvents: "none",
+        }} />
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+          <div>
+            <div style={{ fontSize: "10px", letterSpacing: "2px", color: "var(--t-muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: "4px" }}>TOPIC</div>
+            <div style={{ fontSize: "17px", fontWeight: 700, color: "var(--t-primary)" }}>{topic.topicName}</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{
+              fontSize: "24px", fontWeight: 800, color,
+              textShadow: topic.avgHeat > 0 ? `0 0 12px ${color}80` : "none",
+            }}>
+              {topic.avgHeat}%
+            </div>
+            <div style={{ fontSize: "11px", color: "#22c55e", fontWeight: 600 }}>{topic.masteredCount}/{topic.nodes.length} ignited</div>
+          </div>
+        </div>
+
+        {/* Mini node grid preview */}
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: "4px", marginBottom: "12px" }}>
+          {topic.nodes.map(n => (
+            <div
+              key={n.nodeId}
+              title={n.title}
+              className={n.heatScore >= 85 ? "bar-critical" : n.heatScore >= 70 ? "bar-ignition" : n.heatScore > 45 ? "bar-warning" : n.heatScore > 0 ? "bar-frost" : ""}
+              style={{
+                height: "18px", borderRadius: "4px",
+                backgroundColor: `${getHeatColor(n.heatScore)}70`,
+              }}
+            />
+          ))}
+        </div>
+
+        <div style={{ fontSize: "12px", color: "var(--t-muted)" }}>Click to see node heatmap →</div>
+      </div>
+    );
   };
 
   return (
     <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh", color: "var(--t-mid)" }}>
-      <style>{`
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 16px currentColor40, inset 0 0 8px currentColor15; }
-          50% { box-shadow: 0 0 32px currentColor60, inset 0 0 12px currentColor25; }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-4px); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      <style>{GLOW_CSS}</style>
       <Navbar />
+      <main style={{ padding: "48px 24px 80px", maxWidth: "1200px", margin: "0 auto" }}>
 
-      <main role="main" style={{ padding: "48px 24px 80px", maxWidth: "1200px", margin: "0 auto" }}>
-        
         {/* Header */}
-        <div style={{ marginBottom: "40px", animation: "slideUp 0.4s ease-out" }}>
-          <span className="eyebrow" style={{ marginBottom: "12px", display: "inline-block" }}>
-            HEATMAP
-          </span>
-          <h1 style={{ fontSize: "36px", letterSpacing: "-1px", color: "var(--t-primary)", marginBottom: "8px" }}>
-            Your Mastery Heatmap
-          </h1>
-          <p style={{ fontSize: "17px", color: "var(--t-secondary)" }}>
-            Visualize your progress across every concept you have studied.
-          </p>
+        <div style={{ marginBottom: "32px", animation: "slideUp 0.4s ease-out" }}>
+          <span className="eyebrow" style={{ marginBottom: "12px", display: "inline-block" }}>MASTERY HEATMAP</span>
+          <h1 style={{ fontSize: "34px", letterSpacing: "-1px", color: "var(--t-primary)", marginBottom: "8px" }}>Knowledge Map</h1>
+          <p style={{ fontSize: "16px", color: "var(--t-secondary)" }}>Navigate your mastery: Unit → Topic → Node</p>
         </div>
 
-        {/* Summary Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginBottom: "40px", animation: "slideUp 0.5s ease-out" }}>
-          <div className="folio-card" style={{ padding: "24px", textAlign: "center" }}>
-            <div style={{ fontSize: "32px", fontWeight: 700, color: "var(--snap)", lineHeight: 1 }}>{totalConcepts}</div>
-            <p style={{ fontSize: "12px", textTransform: "uppercase", fontWeight: 700, color: "var(--t-muted)", letterSpacing: "1px", margin: "8px 0 0 0" }}>Concepts</p>
-          </div>
-          <div className="folio-card" style={{ padding: "24px", textAlign: "center" }}>
-            <div style={{ fontSize: "32px", fontWeight: 700, color: "var(--success)", lineHeight: 1 }}>{masteredCount}</div>
-            <p style={{ fontSize: "12px", textTransform: "uppercase", fontWeight: 700, color: "var(--t-muted)", letterSpacing: "1px", margin: "8px 0 0 0" }}>Mastered</p>
-          </div>
-          <div className="folio-card" style={{ padding: "24px", textAlign: "center" }}>
-            <div style={{ fontSize: "32px", fontWeight: 700, color: "var(--xp)", lineHeight: 1 }}>{averageHeat}%</div>
-            <p style={{ fontSize: "12px", textTransform: "uppercase", fontWeight: 700, color: "var(--t-muted)", letterSpacing: "1px", margin: "8px 0 0 0" }}>Avg Heat</p>
-          </div>
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "32px" }}>
+          {[
+            { label: "Total Nodes", value: totalAll, color: "var(--snap)" },
+            { label: "Ignited 🔥", value: ignitedAll, color: "#ef4444" },
+            { label: "Units", value: units.length, color: "#a78bfa" },
+            { label: "Avg Heat", value: `${avgAll}%`, color: getHeatColor(avgAll) },
+          ].map(s => (
+            <div
+              key={s.label}
+              className={`folio-card ${s.label === "Ignited 🔥" && ignitedAll > 0 ? "glow-ignition" : s.label === "Avg Heat" ? getGlowClass(avgAll) : ""}`}
+              style={{ padding: "20px", textAlign: "center" }}
+            >
+              <div style={{
+                fontSize: "28px", fontWeight: 700, color: s.color, lineHeight: 1,
+                textShadow: s.label !== "Units" && s.label !== "Total Nodes" && avgAll > 0 ? `0 0 12px ${s.color}60` : "none",
+              }}>
+                {s.value}
+              </div>
+              <div style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 700, color: "var(--t-muted)", letterSpacing: "1px", marginTop: "6px" }}>{s.label}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Node Grid Heatmap with Dynamic Grid Size */}
-        {displayNodes.length > 0 ? (
-          <div style={{ animation: "slideUp 0.6s ease-out" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "16px" }}>Mastery Heatmap Grid</h3>
-            
-            {/* Calculate optimal grid size (2x2, 3x3, 4x4, etc.) */}
+        {/* Breadcrumb */}
+        {view !== "units" && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px", fontSize: "13px" }}>
+            {breadcrumb.map((b, i) => (
+              <span key={i} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {i > 0 && <span style={{ color: "var(--p-border)" }}>›</span>}
+                <button onClick={b.onClick} style={{
+                  background: "none", border: "none", padding: 0, fontSize: "13px",
+                  cursor: i < breadcrumb.length - 1 ? "pointer" : "default",
+                  color: i < breadcrumb.length - 1 ? "var(--snap)" : "var(--t-primary)",
+                  fontWeight: i === breadcrumb.length - 1 ? 700 : 500,
+                }}>
+                  {b.label}
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* ── Units View ── */}
+        {view === "units" && (
+          units.length === 0 ? (
+            <div className="folio-card" style={{ padding: "56px", textAlign: "center" }}>
+              <div style={{ fontSize: "48px", marginBottom: "16px" }}>🗺️</div>
+              <p style={{ color: "var(--t-secondary)", fontSize: "16px" }}>No data yet. Complete a learning session to see your heatmap.</p>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "20px" }}>
+              {units.map(u => <UnitCard key={u.unitId} unit={u} />)}
+            </div>
+          )
+        )}
+
+        {/* ── Topics View ── */}
+        {view === "topics" && selectedUnit && (
+          <div>
+            <div style={{ marginBottom: "24px" }}>
+              <h2 style={{ fontSize: "24px", fontWeight: 700, color: "var(--t-primary)", marginBottom: "4px" }}>{selectedUnit.unitName}</h2>
+              <p style={{ fontSize: "14px", color: "var(--t-secondary)" }}>{selectedUnit.topics.length} topics · {selectedUnit.totalNodes} nodes · {selectedUnit.avgHeat}% avg heat</p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "20px" }}>
+              {selectedUnit.topics.map(t => <TopicCard key={t.topicId} topic={t} />)}
+            </div>
+          </div>
+        )}
+
+        {/* ── Nodes View ── */}
+        {view === "nodes" && selectedTopic && (
+          <div>
+            <div style={{ marginBottom: "24px" }}>
+              <h2 style={{ fontSize: "24px", fontWeight: 700, color: "var(--t-primary)", marginBottom: "4px" }}>{selectedTopic.topicName}</h2>
+              <p style={{ fontSize: "14px", color: "var(--t-secondary)" }}>{selectedTopic.nodes.length} nodes · {selectedTopic.avgHeat}% avg heat · {selectedTopic.masteredCount} ignited</p>
+            </div>
+
+            {/* Node grid */}
             {(() => {
-              const nodeCount = displayNodes.length;
-              // Determine optimal grid columns: sqrt(nodeCount) rounded appropriately
-              let cols = Math.ceil(Math.sqrt(nodeCount));
-              // Ensure at least 2x2 and cap at reasonable size (6x6)
-              cols = Math.min(Math.max(cols, 2), 6);
-              
+              const cols = Math.min(Math.max(Math.ceil(Math.sqrt(selectedTopic.nodes.length)), 2), 5);
               return (
-                <div 
-                  className="folio-card"
-                  style={{ 
-                    padding: "24px", 
-                    display: "grid",
-                    gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                    gap: "16px",
-                    marginBottom: "32px",
-                  }}
-                >
-                  {displayNodes
-                    .sort((a: any, b: any) => b.heatScore - a.heatScore)
-                    .map((node: any) => {
-                      const thermalState = getThermalState(node.heatScore);
-                      const nodeColor = getHeatColor(node.heatScore);
-                      const needsGlow = thermalState === "frost" || thermalState === "warning";
-                      
-                      return (
-                        <div
-                          key={node.nodeId}
-                          onClick={() => {
-                            const needsGlow = thermalState === "frost" || thermalState === "warning";
-                            if (needsGlow) handleNodeClick(node.nodeId, node);
-                          }}
-                          style={{
-                            padding: "16px",
-                            borderRadius: "12px",
-                            backgroundColor: selectedNode === node.nodeId ? "rgba(255, 92, 53, 0.15)" : "var(--p-frost)",
-                            border: `2px solid ${selectedNode === node.nodeId ? nodeColor : "var(--p-border)"}`,
-                            cursor: needsGlow ? "pointer" : "default",
-                            transition: "all 0.3s ease",
-                            position: "relative",
-                            overflow: "hidden",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            textAlign: "center",
-                            minHeight: "140px",
-                          }}
-                          onMouseEnter={(e) => {
-                            if (needsGlow) {
-                              (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255, 92, 53, 0.1)";
-                              (e.currentTarget as HTMLElement).style.transform = "scale(1.05)";
-                              (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${nodeColor}40`;
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.backgroundColor = selectedNode === node.nodeId ? "rgba(255, 92, 53, 0.15)" : "var(--p-frost)";
-                            (e.currentTarget as HTMLElement).style.transform = "scale(1)";
-                            (e.currentTarget as HTMLElement).style.boxShadow = "none";
-                          }}
-                        >
-                          {/* Background glow effect - Enhanced */}
-                          {needsGlow && (
-                            <>
-                              {/* Outer glow ring */}
-                              <div style={{
-                                position: "absolute",
-                                inset: "-8px",
-                                borderRadius: "12px",
-                                background: `radial-gradient(circle at center, ${nodeColor}25, transparent 60%)`,
-                                animation: `glow 3s ease-in-out infinite`,
-                                pointerEvents: "none",
-                                zIndex: 0,
-                              }} />
-                              {/* Inner pulsing layer */}
-                              <div style={{
-                                position: "absolute",
-                                inset: 0,
-                                background: `radial-gradient(circle, ${nodeColor}15, transparent 70%)`,
-                                animation: `pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
-                                pointerEvents: "none",
-                                zIndex: 0,
-                              }} />
-                            </>
-                          )}
-
-                          {/* Content */}
-                          <div style={{ zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                            {/* Icon with enhanced glow */}
-                            <div style={{
-                              width: "60px", height: "60px", borderRadius: "12px",
-                              backgroundColor: needsGlow ? nodeColor + "20" : "transparent",
-                              color: nodeColor,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              fontSize: "32px", fontWeight: 700,
-                              border: `3px solid ${nodeColor}`,
-                              boxShadow: needsGlow ? `0 0 12px ${nodeColor}60, inset 0 0 8px ${nodeColor}20` : "none",
-                              animation: needsGlow ? `glow 2.5s ease-in-out infinite, float 3s ease-in-out infinite` : "none",
-                              transition: "all 0.3s ease",
-                            }}>
-                              {node.isIgnited ? "🔥" : thermalState === "warning" ? "⚠️" : thermalState === "frost" ? "❄️" : "○"}
-                            </div>
-
-                            {/* Title */}
-                            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--t-deep)", lineHeight: 1.3, textAlign: "center" }}>
-                              {node.nodeId
-                                .replace(/^(node|scenario|concept)[-_]?/i, "")
-                                .replace(/[-_]/g, " ")
-                                .replace(/\b\w/g, (c: string) => c.toUpperCase())
-                                .substring(0, 20) + (node.nodeId.length > 20 ? "..." : "")
-                                || `Concept`}
-                            </span>
-
-                            {/* Heat Score */}
-                            <div style={{ 
-                              fontSize: "20px", 
-                              fontWeight: 700, 
-                              color: nodeColor,
-                              marginTop: "4px"
-                            }}>
-                              {node.heatScore}%
-                            </div>
-
-                            {/* State Badge */}
-                            <div style={{ 
-                              fontSize: "10px", 
-                              color: nodeColor, 
-                              textTransform: "uppercase",
-                              fontWeight: 600,
-                              letterSpacing: "0.5px"
-                            }}>
-                              {thermalState}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: "16px", marginBottom: "36px" }}>
+                  {selectedTopic.nodes
+                    .slice()
+                    .sort((a, b) => b.heatScore - a.heatScore)
+                    .map(node => <NodeCard key={node.nodeId} node={node} />)}
                 </div>
               );
             })()}
 
-            {/* List view below grid */}
-            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "16px", marginTop: "32px" }}>Detailed View</h3>
-            <div className="folio-card" style={{ padding: "0", overflow: "hidden" }}>
-              {displayNodes
-                .sort((a: any, b: any) => b.heatScore - a.heatScore)
-                .map((node: any, i: number) => {
-                  const thermalState = getThermalState(node.heatScore);
-                  const nodeColor = getHeatColor(node.heatScore);
-                  const needsGlow = thermalState === "frost" || thermalState === "warning";
-                  
+            {/* Detailed list */}
+            <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "12px" }}>Detailed View</h3>
+            <div className="folio-card" style={{ padding: 0, overflow: "hidden" }}>
+              {selectedTopic.nodes
+                .slice()
+                .sort((a, b) => b.heatScore - a.heatScore)
+                .map((node, i) => {
+                  const color = getHeatColor(node.heatScore);
+                  const canReview = node.heatScore < 70;
                   return (
                     <div
                       key={node.nodeId}
-                      onClick={() => {
-                        const thermalState = getThermalState(node.heatScore);
-                        const needsGlow = thermalState === "frost" || thermalState === "warning";
-                        if (needsGlow) handleNodeClick(node.nodeId, node);
-                      }}
+                      onClick={() => { if (canReview) { setSelectedNode(node.nodeId); setSelectedNodeData(node); setIsRetryModalOpen(true); } }}
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "16px 24px",
-                        borderBottom: i < displayNodes.length - 1 ? "1px solid var(--p-border)" : "none",
-                        backgroundColor: selectedNode === node.nodeId ? "rgba(255, 92, 53, 0.05)" : "transparent",
-                        cursor: needsGlow ? "pointer" : "default",
-                        transition: "all 0.2s ease",
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "14px 20px",
+                        borderBottom: i < selectedTopic.nodes.length - 1 ? "1px solid var(--p-border)" : "none",
+                        cursor: canReview ? "pointer" : "default",
+                        transition: "background 0.2s",
                         position: "relative",
-                        overflow: "hidden",
                       }}
-                      onMouseEnter={(e) => {
-                        if (needsGlow) {
-                          (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255, 92, 53, 0.05)";
-                          (e.currentTarget as HTMLElement).style.transform = "translateX(4px)";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.backgroundColor = selectedNode === node.nodeId ? "rgba(255, 92, 53, 0.05)" : "transparent";
-                        (e.currentTarget as HTMLElement).style.transform = "translateX(0)";
-                      }}
+                      onMouseEnter={e => { if (canReview) (e.currentTarget as HTMLElement).style.backgroundColor = `${color}08`; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
                     >
-                      {/* Glow effect for nodes needing work */}
-                      {needsGlow && (
-                        <div style={{
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: `linear-gradient(90deg, ${nodeColor}20 0%, transparent 100%)`,
-                          animation: `pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
-                          pointerEvents: "none",
-                        }} />
-                      )}
+                      {/* Left accent line by thermal state */}
+                      <div style={{
+                        position: "absolute", left: 0, top: 0, bottom: 0, width: "3px",
+                        backgroundColor: color,
+                        opacity: node.heatScore > 0 ? 0.7 : 0,
+                        boxShadow: node.heatScore > 0 ? `2px 0 8px ${color}60` : "none",
+                      }} />
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "16px", zIndex: 1 }}>
-                        <div style={{
-                          width: "48px", height: "48px", borderRadius: "8px",
-                          backgroundColor: needsGlow ? nodeColor + "20" : "var(--p-surface)",
-                          color: nodeColor,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: "20px", fontWeight: 700,
-                          flexShrink: 0,
-                          border: `2px solid ${nodeColor}`,
-                          boxShadow: needsGlow ? `0 0 16px ${nodeColor}40` : "none",
-                          animation: needsGlow ? `glow 2s ease-in-out infinite` : "none",
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", paddingLeft: "8px" }}>
+                        <span style={{
+                          fontSize: "22px",
+                          filter: node.heatScore >= 70
+                            ? "drop-shadow(0 0 6px rgba(239,68,68,0.7))"
+                            : node.heatScore > 45
+                            ? "drop-shadow(0 0 5px rgba(245,158,11,0.6))"
+                            : node.heatScore > 0
+                            ? "drop-shadow(0 0 4px rgba(59,130,246,0.5))"
+                            : "none",
                         }}>
-                          {node.isIgnited ? "🔥" : needsGlow ? "⚡" : "○"}
-                        </div>
+                          {getThermalEmoji(node.heatScore)}
+                        </span>
                         <div>
-                          <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--t-deep)" }}>
-                            {node.nodeId
-                              .replace(/^(node|scenario|concept)[-_]?/i, "")
-                              .replace(/[-_]/g, " ")
-                              .replace(/\b\w/g, (c: string) => c.toUpperCase())
-                              || `Concept ${node.nodeId}`}
-                          </span>
-                          <div style={{ fontSize: "11px", color: nodeColor, marginTop: "4px", fontWeight: 600 }}>
-                            {thermalState.toUpperCase()} • {node.feedback && node.feedback.split(".")[0]}
+                          <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--t-primary)" }}>
+                            {(node.title || node.nodeId).replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                           </div>
-                          <div style={{ fontSize: "12px", color: "var(--t-muted)", marginTop: "2px" }}>
-                            Last attempt: {new Date(node.lastAttempt).toLocaleDateString()}
+                          <div style={{ fontSize: "12px", color: "var(--t-muted)" }}>
+                            Last studied: {node.lastAttempt ? new Date(node.lastAttempt).toLocaleDateString() : "Never"}
                           </div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px", zIndex: 1 }}>
-                        <div style={{ width: "120px", height: "8px", borderRadius: "4px", backgroundColor: "var(--p-border)", overflow: "hidden" }}>
-                          <div style={{
-                            width: `${Math.min(node.heatScore, 100)}%`, height: "100%", borderRadius: "4px",
-                            backgroundColor: nodeColor,
-                            transition: "width 0.5s ease",
-                            boxShadow: needsGlow ? `0 0 8px ${nodeColor}80` : "none",
-                          }} />
-                        </div>
-                        <span style={{ fontSize: "14px", fontWeight: 700, color: nodeColor, width: "50px", textAlign: "right" }}>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{
+                          fontSize: "18px", fontWeight: 700, color,
+                          textShadow: node.heatScore > 0 ? `0 0 10px ${color}70` : "none",
+                        }}>
                           {node.heatScore}%
-                        </span>
+                        </div>
+                        <div style={{
+                          fontSize: "10px", fontWeight: 700, color,
+                          letterSpacing: "1px",
+                          backgroundColor: `${color}15`,
+                          padding: "2px 8px", borderRadius: "12px",
+                          border: `1px solid ${color}30`,
+                        }}>
+                          {getThermalLabel(node.heatScore)}
+                        </div>
+                        {canReview && (
+                          <div style={{ fontSize: "11px", color: "var(--snap)", fontWeight: 600 }}>Review →</div>
+                        )}
                       </div>
                     </div>
                   );
                 })}
             </div>
-
-            {/* Info text */}
-            <div style={{ marginTop: "20px", fontSize: "12px", color: "var(--t-muted)", lineHeight: 1.6 }}>
-              <p>🔥 <strong>Ignition (70%+):</strong> Mastered - locked in permanent neural architecture</p>
-              <p>⚡ <strong>Warning (45-70%):</strong> In Progress - click to retry and reinforce understanding</p>
-              <p>❄️ <strong>Frost (&lt;45%):</strong> Needs Work - click to review and attempt again</p>
-            </div>
-          </div>
-        ) : (
-          <div className="folio-card" style={{ padding: "48px", textAlign: "center", animation: "slideUp 0.6s ease-out" }}>
-            <div style={{ fontSize: "48px", marginBottom: "16px" }}>🗺️</div>
-            <h3 style={{ fontSize: "20px", fontWeight: 700, color: "var(--t-deep)", marginBottom: "8px" }}>No data yet</h3>
-            <p style={{ fontSize: "15px", color: "var(--t-secondary)", marginBottom: "24px" }}>
-              Complete learning sessions to start populating your heatmap with mastery data.
-            </p>
           </div>
         )}
       </main>
 
-      {/* Retry Node Modal */}
-      {selectedNodeData && (
+      {isRetryModalOpen && selectedNodeData && (
         <RetryNodeModal
-          nodeId={selectedNodeData.nodeId}
-          nodeName={selectedNodeData.title || selectedNodeData.nodeId}
-          heatScore={selectedNodeData.heatScore}
+          nodeId={selectedNode || ""}
+          nodeName={selectedNodeData?.title || selectedNode || ""}
+          heatScore={selectedNodeData?.heatScore || 0}
           isOpen={isRetryModalOpen}
-          onClose={() => {
-            setIsRetryModalOpen(false);
-            setSelectedNode(null);
-            setSelectedNodeData(null);
-          }}
-          onSuccess={handleRetrySuccess}
+          onClose={() => { setIsRetryModalOpen(false); setSelectedNode(null); setSelectedNodeData(null); }}
+          onSuccess={() => { const all = loadAllProgress(); setAllNodes(Object.values(all)); }}
         />
       )}
     </div>

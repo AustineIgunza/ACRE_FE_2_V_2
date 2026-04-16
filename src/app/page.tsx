@@ -63,7 +63,7 @@ export default function LandingPage() {
             maxWidth: "600px", 
             margin: "0 auto 40px" 
           }}>
-            Learn Forge uses behavioral engineering to convert your passive study material into engaging, retention-optimized challenge scenarios.
+            ARCÉ uses behavioral engineering to convert your passive study material into engaging, retention-optimized challenge scenarios.
           </p>
           <div style={{ display: "flex", gap: "16px", justifyContent: "center" }}>
             {authInitialized && user ? (
@@ -98,7 +98,7 @@ export default function LandingPage() {
               </div>
               <h3 style={{ fontSize: "24px", marginBottom: "12px", color: "var(--t-deep)" }}>Active Recall</h3>
               <p style={{ color: "var(--t-mid)", lineHeight: 1.6 }}>
-                Stop re-reading notes. Learn Forge breaks your material into causal anchors and forces you to defend your logic in interactive scenarios.
+                Stop re-reading notes. ARCÉ breaks your material into causal anchors and forces you to defend your logic in interactive scenarios.
               </p>
             </div>
 
@@ -120,7 +120,7 @@ export default function LandingPage() {
               </div>
               <h3 style={{ fontSize: "24px", marginBottom: "12px", color: "var(--t-deep)" }}>Immediate Feedback</h3>
               <p style={{ color: "var(--t-mid)", lineHeight: 1.6 }}>
-                No more waiting for exam grades. Get instant, deep feedback on your logic structure with Learn Forge&apos;s thermal rating system.
+                No more waiting for exam grades. Get instant, deep feedback on your logic structure with ARCÉ&apos;s thermal rating system.
               </p>
             </div>
 
@@ -164,10 +164,10 @@ export default function LandingPage() {
       <footer style={{ padding: "40px 24px", textAlign: "center", borderTop: "1px solid var(--p-border)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "16px" }}>
           <span className="nav-logo-accent" style={{ width: "16px", height: "16px", borderRadius: "4px" }} />
-          <span style={{ fontFamily: "Georgia, serif", fontSize: "16px", color: "var(--t-primary)" }}>Learn Forge</span>
+          <span style={{ fontFamily: "Georgia, serif", fontSize: "16px", color: "var(--t-primary)" }}>ARCÉ</span>
         </div>
         <p style={{ fontSize: "13px", color: "var(--t-muted)" }}>
-          © {new Date().getFullYear()} Learn Forge Learning System. All rights reserved.
+          © {new Date().getFullYear()} ARCÉ Learning System. All rights reserved.
         </p>
       </footer>
     </div>

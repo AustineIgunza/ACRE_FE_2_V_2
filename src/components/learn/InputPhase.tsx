@@ -5,12 +5,13 @@ import { motion } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
 
 export default function InputPhase() {
-  const { extractLogic, isLoading, currentPhase } = useArceStore();
+  const { extractLogic, isLoading, currentPhase, error: storeError } = useArceStore();
   const [activeTab, setActiveTab] = useState<"text" | "file" | "url">("text");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
+  const [unitName, setUnitName] = useState("");
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +42,7 @@ export default function InputPhase() {
       payload.file = file;
     }
 
-    await extractLogic(payload, title);
+    await extractLogic(payload, title, unitName);
   };
 
   const isExtracting = currentPhase === "extracting";
@@ -231,18 +232,26 @@ export default function InputPhase() {
           )}
         </div>
 
-        {/* Title */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label className="eyebrow" style={{ textAlign: "center" }}>Title (Optional)</label>
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g., Biology Final, Login Flow Logic" className="folio-input"
-            style={{ width: "100%", textAlign: "center" }} disabled={isLoading} />
+        {/* Topic + Unit fields */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label className="eyebrow" style={{ fontSize: "10px", letterSpacing: "2px" }}>Topic Name (Optional)</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., The Cell, Microeconomics, Contract Law" className="folio-input"
+              style={{ width: "100%" }} disabled={isLoading} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label className="eyebrow" style={{ fontSize: "10px", letterSpacing: "2px" }}>Unit Name (Optional)</label>
+            <input type="text" value={unitName} onChange={(e) => setUnitName(e.target.value)}
+              placeholder="e.g., Human Body, Economics, Law" className="folio-input"
+              style={{ width: "100%" }} disabled={isLoading} />
+          </div>
         </div>
 
         {/* Error */}
-        {error && (
+        {(error || storeError) && (
           <div style={{ padding: "16px", background: "var(--error-bg)", color: "var(--error)", fontWeight: 600, textAlign: "center", fontSize: "14px", borderRadius: "8px" }}>
-            {error}
+            {error || storeError}
           </div>
         )}
 

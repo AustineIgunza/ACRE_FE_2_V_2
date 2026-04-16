@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/mmatt/ACRE/ARCE/**)",
+      "Bash(npm run:*)",
+      "Bash(python3 -c ':*)"
+    ]
+  }
+}
