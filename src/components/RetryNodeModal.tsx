@@ -467,9 +467,9 @@ export default function RetryNodeModal({
                 {currentQ.type === "mc" && currentQ.options && (
                   <>
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
-                      {currentQ.options.map((opt) => (
+                      {currentQ.options.map((opt, optIdx) => (
                         <button
-                          key={opt.id}
+                          key={opt.id ?? opt.text ?? optIdx}
                           onClick={() => setSelectedOption(opt.id)}
                           style={{
                             textAlign: "left", padding: "12px 14px", borderRadius: "10px",

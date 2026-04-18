@@ -1,190 +1,138 @@
 import { NextRequest, NextResponse } from "next/server";
+import { callGemini } from "@/lib/gemini";
 
-// Helper function to detect gibberish/random text
+function parseJson(raw: string) {
+  const cleaned = raw.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+  return JSON.parse(cleaned);
+}
+
 function isGibberish(text: string): boolean {
   if (!text || text.length < 5) return true;
-  
-  // Check for vowel/consonant ratio (English text has ~38% vowels)
   const vowels = (text.match(/[aeiouAEIOU]/g) || []).length;
   const consonants = (text.match(/[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]/g) || []).length;
   const total = vowels + consonants;
-  
   if (total === 0) return true;
-  
   const vowelRatio = vowels / total;
-  // If vowel ratio is too low (< 20%) or too high (> 60%), likely gibberish
   if (vowelRatio < 0.2 || vowelRatio > 0.6) return true;
-  
-  // Check for repeating characters (dndndhdgbbss has heavy repetition)
   let repeatCount = 0;
   for (let i = 0; i < text.length - 1; i++) {
     if (text[i] === text[i + 1]) repeatCount++;
   }
-  if (repeatCount > text.length * 0.4) return true; // >40% repeating chars = gibberish
-  
-  // Check word length variance (gibberish often has very short words)
-  const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+  if (repeatCount > text.length * 0.4) return true;
+  const words = text.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
   if (words.length === 0) return true;
-  
   const avgWordLength = words.reduce((sum, w) => sum + w.length, 0) / words.length;
-  if (avgWordLength < 2.5) return true; // Average word length too short
-  
+  if (avgWordLength < 2.5) return true;
   return false;
-}
-
-// Extract key concepts from the question/scenario context
-function extractConceptsFromQuestion(question: string): string[] {
-  // Split into words, remove common words, and extract potential concepts
-  const stopWords = new Set(["the", "a", "an", "is", "are", "what", "when", "where", "why", "how", "what", "describe", "explain", "walk", "through", "me", "step", "by", "and", "or", "in", "of", "to", "for"]);
-  
-  const words = question.toLowerCase()
-    .split(/[\s\.,!?;:]+/)
-    .filter(w => w.length > 3 && !stopWords.has(w));
-  
-  return [...new Set(words)]; // Deduplicate
-}
-
-// Semantic similarity: Count how many key words from question appear in prediction
-function calculateSemanticScore(prediction: string, question: string): number {
-  const predictionWords = new Set(prediction.toLowerCase().split(/[\s\.,!?;:]+/));
-  const concepts = extractConceptsFromQuestion(question);
-  
-  let matchCount = 0;
-  for (const concept of concepts) {
-    if (predictionWords.has(concept)) {
-      matchCount++;
-    }
-  }
-  
-  // Score: what percentage of key concepts were mentioned
-  return concepts.length > 0 ? (matchCount / concepts.length) * 100 : 0;
-}
-
-// Check for causal/chain reasoning indicators
-function calculateCausalReasoningScore(prediction: string): number {
-  const causalPhrases = [
-    "causes", "leads to", "results in", "results", "triggers", "initiates",
-    "then", "therefore", "because", "due to", "as a result", "consequence",
-    "effect", "impact", "cascade", "chain", "follows", "sequence",
-    "chain reaction", "domino", "spreads", "propagates", "escalates"
-  ];
-  
-  const predictionLower = prediction.toLowerCase();
-  let causalCount = 0;
-  
-  for (const phrase of causalPhrases) {
-    if (predictionLower.includes(phrase)) {
-      causalCount++;
-    }
-  }
-  
-  // Maximum of 40% based on causal phrases (at least need semantic score)
-  return Math.min(40, (causalCount / causalPhrases.length) * 100);
-}
-
-// Check for depth and detail
-function calculateDetailScore(prediction: string): number {
-  const sentences = prediction.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  const avgWordsPerSentence = prediction.split(/\s+/).length / sentences.length;
-  
-  // Prefer longer, more detailed answers
-  if (avgWordsPerSentence < 10) return 10; // Too short
-  if (avgWordsPerSentence < 20) return 30; // Minimal detail
-  if (avgWordsPerSentence < 40) return 60; // Good detail
-  return 100; // Excellent detail
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { nodeId, prediction, question, originalText, isMultipleChoice, correctAnswer } = body;
+    const { nodeId, prediction, question, isMultipleChoice, correctAnswer, formalMechanism, soWhat } = body;
 
-    console.log("Evaluating:", { nodeId, prediction, question, isMultipleChoice });
+    console.log("Evaluating:", { nodeId, isMultipleChoice });
 
-    // Handle multiple choice questions
+    // Multiple choice — simple exact match
     if (isMultipleChoice) {
-      // Check if the selected answer matches the correct answer
       const isCorrect = prediction === correctAnswer;
-      
       return NextResponse.json({
         accuracy: isCorrect ? "ignition" : "frost",
-        feedback: isCorrect 
+        feedback: isCorrect
           ? "🔥 Correct! You've demonstrated your understanding of this concept."
           : "❄️ That's not quite right. Review the concept and try again.",
         score: isCorrect ? 100 : 30,
         thermalState: isCorrect ? "ignition" : "frost",
-        details: {
-          isCorrect: isCorrect,
-          selectedAnswer: prediction,
-          correctAnswer: correctAnswer,
-        }
+        details: { isCorrect, selectedAnswer: prediction, correctAnswer },
       });
     }
 
-    // Handle free-text domino questions
-    // Check for gibberish first
+    // Gibberish gate
     if (isGibberish(prediction)) {
       return NextResponse.json({
         accuracy: "frost",
-        feedback: "That doesn't look like a coherent attempt. Please provide a thoughtful explanation of the domino effect.",
+        feedback: "That doesn't look like a coherent attempt. Please provide a thoughtful explanation.",
         score: 0,
-        details: {
-          keywordsFound: 0,
-          conceptsFound: 0,
-        }
+        thermalState: "frost",
+        details: {},
       });
     }
 
-    // Use dynamic evaluation based on the actual question/scenario
-    const semanticScore = calculateSemanticScore(prediction, question || "");
-    const causalScore = calculateCausalReasoningScore(prediction);
-    const detailScore = calculateDetailScore(prediction);
-    
-    // Weighted score: 40% semantic, 40% causal reasoning, 20% detail
-    const overallScore = (semanticScore * 0.4) + (causalScore * 0.4) + (detailScore * 0.2);
+    // AI-based evaluation via Gemini
+    const prompt = `You are ARCÉ's answer evaluator. Score the student's response to a domino/stress-test question.
 
-    console.log("Scoring:", { semanticScore, causalScore, detailScore, overallScore });
+QUESTION: "${(question || "").slice(0, 500)}"
+CORE MECHANISM: "${(formalMechanism || "").slice(0, 400)}"
+LEVERAGE INSIGHT: "${(soWhat || "").slice(0, 200)}"
 
-    // Determine thermal state with granular feedback based on actual score ranges
-    let accuracy: "ignition" | "warning" | "frost" = "frost";
-    let feedback = "The answer doesn't show sufficient understanding of the causal chain.";
+STUDENT ANSWER: "${prediction.slice(0, 1500)}"
 
-    if (overallScore >= 75) {
-      accuracy = "ignition";
-      feedback = "🔥 Excellent! You've identified the key cascade and traced the chain reactions clearly. Your causal reasoning is outstanding.";
-    } else if (overallScore >= 60) {
-      accuracy = "warning";
-      feedback = "⚠️ Good understanding! You identified the core mechanism, but could strengthen the causal chain. Try adding more steps to show how one event leads to the next.";
-    } else if (overallScore >= 40) {
-      accuracy = "frost";
-      feedback = "❄️ You're on the right track and identified some key elements, but the causal logic needs more development. Show me how each step leads to the next consequence.";
-    } else {
-      accuracy = "frost";
-      feedback = "❄️ The response doesn't adequately trace the domino effect. Try to identify the initial trigger, then show step-by-step how it cascades. Review the mechanism and try again.";
+SCORING GUIDE:
+- 75–100 (ignition): Correctly identifies the invariant AND traces the causal chain with precision. The student clearly understands the mechanism.
+- 45–74 (warning): Partial understanding — mechanism is present but causal chain is incomplete, imprecise, or missing a key step. Shows genuine engagement.
+- 0–44 (frost): Misses the core invariant, shows surface-level or incorrect reasoning, or the answer is too vague/short to evaluate.
+
+IMPORTANT: Be generous with credit. If the student's answer demonstrates understanding of the concept — even if worded differently or informally — score it accordingly. A correct answer in different words is still correct.
+
+Return ONLY valid JSON:
+{
+  "score": 72,
+  "accuracy": "warning",
+  "thermalState": "warning",
+  "feedback": "Specific 1-2 sentence feedback explaining what was correct and what was missing.",
+  "missedConcept": "the specific part they got wrong, or null if ignition"
+}`.trim();
+
+    try {
+      const raw = await callGemini(prompt, { temperature: 0.3, maxOutputTokens: 400, jsonMode: true });
+      const result = parseJson(raw);
+
+      const score = Math.max(0, Math.min(100, Number(result.score) || 0));
+      const accuracy: "ignition" | "warning" | "frost" =
+        score >= 75 ? "ignition" : score >= 45 ? "warning" : "frost";
+
+      return NextResponse.json({
+        accuracy,
+        feedback: result.feedback || "Response evaluated.",
+        score,
+        thermalState: accuracy,
+        details: { missedConcept: result.missedConcept || null },
+      });
+    } catch (aiError) {
+      console.warn("Gemini evaluation failed, using fallback scoring:", aiError);
+
+      // Fallback: length + causal phrase heuristic
+      const causalPhrases = ["causes", "leads to", "results in", "triggers", "therefore", "because", "consequence", "cascade", "chain"];
+      const lower = prediction.toLowerCase();
+      const causalHits = causalPhrases.filter((p) => lower.includes(p)).length;
+      const wordCount = prediction.split(/\s+/).length;
+      const score = Math.min(100, (causalHits * 12) + Math.min(40, wordCount * 1.5));
+      const accuracy: "ignition" | "warning" | "frost" = score >= 75 ? "ignition" : score >= 45 ? "warning" : "frost";
+
+      return NextResponse.json({
+        accuracy,
+        feedback: accuracy === "ignition"
+          ? "🔥 Strong causal reasoning — your chain is clear."
+          : accuracy === "warning"
+          ? "⚠️ Good attempt — strengthen the causal chain further."
+          : "❄️ Try to trace how one event leads to the next, step by step.",
+        score: Math.round(score),
+        thermalState: accuracy,
+        details: {},
+      });
     }
-
-    return NextResponse.json({
-      accuracy,
-      feedback,
-      score: Math.round(overallScore),
-      thermalState: accuracy,
-      details: {
-        semanticRelevance: Math.round(semanticScore),
-        causalReasoning: Math.round(causalScore),
-        detail: Math.round(detailScore),
-      }
-    });
   } catch (error) {
     console.error("Evaluation error:", error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: "Invalid request",
       accuracy: "frost",
       feedback: "Unable to evaluate response",
+      score: 0,
+      thermalState: "frost",
     }, { status: 400 });
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   return NextResponse.json({ message: "Evaluate endpoint" });
 }
-

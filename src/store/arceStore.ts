@@ -28,6 +28,15 @@ interface ArceStore {
   userProgress: Record<string, number>; // Maps nodeId -> heatScore
   progressDetails: { nodeId: string; heatScore: number; isIgnited: boolean; lastAttempt: string }[]; // Full rows
   nodeResults: Record<string, { accuracy: string; heatScore: number; feedback?: string }>; // Track eval results per node
+  nodeAttemptCounts: Record<string, number>; // nodeId -> total attempts (for mastery gate)
+  clarificationHistory: Record<string, Array<{ role: "user" | "ai"; content: string }>>; // nodeId -> chat messages
+  meshResult: {
+    synthesisScore: number;
+    synthesisFeedback: string;
+    collapseQuestion: string;
+    collapseResponse: string;
+    collapseFeedback: string;
+  } | null;
 
   // Auth State
   user: User | null;
@@ -40,7 +49,7 @@ interface ArceStore {
 
   // UI state
   showLogo: boolean; // Logo only at start and end
-  currentPhase: "input" | "playing" | "results" | "extracting" | "challenge" | "transition" | "sanctuary" | "evaluation" | "synchronization" | "debrief"; // input = textarea, playing = action/defense, results = mastery cards
+  currentPhase: "input" | "playing" | "results" | "extracting" | "clarification" | "challenge" | "transition" | "sanctuary" | "evaluation" | "interleaving" | "synchronization" | "mesh" | "debrief"; // input = textarea, playing = action/defense, results = mastery cards
   selectedActionButton: string | null;
   showDefenseTextbox: boolean;
   testMode: boolean; // Enable test mode to skip defenses
@@ -49,6 +58,10 @@ interface ArceStore {
   // Actions
   startGame: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string) => Promise<void>;
   extractLogic: (payload: { text?: string; url?: string; file?: File }, sourceTitle?: string, unitName?: string) => Promise<void>;
+  incrementAttempt: (nodeId: string) => void;
+  addClarificationMessage: (nodeId: string, role: "user" | "ai", content: string) => void;
+  clearClarificationHistory: (nodeId: string) => void;
+  saveMeshResult: (result: NonNullable<ArceStore["meshResult"]>) => void;
   selectAction: (buttonId: string) => void;
   showDefense: () => void;
   submitDefense: (defense: string) => Promise<{ thermalState: ThermalState, feedback: string, keywords: string[], formalDefinition: string } | undefined>;
@@ -84,6 +97,9 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   userProgress: {},
   progressDetails: [],
   nodeResults: {},
+  nodeAttemptCounts: {},
+  clarificationHistory: {},
+  meshResult: null,
   currentUnitName: "",
   currentTopicName: "",
   showLogo: true, // Show logo at start
@@ -127,10 +143,57 @@ export const useArceStore = create<ArceStore>((set, get) => ({
   },
 
   fetchProgress: async () => {
-    // Primary: load from localStorage (works without auth/database)
-    const all = loadAllProgress();
+    const { user } = get();
+    const localAll = loadAllProgress();
+
+    // If logged in, fetch from Supabase and merge (Supabase wins on conflict)
+    if (user) {
+      try {
+        const { data, error } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (!error && data && data.length > 0) {
+          // Merge Supabase records into localStorage, Supabase takes priority
+          const merged = { ...localAll };
+          for (const row of data) {
+            const nodeId = row.node_id;
+            merged[nodeId] = {
+              ...(localAll[nodeId] || {}),
+              nodeId,
+              heatScore: row.heat_score ?? localAll[nodeId]?.heatScore ?? 0,
+              thermalState: row.thermal_state ?? localAll[nodeId]?.thermalState ?? 'neutral',
+              isIgnited: row.is_ignited ?? localAll[nodeId]?.isIgnited ?? false,
+              lastAttempt: row.last_attempt ?? localAll[nodeId]?.lastAttempt ?? '',
+            } as import('@/utils/progressStorage').NodeProgressData;
+          }
+          // Persist merged result back to localStorage
+          try {
+            localStorage.setItem('arce_node_progress', JSON.stringify(merged));
+          } catch {}
+
+          const progressMap: Record<string, number> = {};
+          const details = Object.values(merged).map((node) => {
+            progressMap[node.nodeId] = node.heatScore;
+            return {
+              nodeId: node.nodeId,
+              heatScore: node.heatScore,
+              isIgnited: node.isIgnited,
+              lastAttempt: node.lastAttempt,
+            };
+          });
+          set({ userProgress: progressMap, progressDetails: details });
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch progress from Supabase, falling back to localStorage:', err);
+      }
+    }
+
+    // Fallback: load from localStorage only
     const progressMap: Record<string, number> = {};
-    const details = Object.values(all).map((node) => {
+    const details = Object.values(localAll).map((node) => {
       progressMap[node.nodeId] = node.heatScore;
       return {
         nodeId: node.nodeId,
@@ -220,7 +283,7 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         scenarios: mappedScenarios,
         currentScenario: mappedScenarios[0],
         isLoading: false,
-        currentPhase: "challenge",
+        currentPhase: "clarification",
         showLogo: false,
         currentTopicName: sourceTitle || "",
         currentUnitName: unitName || "",
@@ -619,6 +682,8 @@ export const useArceStore = create<ArceStore>((set, get) => ({
           nodeId: state.currentScenario.nodeId,
           prediction: prediction,
           question: state.currentScenario.dominoQuestion,
+          formalMechanism: state.currentScenario.formalMechanism,
+          soWhat: state.currentScenario.soWhat,
         }),
       });
 
@@ -787,6 +852,41 @@ export const useArceStore = create<ArceStore>((set, get) => ({
       console.warn("Failed to load units:", err);
       return [];
     }
+  },
+
+  // Mastery gate: track attempt count per node
+  incrementAttempt: (nodeId: string) => {
+    set((state) => ({
+      nodeAttemptCounts: {
+        ...state.nodeAttemptCounts,
+        [nodeId]: (state.nodeAttemptCounts[nodeId] || 0) + 1,
+      },
+    }));
+  },
+
+  // Clarification chat: add a message to a node's history
+  addClarificationMessage: (nodeId: string, role: "user" | "ai", content: string) => {
+    set((state) => ({
+      clarificationHistory: {
+        ...state.clarificationHistory,
+        [nodeId]: [...(state.clarificationHistory[nodeId] || []), { role, content }],
+      },
+    }));
+  },
+
+  // Clear clarification history for a node (e.g. on retry)
+  clearClarificationHistory: (nodeId: string) => {
+    set((state) => ({
+      clarificationHistory: {
+        ...state.clarificationHistory,
+        [nodeId]: [],
+      },
+    }));
+  },
+
+  // Save logic mesh synthesis result
+  saveMeshResult: (result) => {
+    set({ meshResult: result });
   },
 
   // Load all topics for a unit

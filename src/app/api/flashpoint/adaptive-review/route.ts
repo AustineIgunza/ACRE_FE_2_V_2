@@ -125,24 +125,31 @@ ${evalSection}
 
 ${nextSection}
 
-Return ONLY valid JSON (no markdown):
+Return ONLY valid JSON (no markdown).
+
+If phase is 1 and the next question type is "mc", include 3 options like this example:
 {
   "evaluation": {
     "score": 72,
     "correct": true,
-    "feedback": "You correctly identified the feedback loop but missed the threshold condition that triggers the cascade. The invariant states: rising X reduces Y by factor Z, which then feeds back into X.",
+    "feedback": "You identified the feedback loop but missed the threshold condition.",
     "missedConcept": "threshold condition"
   },
   "sessionComplete": false,
   "nextQuestion": {
-    "question": "The mechanism holds at normal levels. But at what point does the feedback loop become irreversible — and what determines that threshold?",
-    "type": "free_text",
-    "options": [],
-    "targetAspect": "threshold condition and irreversibility"
+    "question": "Which condition makes the feedback loop irreversible?",
+    "type": "mc",
+    "options": [
+      {"id": "A", "text": "When X exceeds the critical threshold Z", "is_correct": true},
+      {"id": "B", "text": "When Y drops below baseline", "is_correct": false},
+      {"id": "C", "text": "When the feedback delay exceeds 24 hours", "is_correct": false}
+    ],
+    "targetAspect": "threshold condition"
   }
 }
 
-IMPORTANT: The JSON above is an EXAMPLE showing the format — use the correct values based on your actual evaluation. Replace all example values with your real assessment. If sessionComplete is true, set nextQuestion to null.`.trim();
+If phase is 2 or 3, or the question is free_text, use "options": [].
+IMPORTANT: Replace ALL example values with your real assessment. If sessionComplete is true, set nextQuestion to null.`.trim();
 
   const raw = await callGemini(prompt, { temperature: 0.5, maxOutputTokens: 1200, jsonMode: true });
   const result = parseJson(raw);

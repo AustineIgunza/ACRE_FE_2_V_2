@@ -148,22 +148,34 @@ export default function InputPhase() {
         style={{ width: "100%", maxWidth: "640px", padding: "32px", display: "flex", flexDirection: "column", gap: "24px" }}
       >
         {/* Tabs */}
-        <div style={{ display: "flex", borderBottom: "1px solid var(--p-border)", paddingBottom: "16px", gap: "16px" }}>
-          {(["text", "file", "url"] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              style={{
-                background: "none", border: "none", fontWeight: 700, fontSize: "14px", cursor: "pointer",
-                color: activeTab === tab ? "var(--snap)" : "var(--t-muted)",
-                borderBottom: activeTab === tab ? "2px solid var(--snap)" : "none",
-                paddingBottom: "8px", marginBottom: "-17px"
-              }}
-            >
-              {tab === "text" ? "Raw Text" : tab === "file" ? "Upload File" : "Link (YouTube/Web)"}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: "8px" }}>
+          {(["text", "file", "url"] as const).map((tab) => {
+            const labels: Record<string, { icon: string; title: string; sub: string }> = {
+              text: { icon: "📝", title: "Paste Text", sub: "Notes, transcripts, articles" },
+              file: { icon: "📎", title: "Upload File", sub: "PDF, DOCX, MP4, images…" },
+              url:  { icon: "🔗", title: "Paste Link", sub: "YouTube, Google Docs, web" },
+            };
+            const l = labels[tab];
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  flex: 1, background: "none", cursor: "pointer",
+                  padding: "12px 10px", borderRadius: "10px", textAlign: "center",
+                  border: isActive ? "2px solid var(--snap)" : "2px solid var(--p-border)",
+                  backgroundColor: isActive ? "var(--snap-tint, rgba(255,92,53,0.06))" : "var(--p-surface)",
+                  transition: "all 0.15s",
+                }}
+              >
+                <div style={{ fontSize: "18px", marginBottom: "4px" }}>{l.icon}</div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: isActive ? "var(--snap)" : "var(--t-deep)" }}>{l.title}</div>
+                <div style={{ fontSize: "11px", color: "var(--t-muted)", marginTop: "2px" }}>{l.sub}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Input Areas */}
@@ -222,10 +234,13 @@ export default function InputPhase() {
 
           {activeTab === "url" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <p style={{ fontSize: "13px", color: "var(--t-secondary)", margin: 0 }}>Paste a link to a YouTube video, article, or public document.</p>
+              <p style={{ fontSize: "13px", color: "var(--t-secondary)", margin: 0 }}>
+                Works with: YouTube videos, Google Docs, articles, PDFs hosted online, and most public web pages.
+              </p>
               <input
                 type="url" value={url} onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://..." className="folio-input"
+                placeholder="https://youtube.com/watch?v=... or https://docs.google.com/..."
+                className="folio-input"
                 style={{ width: "100%", padding: "16px" }} disabled={isLoading}
               />
             </div>

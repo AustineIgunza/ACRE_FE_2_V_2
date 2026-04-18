@@ -8,11 +8,14 @@
 export type LearnPhase =
   | "input"          // User enters source material
   | "extracting"     // Phase 0: background atomic extraction
-  | "challenge"      // Phase 1: Dark Mode Challenge Zone
+  | "clarification"  // Pre-challenge: show critical 20% + Q&A chat
+  | "challenge"      // Phase 1: Dark Mode Challenge Zone (mastery-gated)
   | "transition"     // Phase 2: Breakthrough Transition animation
   | "sanctuary"      // Phase 3: Intel Card Sanctuary (Gallery Mode)
   | "evaluation"     // Phase 4: Split-Screen Stress Test
+  | "interleaving"   // Phase 4.5: Relatability bridge to existing knowledge
   | "synchronization" // Phase 5: Card plugs into dashboard
+  | "mesh"           // Phase 5.5: Logic Mesh synthesis (post all nodes)
   | "debrief";       // Phase 6: Session Summary / After Action Report
 
 // ── FLASHPOINT REVIEW ENGINE ──

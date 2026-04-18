@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ToastContainer } from "@/components/UI/Toast";
 
 export const metadata: Metadata = {
   title: "ARCÉ Learning Platform",
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         {children}
+        <ToastContainer />
       </body>
     </html>
   );

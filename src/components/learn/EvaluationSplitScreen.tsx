@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
+import { saveNodeProgress } from "@/utils/progressStorage";
 import "katex/dist/katex.min.css";
 import katex from "katex";
 
@@ -39,13 +40,46 @@ export default function EvaluationSplitScreen() {
           nodeId: currentScenario.nodeId,
           prediction: stressResponse,
           question: currentScenario.stressTest || currentScenario.formalMechanism || "Apply the invariant to the counter-variable.",
+          formalMechanism: currentScenario.formalMechanism,
+          soWhat: currentScenario.soWhat,
         }),
       });
 
       if (res.ok) {
         const result = await res.json();
         setValidationFeedback(result.feedback || "Logic evaluated.");
-        setIsCorrect(result.accuracy === "ignition" || result.accuracy === "warning");
+        const passed = result.accuracy === "ignition" || result.accuracy === "warning";
+        setIsCorrect(passed);
+
+        // Blend stress test score into the node's heat score (weighted average)
+        const nodeId = currentScenario.nodeId;
+        const stressScore = result.score ?? (passed ? 70 : 25);
+        const store = useArceStore.getState();
+        const prevHeat = store.nodeResults?.[nodeId]?.heatScore ?? 50;
+        const blendedHeat = Math.round(prevHeat * 0.6 + stressScore * 0.4);
+
+        // Update store node result
+        const updatedNodeResults = {
+          ...store.nodeResults,
+          [nodeId]: {
+            ...store.nodeResults?.[nodeId],
+            heatScore: blendedHeat,
+            thermalState: result.accuracy,
+          },
+        };
+        useArceStore.setState({ nodeResults: updatedNodeResults });
+
+        // Persist to localStorage
+        saveNodeProgress(nodeId, {
+          nodeId,
+          heatScore: blendedHeat,
+          thermalState: result.accuracy === "ignition" ? "ignition" : result.accuracy === "warning" ? "warning" : "frost",
+          isIgnited: result.accuracy === "ignition",
+          lastAttempt: new Date().toISOString(),
+        });
+
+        // Persist to DB
+        store.saveProgressToDatabase(nodeId, blendedHeat, result.accuracy === "ignition" ? "ignition" : result.accuracy === "warning" ? "warning" : "frost");
       } else {
         setValidationFeedback("Response recorded. Advancing...");
         setIsCorrect(true);
@@ -58,7 +92,7 @@ export default function EvaluationSplitScreen() {
     }
 
     setTimeout(() => {
-      useArceStore.setState({ currentPhase: "synchronization" });
+      useArceStore.setState({ currentPhase: "interleaving" });
     }, 2500);
   };
 
@@ -312,7 +346,7 @@ export default function EvaluationSplitScreen() {
             </h4>
           </div>
 
-          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--p-border)", maxHeight: "110px", overflow: "auto" }}>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--p-border)" }}>
             <p style={{ fontSize: "13px", lineHeight: 1.7, color: "var(--t-mid)", margin: 0 }}>
               {currentScenario.formalMechanism}
             </p>
@@ -324,13 +358,11 @@ export default function EvaluationSplitScreen() {
             display: "flex",
             justifyContent: "center",
             borderBottom: "1px solid var(--p-border)",
-            maxHeight: "100px",
-            overflow: "auto",
           }}>
             <div dangerouslySetInnerHTML={{ __html: latexHtml }} style={{ fontSize: "14px" }} />
           </div>
 
-          <div style={{ padding: "14px 16px", maxHeight: "120px", overflow: "auto" }}>
+          <div style={{ padding: "14px 16px" }}>
             <p style={{
               fontSize: "13px", lineHeight: 1.7, color: "var(--t-deep)", margin: 0,
               fontStyle: "italic", fontFamily: "Georgia, serif",

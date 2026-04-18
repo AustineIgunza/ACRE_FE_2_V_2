@@ -5,11 +5,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
 import Navbar from "@/components/Navbar";
 import InputPhase from "@/components/learn/InputPhase";
+import ClarificationChat from "@/components/learn/ClarificationChat";
 import ChallengeZone from "@/components/learn/ChallengeZone";
 import BreakthroughTransition from "@/components/learn/BreakthroughTransition";
 import IntelCardSanctuary from "@/components/learn/IntelCardSanctuary";
 import EvaluationSplitScreen from "@/components/learn/EvaluationSplitScreen";
+import InterleavingPhase from "@/components/learn/InterleavingPhase";
 import Synchronization from "@/components/learn/Synchronization";
+import LogicMeshPhase from "@/components/learn/LogicMeshPhase";
 import MissionDebrief from "@/components/learn/MissionDebrief";
 import { useRouter } from "next/navigation";
 
@@ -63,14 +66,16 @@ export default function LearnPage() {
       case "input":
       case "extracting":
         return "var(--p-surface)";
+      case "clarification":
       case "challenge":
       case "transition":
         return "#0a0a0c";
       case "sanctuary":
         return "var(--p-white)";
       case "evaluation":
-        return "#0a0a0c";
+      case "interleaving":
       case "synchronization":
+      case "mesh":
       case "debrief":
         return "#0a0a0c";
       default:
@@ -90,6 +95,12 @@ export default function LearnPage() {
         {(currentPhase === "input" || currentPhase === "extracting") && (
           <motion.div key="input" exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
             <InputPhase />
+          </motion.div>
+        )}
+
+        {currentPhase === "clarification" && (
+          <motion.div key="clarification" exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+            <ClarificationChat />
           </motion.div>
         )}
 
@@ -117,9 +128,21 @@ export default function LearnPage() {
           </motion.div>
         )}
 
+        {currentPhase === "interleaving" && (
+          <motion.div key="interleaving" exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+            <InterleavingPhase />
+          </motion.div>
+        )}
+
         {currentPhase === "synchronization" && (
           <motion.div key="synchronization">
             <Synchronization />
+          </motion.div>
+        )}
+
+        {currentPhase === "mesh" && (
+          <motion.div key="mesh" exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+            <LogicMeshPhase />
           </motion.div>
         )}
 

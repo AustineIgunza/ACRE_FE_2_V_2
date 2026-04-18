@@ -1,16 +1,35 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
 import { saveNodeProgress, initNodeSRS } from "@/utils/progressStorage";
 
+type Stage = "domino" | "domino_feedback" | "mc" | "mc_feedback" | "blocked";
+
+function generateRetryHint(accuracy: string, attempt: number): string {
+  if (attempt === 1) {
+    if (accuracy === "frost") return "Your logic missed the core invariant. Re-read the scenario above and trace what causes what — step by step.";
+    return "You're close but the causal chain is incomplete. Push deeper: what triggers the next event, and why?";
+  }
+  if (attempt === 2) {
+    if (accuracy === "frost") return "Still missing the mechanism. Focus on the 'why' — not just what happens, but why it happens as a direct consequence.";
+    return "Good effort — tighten the chain. Be explicit about each link: A causes B because X, which then causes C.";
+  }
+  return "Think about the invariant: the rule that always holds. Start with that rule and work outward to trace consequences.";
+}
+
 export default function ChallengeZone() {
-  const { currentScenario, scenarios, isLoading, error, submitDominoPrediction } = useArceStore();
-  const [dominoResponse, setDominoResponse] = useState<string>("");
+  const { currentScenario, scenarios, isLoading, error, incrementAttempt } = useArceStore();
+
+  const [stage, setStage] = useState<Stage>("domino");
+  const [dominoResponse, setDominoResponse] = useState("");
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
-  const [questionType, setQuestionType] = useState<"domino" | "multiple-choice">("domino");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [dominoResult, setDominoResult] = useState<{ score: number; feedback: string; accuracy: string } | null>(null);
+  const [mcResult, setMcResult] = useState<{ score: number; feedback: string; accuracy: string } | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [retryHint, setRetryHint] = useState("");
 
   if (!currentScenario) return null;
 
@@ -18,79 +37,156 @@ export default function ChallengeZone() {
   const totalScenarios = scenarios.length;
   const progress = totalScenarios > 0 ? ((scenarioIndex + 1) / totalScenarios) * 100 : 0;
 
-  // Determine question type based on index (alternate between domino and MC)
-  const effectiveQuestionType = scenarioIndex % 2 === 0 ? "domino" : "multiple-choice";
-  const mcOptions = (currentScenario as any)?.multiple_choice_options || [];
-  const mcQuestion = (currentScenario as any)?.multiple_choice_question || "";
+  const mcOptions: Array<{ id: string; text: string; is_correct?: boolean }> =
+    (currentScenario as any)?.multiple_choice_options || [];
+  const mcQuestion: string = (currentScenario as any)?.multiple_choice_question || "";
+  const hasMC = mcOptions.length > 0 && mcQuestion.trim().length > 0;
 
-  const handleSubmit = async () => {
-    if (effectiveQuestionType === "domino") {
-      if (!dominoResponse.trim()) return;
-      console.log("Submitting domino prediction:", dominoResponse);
-      await submitDominoPrediction(dominoResponse);
+  // ── Round 1: Submit domino prediction ─────────────────────────────────────
+  const handleDominoSubmit = async () => {
+    if (!dominoResponse.trim() || isEvaluating) return;
+    setIsEvaluating(true);
+    try {
+      const res = await fetch("/api/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nodeId: currentScenario.nodeId,
+          prediction: dominoResponse,
+          question: currentScenario.dominoQuestion,
+          formalMechanism: currentScenario.formalMechanism,
+          soWhat: (currentScenario as any).soWhat,
+        }),
+      });
+      const result = res.ok ? await res.json() : { score: 40, accuracy: "frost", feedback: "Response recorded." };
+      setDominoResult({ score: result.score ?? 40, feedback: result.feedback ?? "", accuracy: result.accuracy ?? "frost" });
+      setStage("domino_feedback");
+    } catch {
+      setDominoResult({ score: 40, feedback: "Response recorded.", accuracy: "frost" });
+      setStage("domino_feedback");
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  // ── Advance from domino feedback → MC or finish ────────────────────────────
+  const handleAfterDomino = () => {
+    if (hasMC) {
+      setStage("mc");
     } else {
-      if (!selectedChoice) return;
-      console.log("Submitting multiple choice:", selectedChoice);
-      // For MC, find the correct answer from options
-      const correctOption = mcOptions.find((opt: any) => opt.is_correct === true);
-      const correctAnswer = correctOption?.id || "A"; // Default to "A" if not marked
-      
-      // Pass MC-specific evaluation data
-      const evalResponse = await fetch("/api/evaluate", {
+      finishNode(dominoResult!.score, dominoResult!.accuracy);
+    }
+  };
+
+  // ── Round 2: Submit MC answer ──────────────────────────────────────────────
+  const handleMCSubmit = async () => {
+    if (!selectedChoice || isEvaluating) return;
+    setIsEvaluating(true);
+    const correctOption = mcOptions.find((o) => o.is_correct === true);
+    const correctAnswer = correctOption?.id || "A";
+    try {
+      const res = await fetch("/api/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nodeId: currentScenario.nodeId,
           prediction: selectedChoice,
           isMultipleChoice: true,
-          correctAnswer: correctAnswer,
+          correctAnswer,
           question: mcQuestion,
         }),
       });
+      const result = res.ok ? await res.json() : { score: 30, accuracy: "frost", feedback: "Response recorded." };
+      setMcResult({ score: result.score ?? 30, feedback: result.feedback ?? "", accuracy: result.accuracy ?? "frost" });
+      setStage("mc_feedback");
 
-      if (evalResponse.ok) {
-        const result = await evalResponse.json();
-        const nodeId = currentScenario.nodeId || currentScenario.id;
-        const heatScore = result.score ?? (result.accuracy === "ignition" ? 100 : result.accuracy === "warning" ? 50 : 25);
-        const thermalStateVal = result.accuracy === "ignition" ? "ignition"
-          : result.accuracy === "warning" ? "warning" : "frost";
+      // Blend: domino 60% + MC 40%
+      const dominoScore = dominoResult?.score ?? 50;
+      const mcScore = result.score ?? 30;
+      const blended = Math.round(dominoScore * 0.6 + mcScore * 0.4);
+      const blendedAccuracy = blended >= 75 ? "ignition" : blended >= 45 ? "warning" : "frost";
 
-        // Save to localStorage (survives page refresh)
-        const state = useArceStore.getState();
-        const cluster = state.gameSession?.clusters[state.gameSession.currentClusterIndex];
-        const clusterNode = cluster?.nodes.find((n: any) => n.id === nodeId);
-        const title = clusterNode?.title || nodeId;
-        saveNodeProgress(nodeId, {
-          nodeId,
-          title,
-          heatScore,
-          thermalState: thermalStateVal,
-          isIgnited: result.accuracy === "ignition",
-          lastAttempt: new Date().toISOString(),
-          unitName: state.currentUnitName || undefined,
-          unitId: state.currentUnitName ? state.currentUnitName.toLowerCase().replace(/\s+/g, '-') : undefined,
-          topicName: state.currentTopicName || undefined,
-          topicId: state.currentTopicName ? state.currentTopicName.toLowerCase().replace(/\s+/g, '-') : undefined,
-          crisisText: currentScenario.crisisText,
-          formalMechanism: currentScenario.formalMechanism,
-          latexFormula: currentScenario.latexFormula,
-          soWhat: currentScenario.soWhat,
-          stressTest: (currentScenario as any).stressTest,
-          dominoQuestion: currentScenario.dominoQuestion,
-          multiple_choice_question: (currentScenario as any).multiple_choice_question,
-          multiple_choice_options: (currentScenario as any).multiple_choice_options,
-        });
-        initNodeSRS(nodeId, heatScore);
-
-        // Update store state
-        const updatedNodeResults = {
-          ...state.nodeResults,
-          [nodeId]: { accuracy: result.accuracy, heatScore, feedback: result.feedback, thermalState: result.thermalState }
-        };
-        useArceStore.setState({ isLoading: false, currentPhase: "transition", nodeResults: updatedNodeResults });
-      }
+      // Advance after 2s
+      setTimeout(() => finishNode(blended, blendedAccuracy), 2000);
+    } catch {
+      const fallback = { score: 30, feedback: "Response recorded.", accuracy: "frost" };
+      setMcResult(fallback);
+      setStage("mc_feedback");
+      setTimeout(() => finishNode(dominoResult?.score ?? 40, dominoResult?.accuracy ?? "frost"), 2000);
+    } finally {
+      setIsEvaluating(false);
     }
   };
+
+  // ── Persist + advance phase (mastery-gated) ───────────────────────────────
+  const finishNode = (heatScore: number, accuracy: string) => {
+    const nodeId = currentScenario.nodeId || currentScenario.id;
+    const thermalStateVal = accuracy === "ignition" ? "ignition" : accuracy === "warning" ? "warning" : "frost";
+    const state = useArceStore.getState();
+    const cluster = state.gameSession?.clusters[state.gameSession.currentClusterIndex];
+    const clusterNode = cluster?.nodes.find((n: any) => n.id === nodeId);
+    const title = clusterNode?.title || nodeId;
+
+    // Increment attempt count in store
+    incrementAttempt(nodeId);
+    const newRetryCount = retryCount + 1;
+
+    // Persist current attempt (always — tracks best)
+    saveNodeProgress(nodeId, {
+      nodeId, title, heatScore, thermalState: thermalStateVal,
+      isIgnited: accuracy === "ignition",
+      lastAttempt: new Date().toISOString(),
+      unitName: state.currentUnitName || undefined,
+      unitId: state.currentUnitName ? state.currentUnitName.toLowerCase().replace(/\s+/g, "-") : undefined,
+      topicName: state.currentTopicName || undefined,
+      topicId: state.currentTopicName
+        ? state.currentTopicName.toLowerCase().replace(/\s+/g, "-")
+        : nodeId.split("-").slice(0, 2).join("-"),
+      crisisText: currentScenario.crisisText,
+      formalMechanism: currentScenario.formalMechanism,
+      latexFormula: currentScenario.latexFormula,
+      soWhat: (currentScenario as any).soWhat,
+      stressTest: (currentScenario as any).stressTest,
+      dominoQuestion: currentScenario.dominoQuestion,
+      multiple_choice_question: (currentScenario as any).multiple_choice_question,
+      multiple_choice_options: (currentScenario as any).multiple_choice_options,
+    });
+    initNodeSRS(nodeId, heatScore);
+
+    const updatedNodeResults = {
+      ...state.nodeResults,
+      [nodeId]: { accuracy, heatScore, feedback: dominoResult?.feedback ?? "", thermalState: thermalStateVal },
+    };
+
+    // ── Mastery Gate: block if score < 75 ────────────────────────────────────
+    if (heatScore < 75) {
+      setRetryCount(newRetryCount);
+      setRetryHint(generateRetryHint(accuracy, newRetryCount));
+      // Reset for retry
+      setDominoResponse("");
+      setSelectedChoice(null);
+      setDominoResult(null);
+      setMcResult(null);
+      setStage("blocked");
+      // Still update store results (tracks best score)
+      useArceStore.setState({ nodeResults: updatedNodeResults });
+      return; // Do NOT advance phase
+    }
+
+    // ── Passed: advance to Breakthrough Transition ───────────────────────────
+    useArceStore.setState({ isLoading: false, currentPhase: "transition", nodeResults: updatedNodeResults });
+    state.saveProgressToDatabase(nodeId, heatScore, thermalStateVal as any);
+  };
+
+  // ── Thermal color helpers ──────────────────────────────────────────────────
+  const thermalColor = (acc: string) =>
+    acc === "ignition" ? "#22c55e" : acc === "warning" ? "#f59e0b" : "#ef4444";
+  const thermalEmoji = (acc: string) =>
+    acc === "ignition" ? "🔥" : acc === "warning" ? "⚠️" : "❄️";
+
+  const roundLabel = stage === "blocked"
+    ? `RETRY ${retryCount}`
+    : stage === "domino" || stage === "domino_feedback" ? "ROUND 1 OF 2" : "ROUND 2 OF 2";
 
   return (
     <motion.div
@@ -116,19 +212,16 @@ export default function ChallengeZone() {
         pointerEvents: "none",
       }} />
 
-      {/* Top Bar: Progress + Scenario Counter */}
+      {/* Top Bar */}
       <div style={{
         padding: "16px 24px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <div style={{
             width: "8px", height: "8px", borderRadius: "50%",
-            backgroundColor: "#ff5c35",
-            boxShadow: "0 0 12px rgba(255,92,53,0.6)",
+            backgroundColor: "#ff5c35", boxShadow: "0 0 12px rgba(255,92,53,0.6)",
           }} />
           <span style={{ fontSize: "11px", letterSpacing: "3px", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
             CHALLENGE ZONE
@@ -138,6 +231,21 @@ export default function ChallengeZone() {
           <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
             CONCEPT {scenarioIndex + 1} / {totalScenarios}
           </span>
+          {/* Round dots */}
+          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            {[1, 2].map((r) => {
+              const done = (r === 1 && (stage === "domino_feedback" || stage === "mc" || stage === "mc_feedback")) ||
+                           (r === 2 && stage === "mc_feedback");
+              const active = (r === 1 && stage === "domino") || (r === 2 && (stage === "mc" || stage === "mc_feedback"));
+              return (
+                <div key={r} style={{
+                  width: "7px", height: "7px", borderRadius: "50%",
+                  backgroundColor: done ? "#22c55e" : active ? "#ff5c35" : "rgba(255,255,255,0.15)",
+                  transition: "background-color 0.3s",
+                }} />
+              );
+            })}
+          </div>
           <div style={{ width: "120px", height: "3px", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: "2px", overflow: "hidden" }}>
             <motion.div
               initial={{ width: 0 }}
@@ -151,24 +259,18 @@ export default function ChallengeZone() {
 
       {/* Main Content */}
       <div style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "48px 24px",
-        maxWidth: "800px",
-        margin: "0 auto",
-        width: "100%",
+        flex: 1, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        padding: "48px 24px", maxWidth: "800px",
+        margin: "0 auto", width: "100%",
       }}>
-        {/* Scenario Alert */}
+        {/* Round badge */}
         <motion.div
+          key={roundLabel}
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
           style={{
-            padding: "12px 24px",
-            borderRadius: "8px",
+            padding: "12px 24px", borderRadius: "8px",
             backgroundColor: "rgba(255,92,53,0.08)",
             border: "1px solid rgba(255,92,53,0.15)",
             marginBottom: "32px",
@@ -181,11 +283,11 @@ export default function ChallengeZone() {
             style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#ef4444" }}
           />
           <span style={{ fontSize: "13px", color: "#ff8860", fontWeight: 600, fontFamily: "monospace" }}>
-            {effectiveQuestionType === "multiple-choice" ? "MULTIPLE CHOICE" : "LEARNING CHALLENGE"}
+            {roundLabel} — {stage === "domino" || stage === "domino_feedback" ? "DOMINO PREDICTION" : "SIGNAL CHECK"}
           </span>
         </motion.div>
 
-        {/* Scenario Title */}
+        {/* Node title */}
         <motion.h2
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -193,210 +295,284 @@ export default function ChallengeZone() {
           style={{
             fontFamily: "Georgia, serif",
             fontSize: "clamp(22px, 3vw, 32px)",
-            fontWeight: 400,
-            letterSpacing: "-0.8px",
-            color: "#f0f2ec",
-            textAlign: "center",
-            marginBottom: "16px",
+            fontWeight: 400, letterSpacing: "-0.8px",
+            color: "#f0f2ec", textAlign: "center", marginBottom: "16px",
           }}
         >
-          {currentScenario.nodeId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+          {currentScenario.nodeId.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
         </motion.h2>
 
-        {/* Scenario Context */}
+        {/* Crisis context */}
         <motion.p
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
           style={{
-            fontSize: "15px",
-            lineHeight: 1.8,
-            color: "rgba(255,255,255,0.6)",
-            textAlign: "center",
-            marginBottom: "32px",
-            maxWidth: "650px",
+            fontSize: "15px", lineHeight: 1.8, color: "rgba(255,255,255,0.6)",
+            textAlign: "center", marginBottom: "32px", maxWidth: "650px",
           }}
         >
           {currentScenario.crisisText}
         </motion.p>
 
-        {effectiveQuestionType === "domino" ? (
-          <>
-            {/* Domino Question */}
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              style={{
-                width: "100%",
-                padding: "20px 24px",
-                borderRadius: "12px",
-                backgroundColor: "rgba(255,92,53,0.08)",
-                border: "1px solid rgba(255,92,53,0.2)",
-                marginBottom: "24px",
-              }}
-            >
-              <p style={{ fontSize: "13px", color: "#ff8860", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
-                DOMINO EFFECT PREDICTION
-              </p>
-              <p style={{ fontSize: "15px", color: "#f0f2ec", fontWeight: 500, lineHeight: 1.6 }}>
-                {currentScenario.dominoQuestion || "Predict what happens next in this chain of events."}
-              </p>
-            </motion.div>
+        <AnimatePresence mode="wait">
 
-            {/* Free-text Input Textarea */}
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.55 }}
-              style={{ width: "100%" }}
-            >
+          {/* ── Stage: domino ── */}
+          {stage === "domino" && (
+            <motion.div key="domino" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} style={{ width: "100%" }}>
+              <div style={{
+                padding: "20px 24px", borderRadius: "12px",
+                backgroundColor: "rgba(255,92,53,0.08)",
+                border: "1px solid rgba(255,92,53,0.2)", marginBottom: "24px",
+              }}>
+                <p style={{ fontSize: "13px", color: "#ff8860", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
+                  DOMINO EFFECT PREDICTION
+                </p>
+                <p style={{ fontSize: "15px", color: "#f0f2ec", fontWeight: 500, lineHeight: 1.6 }}>
+                  {currentScenario.dominoQuestion || "Predict what happens next in this chain of events."}
+                </p>
+              </div>
               <textarea
-                ref={textareaRef}
                 value={dominoResponse}
                 onChange={(e) => setDominoResponse(e.target.value)}
-                placeholder="Enter your prediction... What chains of consequences do you foresee?"
+                placeholder="Trace the chain of consequences... What happens first, and what does it trigger?"
                 style={{
-                  width: "100%",
-                  height: "140px",
-                  padding: "16px 20px",
-                  fontSize: "14px",
-                  lineHeight: 1.6,
-                  fontFamily: "inherit",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  backgroundColor: "rgba(255,255,255,0.04)",
-                  color: "#f0f2ec",
-                  resize: "vertical",
-                  boxSizing: "border-box",
-                  transition: "all 0.2s",
-                  outline: "none",
+                  width: "100%", height: "140px", padding: "16px 20px",
+                  fontSize: "14px", lineHeight: 1.6, fontFamily: "inherit",
+                  borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)",
+                  backgroundColor: "rgba(255,255,255,0.04)", color: "#f0f2ec",
+                  resize: "vertical", boxSizing: "border-box", outline: "none",
                 }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,92,53,0.4)";
-                  e.currentTarget.style.backgroundColor = "rgba(255,92,53,0.06)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
-                  e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)";
-                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(255,92,53,0.4)"; e.currentTarget.style.backgroundColor = "rgba(255,92,53,0.06)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)"; }}
               />
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
                 <span>{dominoResponse.length} characters</span>
-                <span>{dominoResponse.trim().split(/\s+/).filter(w => w).length} words</span>
+                <span>{dominoResponse.trim().split(/\s+/).filter(Boolean).length} words</span>
               </div>
+              {error && (
+                <div style={{ marginTop: "12px", padding: "12px 20px", backgroundColor: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "8px", color: "#ef4444", fontSize: "14px", textAlign: "center" }}>
+                  {error}
+                </div>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(255,92,53,0.3)" }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleDominoSubmit}
+                disabled={isEvaluating || isLoading || !dominoResponse.trim()}
+                style={{
+                  marginTop: "32px", width: "100%", maxWidth: "300px",
+                  display: "block", margin: "32px auto 0",
+                  padding: "16px 32px", fontSize: "14px", fontWeight: 700,
+                  letterSpacing: "1px", textTransform: "uppercase",
+                  color: "#fff",
+                  backgroundColor: dominoResponse.trim() ? "#ff5c35" : "rgba(255,92,53,0.3)",
+                  border: "none", borderRadius: "10px",
+                  cursor: isEvaluating || !dominoResponse.trim() ? "not-allowed" : "pointer",
+                  transition: "all 0.3s",
+                }}
+              >
+                {isEvaluating ? "ANALYZING..." : "SUBMIT PREDICTION →"}
+              </motion.button>
             </motion.div>
-          </>
-        ) : (
-          <>
-            {/* Multiple Choice Question */}
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              style={{
-                width: "100%",
-                padding: "20px 24px",
-                borderRadius: "12px",
-                backgroundColor: "rgba(255,92,53,0.08)",
-                border: "1px solid rgba(255,92,53,0.2)",
-                marginBottom: "24px",
-              }}
-            >
-              <p style={{ fontSize: "15px", color: "#f0f2ec", fontWeight: 500, lineHeight: 1.6 }}>
-                {mcQuestion || "Select the best answer:"}
-              </p>
-            </motion.div>
+          )}
 
-            {/* Multiple Choice Options */}
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.55 }}
-              style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}
-            >
-              {mcOptions.map((option: any, index: number) => (
+          {/* ── Stage: domino feedback ── */}
+          {stage === "domino_feedback" && dominoResult && (
+            <motion.div key="domino_feedback" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ width: "100%" }}>
+              <div style={{
+                padding: "24px", borderRadius: "12px",
+                backgroundColor: `${thermalColor(dominoResult.accuracy)}10`,
+                border: `1px solid ${thermalColor(dominoResult.accuracy)}30`,
+                marginBottom: "24px", textAlign: "center",
+              }}>
+                <div style={{ fontSize: "28px", marginBottom: "8px" }}>{thermalEmoji(dominoResult.accuracy)}</div>
+                <div style={{ fontSize: "16px", fontWeight: 700, color: thermalColor(dominoResult.accuracy), marginBottom: "8px" }}>
+                  Round 1 Score: {dominoResult.score}/100
+                </div>
+                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.7)", lineHeight: 1.6, margin: 0 }}>
+                  {dominoResult.feedback}
+                </p>
+              </div>
+              {hasMC ? (
                 <motion.button
-                  key={option.id}
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.55 + index * 0.1 }}
-                  onClick={() => setSelectedChoice(option.id)}
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={handleAfterDomino}
                   style={{
-                    padding: "16px 20px",
-                    borderRadius: "10px",
-                    border: selectedChoice === option.id 
-                      ? "2px solid #ff5c35" 
-                      : "1px solid rgba(255,255,255,0.15)",
-                    backgroundColor: selectedChoice === option.id
-                      ? "rgba(255,92,53,0.15)"
-                      : "rgba(255,255,255,0.04)",
-                    color: "#f0f2ec",
-                    fontSize: "14px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    fontWeight: selectedChoice === option.id ? 600 : 400,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (selectedChoice !== option.id) {
-                      (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,92,53,0.08)";
-                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,92,53,0.3)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (selectedChoice !== option.id) {
-                      (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.04)";
-                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.15)";
-                    }
+                    width: "100%", maxWidth: "300px", display: "block", margin: "0 auto",
+                    padding: "16px 32px", fontSize: "14px", fontWeight: 700,
+                    letterSpacing: "1px", textTransform: "uppercase",
+                    color: "#fff", backgroundColor: "#ff5c35",
+                    border: "none", borderRadius: "10px", cursor: "pointer",
                   }}
                 >
-                  <span style={{ fontWeight: 700, marginRight: "12px", color: "#ff5c35" }}>
-                    {option.id}.
-                  </span>
-                  {option.text}
+                  ROUND 2: SIGNAL CHECK →
                 </motion.button>
-              ))}
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={() => finishNode(dominoResult.score, dominoResult.accuracy)}
+                  style={{
+                    width: "100%", maxWidth: "300px", display: "block", margin: "0 auto",
+                    padding: "16px 32px", fontSize: "14px", fontWeight: 700,
+                    letterSpacing: "1px", textTransform: "uppercase",
+                    color: "#fff", backgroundColor: "#ff5c35",
+                    border: "none", borderRadius: "10px", cursor: "pointer",
+                  }}
+                >
+                  NEXT NODE →
+                </motion.button>
+              )}
             </motion.div>
-          </>
-        )}
+          )}
 
-        {/* Error */}
-        {error && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            style={{ marginTop: "16px", padding: "12px 20px", backgroundColor: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "8px", color: "#ef4444", fontSize: "14px", width: "100%", textAlign: "center" }}>
-            {error}
-          </motion.div>
-        )}
+          {/* ── Stage: mc ── */}
+          {stage === "mc" && (
+            <motion.div key="mc" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ width: "100%" }}>
+              <div style={{
+                padding: "20px 24px", borderRadius: "12px",
+                backgroundColor: "rgba(139,92,246,0.08)",
+                border: "1px solid rgba(139,92,246,0.2)", marginBottom: "24px",
+              }}>
+                <p style={{ fontSize: "13px", color: "#a78bfa", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
+                  SIGNAL CHECK
+                </p>
+                <p style={{ fontSize: "15px", color: "#f0f2ec", fontWeight: 500, lineHeight: 1.6 }}>
+                  {mcQuestion}
+                </p>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
+                {mcOptions.map((option, index) => (
+                  <motion.button
+                    key={option.id ?? index}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.08 }}
+                    onClick={() => setSelectedChoice(option.id)}
+                    style={{
+                      padding: "16px 20px", borderRadius: "10px",
+                      border: selectedChoice === option.id ? "2px solid #8b5cf6" : "1px solid rgba(255,255,255,0.15)",
+                      backgroundColor: selectedChoice === option.id ? "rgba(139,92,246,0.15)" : "rgba(255,255,255,0.04)",
+                      color: "#f0f2ec", fontSize: "14px", textAlign: "left", cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontWeight: selectedChoice === option.id ? 600 : 400,
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, marginRight: "12px", color: "#a78bfa" }}>{option.id}.</span>
+                    {option.text}
+                  </motion.button>
+                ))}
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={handleMCSubmit}
+                disabled={isEvaluating || !selectedChoice}
+                style={{
+                  marginTop: "32px", width: "100%", maxWidth: "300px",
+                  display: "block", margin: "32px auto 0",
+                  padding: "16px 32px", fontSize: "14px", fontWeight: 700,
+                  letterSpacing: "1px", textTransform: "uppercase", color: "#fff",
+                  backgroundColor: selectedChoice ? "#8b5cf6" : "rgba(139,92,246,0.3)",
+                  border: "none", borderRadius: "10px",
+                  cursor: isEvaluating || !selectedChoice ? "not-allowed" : "pointer",
+                  transition: "all 0.3s",
+                }}
+              >
+                {isEvaluating ? "EVALUATING..." : "LOCK IN ANSWER →"}
+              </motion.button>
+            </motion.div>
+          )}
 
-        {/* Submit */}
-        <motion.button
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(255,92,53,0.3)" }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleSubmit}
-          disabled={isLoading || (effectiveQuestionType === "domino" ? !dominoResponse.trim() : !selectedChoice)}
-          style={{
-            marginTop: "32px",
-            width: "100%",
-            maxWidth: "300px",
-            padding: "16px 32px",
-            fontSize: "14px",
-            fontWeight: 700,
-            letterSpacing: "1px",
-            textTransform: "uppercase",
-            color: "#fff",
-            backgroundColor: (effectiveQuestionType === "domino" ? dominoResponse.trim() : selectedChoice) ? "#ff5c35" : "rgba(255,92,53,0.3)",
-            border: "none",
-            borderRadius: "10px",
-            cursor: isLoading || (effectiveQuestionType === "domino" ? !dominoResponse.trim() : !selectedChoice) ? "not-allowed" : "pointer",
-            transition: "all 0.3s",
-          }}
-        >
-          {isLoading ? "ANALYZING..." : "SUBMIT ANSWER"}
-        </motion.button>
+          {/* ── Stage: blocked (mastery gate) ── */}
+          {stage === "blocked" && (
+            <motion.div key="blocked" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ width: "100%" }}>
+              <div style={{
+                padding: "24px", borderRadius: "12px", marginBottom: "24px",
+                backgroundColor: "rgba(239,68,68,0.08)",
+                border: "1px solid rgba(239,68,68,0.25)",
+                textAlign: "center",
+              }}>
+                <div style={{ fontSize: "28px", marginBottom: "8px" }}>🔒</div>
+                <div style={{ fontSize: "16px", fontWeight: 700, color: "#ef4444", marginBottom: "12px" }}>
+                  MASTERY NOT YET ACHIEVED
+                </div>
+                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.7)", lineHeight: 1.7, margin: 0 }}>
+                  Score must reach <strong style={{ color: "#ff5c35" }}>75+</strong> to advance. You cannot proceed until this node is bulletproof.
+                </p>
+              </div>
+              <div style={{
+                padding: "20px 24px", borderRadius: "12px", marginBottom: "24px",
+                backgroundColor: "rgba(245,158,11,0.08)",
+                border: "1px solid rgba(245,158,11,0.2)",
+              }}>
+                <p style={{ fontSize: "12px", color: "#f59e0b", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
+                  HINT — ATTEMPT {retryCount + 1}
+                </p>
+                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.75)", lineHeight: 1.7, margin: 0 }}>
+                  {retryHint}
+                </p>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.02, boxShadow: "0 0 24px rgba(255,92,53,0.3)" }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setStage("domino")}
+                style={{
+                  width: "100%", maxWidth: "300px", display: "block", margin: "0 auto",
+                  padding: "16px 32px", fontSize: "14px", fontWeight: 700,
+                  letterSpacing: "1px", textTransform: "uppercase",
+                  color: "#fff", backgroundColor: "#ff5c35",
+                  border: "none", borderRadius: "10px", cursor: "pointer",
+                }}
+              >
+                TRY AGAIN →
+              </motion.button>
+            </motion.div>
+          )}
+
+          {/* ── Stage: mc feedback (auto-advances) ── */}
+          {stage === "mc_feedback" && mcResult && dominoResult && (
+            <motion.div key="mc_feedback" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} style={{ width: "100%" }}>
+              <div style={{ display: "flex", gap: "16px", marginBottom: "24px" }}>
+                <div style={{
+                  flex: 1, padding: "16px", borderRadius: "10px",
+                  backgroundColor: `${thermalColor(dominoResult.accuracy)}10`,
+                  border: `1px solid ${thermalColor(dominoResult.accuracy)}30`,
+                  textAlign: "center",
+                }}>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", letterSpacing: "2px", marginBottom: "4px" }}>ROUND 1</div>
+                  <div style={{ fontSize: "22px", fontWeight: 700, color: thermalColor(dominoResult.accuracy) }}>{dominoResult.score}</div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>/ 100</div>
+                </div>
+                <div style={{
+                  flex: 1, padding: "16px", borderRadius: "10px",
+                  backgroundColor: `${thermalColor(mcResult.accuracy)}10`,
+                  border: `1px solid ${thermalColor(mcResult.accuracy)}30`,
+                  textAlign: "center",
+                }}>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", letterSpacing: "2px", marginBottom: "4px" }}>ROUND 2</div>
+                  <div style={{ fontSize: "22px", fontWeight: 700, color: thermalColor(mcResult.accuracy) }}>{mcResult.score}</div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>/ 100</div>
+                </div>
+                <div style={{
+                  flex: 1, padding: "16px", borderRadius: "10px",
+                  backgroundColor: "rgba(255,92,53,0.08)",
+                  border: "1px solid rgba(255,92,53,0.2)",
+                  textAlign: "center",
+                }}>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", letterSpacing: "2px", marginBottom: "4px" }}>HEAT SCORE</div>
+                  <div style={{ fontSize: "22px", fontWeight: 700, color: "#ff5c35" }}>
+                    {Math.round(dominoResult.score * 0.6 + mcResult.score * 0.4)}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>/ 100</div>
+                </div>
+              </div>
+              <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: "13px" }}>
+                Advancing to Intel Card...
+              </p>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
       </div>
     </motion.div>
   );

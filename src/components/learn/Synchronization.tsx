@@ -15,15 +15,15 @@ export default function Synchronization() {
     // After synchronization animation (3 seconds), advance to next node or debrief
     const timer = setTimeout(() => {
       if (isLastNode) {
-        // All nodes complete - go to debrief
-        useArceStore.setState({ currentPhase: "debrief" });
+        // All nodes complete — go to Logic Mesh synthesis
+        useArceStore.setState({ currentPhase: "mesh" });
       } else {
-        // Move to next node - go back to challenge zone
+        // Move to next node — go to Clarification Zone first
         const nextScenario = scenarios[currentNodeIndex + 1];
         if (nextScenario) {
           useArceStore.setState({
             currentScenario: nextScenario,
-            currentPhase: "challenge",
+            currentPhase: "clarification",
           });
         }
       }

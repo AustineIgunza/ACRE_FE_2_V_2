@@ -287,15 +287,16 @@ export async function POST(request: NextRequest) {
     }
 
     let rawJson: string;
+    let targetNodeCount = 5;
 
     // ── Plain text ──
     if (textMaterial) {
       if (textMaterial.trim().length < 50) {
         return NextResponse.json({ error: "Not enough content to generate nodes." }, { status: 400 });
       }
-      const nodeCount = calcNodeCount(textMaterial.length);
+      targetNodeCount = calcNodeCount(textMaterial.length);
       try {
-        rawJson = await callGemini(buildPrompt(textMaterial, nodeCount));
+        rawJson = await callGemini(buildPrompt(textMaterial, targetNodeCount));
       } catch (err: any) {
         console.error("Gemini call failed:", err.message);
         return NextResponse.json({ error: "AI extraction failed. Please try again." }, { status: 500 });
@@ -327,9 +328,9 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Not enough text content found in the document." }, { status: 400 });
         }
 
-        const nodeCount = calcNodeCount(extractedText.length);
+        targetNodeCount = calcNodeCount(extractedText.length);
         try {
-          rawJson = await callGemini(buildPrompt(extractedText, nodeCount));
+          rawJson = await callGemini(buildPrompt(extractedText, targetNodeCount));
         } catch (err: any) {
           console.error("Gemini call failed:", err.message);
           return NextResponse.json({ error: "AI extraction failed. Please try again." }, { status: 500 });
@@ -340,9 +341,9 @@ export async function POST(request: NextRequest) {
       else if (GEMINI_MULTIMODAL_TYPES[mimeType]) {
         const base64Data = Buffer.from(buffer).toString("base64");
         // Estimate node count: multimodal files get a mid-range default
-        const nodeCount = 7;
+        targetNodeCount = 7;
         try {
-          rawJson = await callGeminiMultimodal(buildMultimodalPrompt(nodeCount), mimeType, base64Data);
+          rawJson = await callGeminiMultimodal(buildMultimodalPrompt(targetNodeCount), mimeType, base64Data);
         } catch (err: any) {
           console.error("Gemini multimodal call failed:", err.message);
           return NextResponse.json({ error: "AI extraction failed. Please try again." }, { status: 500 });
@@ -355,9 +356,9 @@ export async function POST(request: NextRequest) {
         if (extractedText.trim().length < 50) {
           return NextResponse.json({ error: "Not enough content to generate nodes." }, { status: 400 });
         }
-        const nodeCount = calcNodeCount(extractedText.length);
+        targetNodeCount = calcNodeCount(extractedText.length);
         try {
-          rawJson = await callGemini(buildPrompt(extractedText, nodeCount));
+          rawJson = await callGemini(buildPrompt(extractedText, targetNodeCount));
         } catch (err: any) {
           console.error("Gemini call failed:", err.message);
           return NextResponse.json({ error: "AI extraction failed. Please try again." }, { status: 500 });
@@ -382,9 +383,9 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const nodeCount = calcNodeCount(transcript.length);
+        targetNodeCount = calcNodeCount(transcript.length);
         try {
-          rawJson = await callGemini(buildPrompt(transcript, nodeCount));
+          rawJson = await callGemini(buildPrompt(transcript, targetNodeCount));
         } catch (err: any) {
           console.error("Gemini call failed:", err.message);
           return NextResponse.json({ error: "AI extraction failed. Please try again." }, { status: 500 });
@@ -414,9 +415,9 @@ export async function POST(request: NextRequest) {
           if (fetchedContent.trim().length < 50) {
             return NextResponse.json({ error: "Not enough content found at that URL." }, { status: 400 });
           }
-          const nodeCount = calcNodeCount(fetchedContent.length);
+          targetNodeCount = calcNodeCount(fetchedContent.length);
           try {
-            rawJson = await callGemini(buildPrompt(fetchedContent, nodeCount));
+            rawJson = await callGemini(buildPrompt(fetchedContent, targetNodeCount));
           } catch (err: any) {
             console.error("Gemini call failed:", err.message);
             return NextResponse.json({ error: "AI extraction failed. Please try again." }, { status: 500 });
@@ -434,6 +435,22 @@ export async function POST(request: NextRequest) {
     } catch {
       console.error("Failed to parse Gemini response:", rawJson!.slice(0, 500));
       return NextResponse.json({ error: "AI returned malformed data. Please try again." }, { status: 500 });
+    }
+
+    // ── Retry once if node count is significantly off ──
+    if (logicNodes.length < targetNodeCount - 1 && textMaterial) {
+      console.warn(`Node count mismatch: got ${logicNodes.length}, expected ${targetNodeCount}. Retrying...`);
+      try {
+        const retryPrompt = buildPrompt(textMaterial, targetNodeCount) +
+          `\n\nCRITICAL: You MUST return exactly ${targetNodeCount} nodes. The previous attempt only returned ${logicNodes.length}. Find more distinct concepts in the material.`;
+        const retryRaw = await callGemini(retryPrompt);
+        const retryNodes = parseGeminiJson(retryRaw);
+        if (retryNodes.length > logicNodes.length) {
+          logicNodes = retryNodes;
+        }
+      } catch {
+        // use original result if retry fails
+      }
     }
 
     return NextResponse.json({
