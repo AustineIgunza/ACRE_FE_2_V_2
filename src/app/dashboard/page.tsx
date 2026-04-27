@@ -1085,7 +1085,7 @@ function NodeCard({
         {showDueLabel && (
           <div style={{
             fontSize: "12px", fontWeight: 700,
-            color: dueInfo.overdue ? "#ef4444" : "var(--t-muted)",
+            color: dueInfo.overdue ? "#ef4444" : "var(--t-secondary)",
           }}>
             {dueInfo.label}
           </div>
@@ -1204,10 +1204,25 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh", color: "var(--t-mid)" }}>
+    <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh", color: "var(--t-mid)", position: "relative" }}>
+      {/* Animated background */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
+        <style>{`
+          @keyframes db-orb1 { 0%,100%{transform:translate(0,0)scale(1)} 33%{transform:translate(55px,-35px)scale(1.06)} 66%{transform:translate(-25px,45px)scale(0.96)} }
+          @keyframes db-orb2 { 0%,100%{transform:translate(0,0)scale(1)} 40%{transform:translate(-65px,28px)scale(1.04)} 70%{transform:translate(38px,-55px)scale(0.93)} }
+          @keyframes db-orb3 { 0%,100%{transform:translate(0,0)scale(1)} 50%{transform:translate(45px,65px)scale(1.08)} 80%{transform:translate(-18px,-28px)scale(0.97)} }
+          @keyframes db-dot  { 0%,100%{opacity:.12;transform:translateY(0)scale(1)} 50%{opacity:.26;transform:translateY(-16px)scale(1.18)} }
+        `}</style>
+        <div style={{ position: "absolute", top: "5%", left: "2%", width: "440px", height: "440px", borderRadius: "50%", background: "radial-gradient(circle, rgba(255,92,53,0.055) 0%, transparent 70%)", animation: "db-orb1 24s ease-in-out infinite" }} />
+        <div style={{ position: "absolute", bottom: "12%", right: "4%", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, rgba(88,120,248,0.045) 0%, transparent 70%)", animation: "db-orb2 30s ease-in-out infinite" }} />
+        <div style={{ position: "absolute", top: "45%", left: "52%", width: "320px", height: "320px", borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.035) 0%, transparent 70%)", animation: "db-orb3 38s ease-in-out infinite" }} />
+        {[0,1,2,3,4].map(i => (
+          <div key={i} style={{ position: "absolute", width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "rgba(255,92,53,0.22)", left: `${12+i*18}%`, top: `${18+(i%3)*26}%`, animation: `db-dot ${4.5+i*0.7}s ease-in-out infinite`, animationDelay: `${i*0.5}s` }} />
+        ))}
+      </div>
       <Navbar />
 
-      <main style={{ padding: "48px 24px 80px", maxWidth: "860px", margin: "0 auto" }}>
+      <main style={{ padding: "48px 24px 80px", maxWidth: "860px", margin: "0 auto", position: "relative", zIndex: 1 }}>
 
         {/* Header */}
         <motion.div

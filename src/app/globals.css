@@ -53,6 +53,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --p-white:   #111210;
+    --p-frost:   #252826;
     --p-sheet:   #181916;
     --p-surface: #20221e;
     --p-tint:    #282c26;
