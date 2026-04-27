@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import ParticleBg from "@/components/ParticleBg";
 
 const spring      = { type: "spring" as const, stiffness: 460, damping: 38 };
 const smoothSpring = { type: "spring" as const, stiffness: 300, damping: 28 };
@@ -52,27 +53,7 @@ export default function LandingPage() {
 
   return (
     <div style={{ backgroundColor: "var(--p-white)", minHeight: "100vh", color: "var(--t-mid)", position: "relative", overflow: "hidden" }}>
-      {/* Animated background */}
-      <style>{`
-        @keyframes drift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(40px,-30px) scale(1.08)} 66%{transform:translate(-20px,20px) scale(0.96)} }
-        @keyframes drift2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-50px,25px) scale(1.05)} 66%{transform:translate(30px,-40px) scale(0.94)} }
-        @keyframes drift3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(25px,35px) scale(1.1)} }
-        @keyframes floatDot { 0%,100%{opacity:0.35;transform:translateY(0)} 50%{opacity:0.7;transform:translateY(-18px)} }
-      `}</style>
-      {/* Soft gradient orbs */}
-      <div aria-hidden style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0, overflow:"hidden" }}>
-        <div style={{ position:"absolute", top:"-10%", left:"-5%", width:"55vw", height:"55vw", borderRadius:"50%", background:"radial-gradient(circle, rgba(255,92,53,0.07) 0%, transparent 65%)", animation:"drift1 18s ease-in-out infinite" }} />
-        <div style={{ position:"absolute", bottom:"-15%", right:"-8%", width:"50vw", height:"50vw", borderRadius:"50%", background:"radial-gradient(circle, rgba(255,92,53,0.05) 0%, transparent 65%)", animation:"drift2 22s ease-in-out infinite" }} />
-        <div style={{ position:"absolute", top:"40%", left:"55%", width:"35vw", height:"35vw", borderRadius:"50%", background:"radial-gradient(circle, rgba(46,91,232,0.04) 0%, transparent 65%)", animation:"drift3 28s ease-in-out infinite" }} />
-        {/* Floating dots */}
-        {[
-          {top:"18%",left:"8%",size:5,delay:"0s"},{top:"65%",left:"4%",size:4,delay:"1.2s"},
-          {top:"30%",left:"88%",size:6,delay:"0.7s"},{top:"75%",left:"82%",size:4,delay:"2s"},
-          {top:"50%",left:"48%",size:3,delay:"1.8s"},{top:"12%",left:"60%",size:5,delay:"0.4s"},
-        ].map((d,i)=>(
-          <div key={i} aria-hidden style={{ position:"absolute", top:d.top, left:d.left, width:d.size, height:d.size, borderRadius:"50%", backgroundColor:"var(--snap)", opacity:0.35, animation:`floatDot ${3+i*0.4}s ease-in-out infinite`, animationDelay:d.delay }} />
-        ))}
-      </div>
+      <ParticleBg theme="light" accent="#ff5c35" secondary="#5878f8" />
 
       {/* ── TOP NAV ─────────────────────────────────────────────────────── */}
       <div style={{ position:"relative", zIndex:1 }}>

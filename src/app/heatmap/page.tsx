@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import RetryNodeModal from "@/components/RetryNodeModal";
 import { loadAllProgress, NodeProgressData } from "@/utils/progressStorage";
+import ParticleBg from "@/components/ParticleBg";
 
 type ViewLevel = "units" | "topics" | "nodes";
 
@@ -385,19 +386,8 @@ export default function HeatmapPage() {
 
   return (
     <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh", color: "var(--t-mid)", position: "relative" }}>
-      <style>{GLOW_CSS + `
-        @keyframes hm-orb1 { 0%,100%{transform:translate(0,0)scale(1)} 35%{transform:translate(55px,-38px)scale(1.07)} 68%{transform:translate(-26px,48px)scale(0.95)} }
-        @keyframes hm-orb2 { 0%,100%{transform:translate(0,0)scale(1)} 42%{transform:translate(-62px,30px)scale(1.05)} 72%{transform:translate(40px,-52px)scale(0.94)} }
-        @keyframes hm-dot  { 0%,100%{opacity:.1;transform:translateY(0)} 50%{opacity:.22;transform:translateY(-15px)} }
-      `}</style>
-      {/* Animated background */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
-        <div style={{ position: "absolute", top: "6%", right: "8%", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(239,68,68,0.04) 0%, transparent 70%)", animation: "hm-orb1 28s ease-in-out infinite" }} />
-        <div style={{ position: "absolute", bottom: "8%", left: "4%", width: "360px", height: "360px", borderRadius: "50%", background: "radial-gradient(circle, rgba(255,92,53,0.04) 0%, transparent 70%)", animation: "hm-orb2 34s ease-in-out infinite" }} />
-        {[0,1,2,3].map(i => (
-          <div key={i} style={{ position: "absolute", width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "rgba(239,68,68,0.2)", left: `${15+i*22}%`, top: `${22+(i%2)*40}%`, animation: `hm-dot ${5+i*0.9}s ease-in-out infinite`, animationDelay: `${i*0.65}s` }} />
-        ))}
-      </div>
+      <style>{GLOW_CSS}</style>
+      <ParticleBg theme="light" accent="#ef4444" secondary="#ff5c35" />
       <Navbar />
       <main style={{ padding: "48px 24px 80px", maxWidth: "1200px", margin: "0 auto", position: "relative", zIndex: 1 }}>
 
