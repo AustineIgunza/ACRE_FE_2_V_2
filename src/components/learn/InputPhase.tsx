@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
+
+const LOADING_MESSAGES = [
+  "Scanning source material...",
+  "Identifying core invariants...",
+  "Extracting atomic logic nodes...",
+  "Building crisis scenarios...",
+  "Generating challenge questions...",
+  "Detecting subject & topic...",
+  "Finalizing your session...",
+];
 
 export default function InputPhase() {
   const { extractLogic, isLoading, currentPhase, error: storeError } = useArceStore();
@@ -14,7 +24,18 @@ export default function InputPhase() {
   const [unitName, setUnitName] = useState("");
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isExtracting = currentPhase === "extracting";
+
+  useEffect(() => {
+    if (!isExtracting) { setLoadingMsgIdx(0); return; }
+    const interval = setInterval(() => {
+      setLoadingMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, [isExtracting]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +65,6 @@ export default function InputPhase() {
 
     await extractLogic(payload, title, unitName);
   };
-
-  const isExtracting = currentPhase === "extracting";
 
   return (
     <motion.div
@@ -91,20 +110,23 @@ export default function InputPhase() {
             }}
           />
           <motion.p
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
+            key={loadingMsgIdx}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.4 }}
             style={{
               color: "var(--snap)",
               fontWeight: 700,
-              fontSize: "14px",
-              letterSpacing: "3px",
+              fontSize: "13px",
+              letterSpacing: "2px",
               textTransform: "uppercase",
             }}
           >
-            STRIPPING ENTROPY...
+            {LOADING_MESSAGES[loadingMsgIdx]}
           </motion.p>
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", maxWidth: "400px", textAlign: "center" }}>
-            Identifying invariants and chunking into logic nodes
+          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "12px", maxWidth: "360px", textAlign: "center" }}>
+            This takes 10–30 seconds depending on material length
           </p>
         </motion.div>
       )}
@@ -250,15 +272,15 @@ export default function InputPhase() {
         {/* Topic + Unit fields */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <label className="eyebrow" style={{ fontSize: "10px", letterSpacing: "2px" }}>Topic Name (Optional)</label>
+            <label className="eyebrow" style={{ fontSize: "10px", letterSpacing: "2px" }}>Topic Name <span style={{ color: "var(--t-muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(AI will auto-detect if blank)</span></label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., The Cell, Microeconomics, Contract Law" className="folio-input"
+              placeholder="e.g., Cell Division, Contract Law, Monetary Policy" className="folio-input"
               style={{ width: "100%" }} disabled={isLoading} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <label className="eyebrow" style={{ fontSize: "10px", letterSpacing: "2px" }}>Unit Name (Optional)</label>
+            <label className="eyebrow" style={{ fontSize: "10px", letterSpacing: "2px" }}>Unit / Subject <span style={{ color: "var(--t-muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(AI will auto-detect if blank)</span></label>
             <input type="text" value={unitName} onChange={(e) => setUnitName(e.target.value)}
-              placeholder="e.g., Human Body, Economics, Law" className="folio-input"
+              placeholder="e.g., Human Biology, Company Law, Macroeconomics" className="folio-input"
               style={{ width: "100%" }} disabled={isLoading} />
           </div>
         </div>

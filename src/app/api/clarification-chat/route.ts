@@ -39,8 +39,8 @@ ${historyText ? `CONVERSATION SO FAR:\n${historyText}\n` : ""}
 STUDENT QUESTION: "${message}"
 
 RULES:
-- Be concise: 2-4 sentences max
-- Guide understanding through Socratic questions when useful
+- Give a thorough, helpful response — aim for 3-6 sentences. Never truncate mid-thought.
+- Guide understanding through Socratic questions when useful, but also give clear explanations
 - You MAY explain the formal mechanism clearly — that's the point of this phase
 - Do NOT give away the domino answer directly, but help them understand the underlying logic
 - Tone: sharp, intellectually engaging, slightly challenging
@@ -48,7 +48,7 @@ RULES:
 
 Respond now:`;
 
-    const response = await callGemini(prompt, { temperature: 0.5, maxOutputTokens: 300 });
+    const response = await callGemini(prompt, { temperature: 0.5, maxOutputTokens: 900 });
     const text = (response || "").trim();
 
     return NextResponse.json({ response: text || "Interesting question. Let me ask you this — what do you think happens first in this chain?" });

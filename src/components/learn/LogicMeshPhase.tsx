@@ -40,7 +40,7 @@ export default function LogicMeshPhase() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "synthesis", nodes, userSynthesis: synthesisText }),
       });
-      const data = res.ok ? await res.json() : { score: 50, feedback: "Synthesis recorded.", collapseQuestion: "Trace how removing one node affects the system." };
+      const data = await res.json().catch(() => ({ score: 50, feedback: "Synthesis recorded.", collapseQuestion: "Trace how removing one node affects the system." }));
       setSynthesisScore(data.score ?? 50);
       setSynthesisFeedback(data.feedback ?? "Synthesis evaluated.");
       setCollapseQuestion(data.collapseQuestion ?? "If one core mechanism failed, which other nodes would be most affected and why?");
@@ -64,7 +64,7 @@ export default function LogicMeshPhase() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "collapse", nodes, collapseQuestion, userCollapseResponse: collapseText }),
       });
-      const data = res.ok ? await res.json() : { score: 50, feedback: "Collapse analysis recorded.", accuracy: "warning" };
+      const data = await res.json().catch(() => ({ score: 50, feedback: "Collapse analysis recorded.", accuracy: "warning" }));
       setCollapseScore(data.score ?? 50);
       setCollapseFeedback(data.feedback ?? "Cascade analysis evaluated.");
       setMeshStage("collapse_feedback");

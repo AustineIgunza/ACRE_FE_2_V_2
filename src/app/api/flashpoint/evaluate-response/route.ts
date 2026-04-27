@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerSupabaseClient } from "@/lib/supabaseServer";
 
 /**
  * POST /api/flashpoint/evaluate-response
@@ -22,12 +22,6 @@ import { createClient } from "@supabase/supabase-js";
  * }
  */
 
-function createSupabaseClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-  );
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -295,17 +289,22 @@ async function updateUserProgress(
     userResponse: string;
   }
 ): Promise<void> {
-  const supabase = createSupabaseClient();
+  const supabase = createServerSupabaseClient();
   const now = new Date();
   const nextDueDate = new Date(now.getTime() + data.nextInterval * 24 * 60 * 60 * 1000);
 
   // Get current progress record
-  const { data: existingProgress } = await supabase
+  const { data: existingProgress, error: fetchError } = await supabase
     .from("user_progress")
     .select("*")
     .eq("user_id", userId)
     .eq("concept_id", conceptId)
     .single();
+
+  if (fetchError && fetchError.code !== "PGRST116") {
+    // PGRST116 = row not found, which is fine — all other errors are real
+    console.error("Error fetching progress:", fetchError);
+  }
 
   const updatePayload = {
     last_reviewed_timestamp: now.toISOString(),
@@ -320,19 +319,21 @@ async function updateUserProgress(
   };
 
   if (existingProgress) {
-    await supabase
+    const { error: updateError } = await supabase
       .from("user_progress")
       .update(updatePayload)
       .eq("user_id", userId)
       .eq("concept_id", conceptId);
+    if (updateError) console.error("Error updating progress:", updateError);
   } else {
-    await supabase.from("user_progress").insert([
+    const { error: insertError } = await supabase.from("user_progress").insert([
       {
         user_id: userId,
         concept_id: conceptId,
         ...updatePayload,
       },
     ]);
+    if (insertError) console.error("Error inserting progress:", insertError);
   }
 }
 

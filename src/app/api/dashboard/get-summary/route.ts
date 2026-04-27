@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     const masteredNodes = progress?.filter((p: any) => p.thermal_state === "ignition").length || 0;
     const warningNodes = progress?.filter((p: any) => p.thermal_state === "warning").length || 0;
     const frostNodes = progress?.filter((p: any) => p.thermal_state === "frost").length || 0;
-    const untackedNodes = totalNodes - masteredNodes - warningNodes - frostNodes;
+    const untackedNodes = Math.max(0, totalNodes - masteredNodes - warningNodes - frostNodes);
 
     // Get recently reviewed (last 7 days)
     const sevenDaysAgo = new Date();

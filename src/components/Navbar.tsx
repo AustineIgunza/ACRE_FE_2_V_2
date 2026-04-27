@@ -7,9 +7,9 @@ import { useArceStore } from "@/store/arceStore";
 import { usePathname, useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
-  { label: "Learn",     href: "/learn",     icon: "⚡" },
-  { label: "Heatmap",   href: "/heatmap",   icon: "🗺️" },
-  { label: "Dashboard", href: "/dashboard", icon: "🏠" },
+  { label: "Learn",      href: "/learn",     icon: "⚡" },
+  { label: "Heatmaps",   href: "/heatmap",   icon: "🗺️" },
+  { label: "Dashboard",  href: "/dashboard", icon: "🏠" },
 ];
 
 const spring = { type: "spring" as const, stiffness: 500, damping: 40 };
@@ -108,18 +108,6 @@ export default function Navbar() {
                     {item.icon}
                   </motion.span>
                   {item.label}
-                  {isActive && (
-                    <motion.div
-                      layoutId="nav-active-dot"
-                      style={{
-                        position: "absolute", bottom: "4px", left: "50%",
-                        transform: "translateX(-50%)",
-                        width: "4px", height: "4px", borderRadius: "50%",
-                        backgroundColor: "var(--snap)",
-                      }}
-                      transition={smoothSpring}
-                    />
-                  )}
                 </motion.div>
               </Link>
             );
@@ -216,7 +204,7 @@ export default function Navbar() {
                 {[
                   { label: "Profile Settings", icon: "👤", href: "/profile" },
                   { label: "Dashboard",        icon: "🏠", href: "/dashboard" },
-                  { label: "Heatmap",          icon: "🗺️", href: "/heatmap" },
+                  { label: "Heatmaps",         icon: "🗺️", href: "/heatmap" },
                 ].map((item, i) => (
                   <motion.div
                     key={item.href}

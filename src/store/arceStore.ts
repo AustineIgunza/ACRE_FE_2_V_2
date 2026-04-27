@@ -285,8 +285,8 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         isLoading: false,
         currentPhase: "clarification",
         showLogo: false,
-        currentTopicName: sourceTitle || "",
-        currentUnitName: unitName || "",
+        currentTopicName: sourceTitle || data.inferred_topic || "",
+        currentUnitName: unitName || data.inferred_unit || "",
       });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "Failed to extract logic", isLoading: false, currentPhase: "input" });
@@ -754,6 +754,9 @@ export const useArceStore = create<ArceStore>((set, get) => ({
     if (!state.gameSession) return;
 
     // Persist all node results to localStorage
+    const sessionTitle = state.gameSession.sourceTitle || "Learning Session";
+    const unitName = state.currentUnitName || "Uncategorized";
+    const topicName = state.currentTopicName || sessionTitle;
     Object.entries(state.nodeResults).forEach(([nodeId, result]) => {
       const cluster = state.gameSession?.clusters[state.gameSession.currentClusterIndex];
       const clusterNode = cluster?.nodes.find((n: any) => n.id === nodeId);
@@ -765,10 +768,10 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         thermalState: result.accuracy === "ignition" ? "ignition" : result.accuracy === "warning" ? "warning" : "frost",
         isIgnited: result.accuracy === "ignition",
         lastAttempt: new Date().toISOString(),
-        unitName: state.currentUnitName || undefined,
-        unitId: state.currentUnitName ? state.currentUnitName.toLowerCase().replace(/\s+/g, '-') : undefined,
-        topicName: state.currentTopicName || undefined,
-        topicId: state.currentTopicName ? state.currentTopicName.toLowerCase().replace(/\s+/g, '-') : undefined,
+        unitName,
+        unitId: unitName.toLowerCase().replace(/\s+/g, '-'),
+        topicName,
+        topicId: topicName.toLowerCase().replace(/\s+/g, '-'),
       });
     });
   },
@@ -789,15 +792,13 @@ export const useArceStore = create<ArceStore>((set, get) => ({
           thermal_state: thermalState,
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,node_id' });
+        });
 
-      if (error) {
-        console.error("Error saving progress:", error);
-      } else {
-        console.log("Progress saved for node:", nodeId, "Heat:", heatScore);
+      if (error && Object.keys(error).length > 0) {
+        console.warn("Progress sync error (localStorage is primary):", error);
       }
-    } catch (err) {
-      console.warn("Failed to save progress:", err);
+    } catch {
+      // localStorage is primary — Supabase sync is best-effort
     }
   },
 

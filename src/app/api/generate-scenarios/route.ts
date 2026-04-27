@@ -41,6 +41,25 @@ async function callGeminiMultimodal(
   throw lastError ?? new Error("All Gemini models failed");
 }
 
+// ── Title/Unit auto-detection prompt ─────────────────────────────────────────
+function buildTitlePrompt(hint: string): string {
+  return `Analyze the following content and determine the academic subject and specific topic being studied.
+Return ONLY valid JSON with no extra text: {"unit_name": "broad subject area (e.g. Company Law, Human Biology, Macroeconomics, Computer Science)", "topic_name": "specific topic within that subject (e.g. Director Liability, Cell Division, Monetary Policy, Recursion)"}
+
+Content: "${hint.slice(0, 1500)}"`;
+}
+
+async function detectUnitTopic(hint: string): Promise<{ unit_name: string; topic_name: string }> {
+  try {
+    const raw = await callGeminiBase(buildTitlePrompt(hint), { temperature: 0.3, maxOutputTokens: 120, jsonMode: true });
+    const cleaned = raw.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+    const data = JSON.parse(cleaned);
+    return { unit_name: data.unit_name || "", topic_name: data.topic_name || "" };
+  } catch {
+    return { unit_name: "", topic_name: "" };
+  }
+}
+
 // ── Dynamic node count (target: 7±2 per spec) ────────────────────────────────
 function calcNodeCount(length: number): number {
   if (length < 300)   return 3;
@@ -72,7 +91,8 @@ OUTPUT RULES:
 - Return ONLY a valid JSON array of exactly ${nodeCount} nodes. No markdown, no commentary.
 - Each node must be grounded in the actual content above.
 - The domino_question must be open-ended (never multiple choice).
-- The multiple_choice_options must have exactly one correct answer.
+- The multiple_choice_options must have exactly one correct answer. IMPORTANT: Rotate which option (A, B, or C) is correct — do NOT always put the correct answer in position A. Distribute correct answers across A, B, and C.
+- ALL three options must sound equally plausible to someone who partially understands. Wrong options must contain partial truths, correct-sounding reasoning, or common expert-level misconceptions — NOT obviously wrong answers.
 - Tone: high-stakes, professional, slightly witty.
 - NO SPOILERS: crisis_scenario and domino_question must create the itch, not reveal the answer.
 - CRITICAL: crisis_scenario must be MAX 45 WORDS — it is a 15-second hook, not a paragraph. Short. Punchy. Ends with one question.
@@ -90,9 +110,9 @@ JSON SCHEMA (return this exact structure):
     "stress_test": "Phase 4.0 STRESS TEST — A specific counter-variable challenge for THIS node's invariant. NOT 'what if assumptions change?' — instead name the exact variable that breaks or inverts the rule. Format: '[Specific edge case from the material]. Your Intel Card says [invariant]. But [specific counter-condition]. Does your logic hold — or does the chain break?' 2-3 sentences max. Adaptive to this node only.",
     "multiple_choice_question": "Phase Signal Check — A recognition question testing the core invariant. Direct, specific to this node.",
     "multiple_choice_options": [
-      { "id": "A", "text": "Correct answer — precisely states the invariant", "is_correct": true },
-      { "id": "B", "text": "Plausible distractor — sounds right but misses the causal direction", "is_correct": false },
-      { "id": "C", "text": "Plausible distractor — common misconception about this concept", "is_correct": false }
+      { "id": "A", "text": "One of the three options — rotate which is correct across different nodes", "is_correct": false },
+      { "id": "B", "text": "One of the three options — rotate which is correct across different nodes", "is_correct": true },
+      { "id": "C", "text": "One of the three options — rotate which is correct across different nodes", "is_correct": false }
     ]
   }
 ]
@@ -133,7 +153,7 @@ OUTPUT RULES:
 - Return ONLY a valid JSON array of exactly ${nodeCount} nodes. No markdown, no commentary.
 - Each node must be grounded in the actual content.
 - The domino_question must be open-ended (never multiple choice).
-- The multiple_choice_options must have exactly one correct answer.
+- The multiple_choice_options must have exactly one correct answer. Rotate which option (A, B, or C) is correct — do NOT always put the correct answer in position A. All three options must sound equally plausible.
 - Tone: high-stakes, professional, slightly witty.
 - NO SPOILERS: crisis_scenario and domino_question must create the itch, not reveal the answer.
 - CRITICAL: crisis_scenario must be MAX 45 WORDS.
@@ -184,9 +204,19 @@ async function fetchYouTubeTranscript(videoId: string): Promise<string> {
 
 // ── URL text fetcher (web pages / documents) ──────────────────────────────────
 async function fetchUrlText(url: string): Promise<string> {
+  // Convert Google Docs/Sheets/Slides to export URL for clean text
+  const googleDocsMatch = url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (googleDocsMatch) {
+    url = `https://docs.google.com/document/d/${googleDocsMatch[1]}/export?format=txt`;
+  }
+  const googleSheetsMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (googleSheetsMatch) {
+    url = `https://docs.google.com/spreadsheets/d/${googleSheetsMatch[1]}/export?format=csv`;
+  }
+
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; Arce/1.0)" },
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(20000),
   });
   if (!res.ok) throw new Error(`Failed to fetch URL: ${res.status}`);
 
@@ -199,6 +229,12 @@ async function fetchUrlText(url: string): Promise<string> {
   }
 
   const html = await res.text();
+
+  // Plain text (Google Docs export, CSV, etc.)
+  if (contentType.includes("text/plain") || contentType.includes("text/csv")) {
+    return html.trim().slice(0, 15000);
+  }
+
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -287,6 +323,7 @@ export async function POST(request: NextRequest) {
     }
 
     let rawJson: string;
+    let titleHint = "";
     let targetNodeCount = 5;
 
     // ── Plain text ──
@@ -295,8 +332,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Not enough content to generate nodes." }, { status: 400 });
       }
       targetNodeCount = calcNodeCount(textMaterial.length);
+      titleHint = textMaterial;
       try {
-        rawJson = await callGemini(buildPrompt(textMaterial, targetNodeCount));
+        [rawJson] = await Promise.all([
+          callGemini(buildPrompt(textMaterial, targetNodeCount)),
+        ]);
       } catch (err: any) {
         console.error("Gemini call failed:", err.message);
         return NextResponse.json({ error: "AI extraction failed. Please try again." }, { status: 500 });
@@ -329,6 +369,7 @@ export async function POST(request: NextRequest) {
         }
 
         targetNodeCount = calcNodeCount(extractedText.length);
+        titleHint = extractedText;
         try {
           rawJson = await callGemini(buildPrompt(extractedText, targetNodeCount));
         } catch (err: any) {
@@ -340,8 +381,8 @@ export async function POST(request: NextRequest) {
       // PDF / images / audio / video — send inline to Gemini
       else if (GEMINI_MULTIMODAL_TYPES[mimeType]) {
         const base64Data = Buffer.from(buffer).toString("base64");
-        // Estimate node count: multimodal files get a mid-range default
         targetNodeCount = 7;
+        titleHint = file.name;
         try {
           rawJson = await callGeminiMultimodal(buildMultimodalPrompt(targetNodeCount), mimeType, base64Data);
         } catch (err: any) {
@@ -357,6 +398,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Not enough content to generate nodes." }, { status: 400 });
         }
         targetNodeCount = calcNodeCount(extractedText.length);
+        titleHint = extractedText;
         try {
           rawJson = await callGemini(buildPrompt(extractedText, targetNodeCount));
         } catch (err: any) {
@@ -371,7 +413,6 @@ export async function POST(request: NextRequest) {
       const youtubeId = extractYouTubeId(url);
 
       if (youtubeId) {
-        // YouTube — fetch transcript
         let transcript: string;
         try {
           transcript = await fetchYouTubeTranscript(youtubeId);
@@ -384,6 +425,7 @@ export async function POST(request: NextRequest) {
         }
 
         targetNodeCount = calcNodeCount(transcript.length);
+        titleHint = transcript;
         try {
           rawJson = await callGemini(buildPrompt(transcript, targetNodeCount));
         } catch (err: any) {
@@ -391,7 +433,6 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "AI extraction failed. Please try again." }, { status: 500 });
         }
       } else {
-        // Regular URL / document link
         let fetchedContent: string;
         try {
           fetchedContent = await fetchUrlText(url);
@@ -402,9 +443,9 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // PDF served via URL
         if (fetchedContent.startsWith("__PDF_BASE64__:")) {
           const base64Data = fetchedContent.replace("__PDF_BASE64__:", "");
+          titleHint = url;
           try {
             rawJson = await callGeminiMultimodal(buildMultimodalPrompt(7), "application/pdf", base64Data);
           } catch (err: any) {
@@ -416,6 +457,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Not enough content found at that URL." }, { status: 400 });
           }
           targetNodeCount = calcNodeCount(fetchedContent.length);
+          titleHint = fetchedContent;
           try {
             rawJson = await callGemini(buildPrompt(fetchedContent, targetNodeCount));
           } catch (err: any) {
@@ -438,19 +480,35 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Retry once if node count is significantly off ──
-    if (logicNodes.length < targetNodeCount - 1 && textMaterial) {
-      console.warn(`Node count mismatch: got ${logicNodes.length}, expected ${targetNodeCount}. Retrying...`);
-      try {
-        const retryPrompt = buildPrompt(textMaterial, targetNodeCount) +
-          `\n\nCRITICAL: You MUST return exactly ${targetNodeCount} nodes. The previous attempt only returned ${logicNodes.length}. Find more distinct concepts in the material.`;
-        const retryRaw = await callGemini(retryPrompt);
-        const retryNodes = parseGeminiJson(retryRaw);
-        if (retryNodes.length > logicNodes.length) {
-          logicNodes = retryNodes;
-        }
-      } catch {
-        // use original result if retry fails
-      }
+    // Also run title detection in parallel with retry (or standalone if no retry needed)
+    let inferredUnit = "";
+    let inferredTopic = "";
+
+    const retryNeeded = logicNodes.length < targetNodeCount - 1 && textMaterial;
+
+    const [, titleResult] = await Promise.all([
+      retryNeeded
+        ? (async () => {
+            console.warn(`Node count mismatch: got ${logicNodes.length}, expected ${targetNodeCount}. Retrying...`);
+            try {
+              const retryPrompt = buildPrompt(textMaterial!, targetNodeCount) +
+                `\n\nCRITICAL: You MUST return exactly ${targetNodeCount} nodes. The previous attempt only returned ${logicNodes.length}. Find more distinct concepts in the material.`;
+              const retryRaw = await callGemini(retryPrompt);
+              const retryNodes = parseGeminiJson(retryRaw);
+              if (retryNodes.length > logicNodes.length) {
+                logicNodes = retryNodes;
+              }
+            } catch { /* use original */ }
+          })()
+        : Promise.resolve(),
+      titleHint
+        ? detectUnitTopic(titleHint)
+        : Promise.resolve({ unit_name: "", topic_name: "" }),
+    ]);
+
+    if (titleResult) {
+      inferredUnit = (titleResult as any).unit_name || "";
+      inferredTopic = (titleResult as any).topic_name || "";
     }
 
     return NextResponse.json({
@@ -459,6 +517,8 @@ export async function POST(request: NextRequest) {
       phase: "phase-0-extraction",
       logic_nodes: normaliseNodes(logicNodes),
       nodeCount: logicNodes.length,
+      inferred_unit: inferredUnit,
+      inferred_topic: inferredTopic,
     });
   } catch (error: any) {
     console.error("generate-scenarios error:", error);

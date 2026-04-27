@@ -120,7 +120,9 @@ export default function HeatmapPage() {
 
   useEffect(() => { initAuth(); }, [initAuth]);
   useEffect(() => { if (authInitialized && !user) router.push("/signin"); }, [user, authInitialized, router]);
-  useEffect(() => { const all = loadAllProgress(); setAllNodes(Object.values(all)); }, [isRetryModalOpen]);
+  // Load on mount and whenever modal closes (after a retry)
+  useEffect(() => { const all = loadAllProgress(); setAllNodes(Object.values(all)); }, []);
+  useEffect(() => { if (!isRetryModalOpen) { const all = loadAllProgress(); setAllNodes(Object.values(all)); } }, [isRetryModalOpen]);
 
   if (!authInitialized || !user) {
     return (
@@ -225,8 +227,8 @@ export default function HeatmapPage() {
         </div>
 
         {/* Title */}
-        <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--t-primary)", lineHeight: 1.35, zIndex: 1 }}>
-          {(node.title || node.nodeId).replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).substring(0, 26)}
+        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--t-primary)", lineHeight: 1.35, zIndex: 1, textAlign: "center", wordBreak: "break-word", overflowWrap: "break-word" }}>
+          {(node.title || node.nodeId).replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
         </div>
 
         {/* Score */}

@@ -5,19 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
 import { saveNodeProgress, initNodeSRS } from "@/utils/progressStorage";
 
-type Stage = "domino" | "domino_feedback" | "mc" | "mc_feedback" | "blocked";
-
-function generateRetryHint(accuracy: string, attempt: number): string {
-  if (attempt === 1) {
-    if (accuracy === "frost") return "Your logic missed the core invariant. Re-read the scenario above and trace what causes what — step by step.";
-    return "You're close but the causal chain is incomplete. Push deeper: what triggers the next event, and why?";
-  }
-  if (attempt === 2) {
-    if (accuracy === "frost") return "Still missing the mechanism. Focus on the 'why' — not just what happens, but why it happens as a direct consequence.";
-    return "Good effort — tighten the chain. Be explicit about each link: A causes B because X, which then causes C.";
-  }
-  return "Think about the invariant: the rule that always holds. Start with that rule and work outward to trace consequences.";
-}
+type Stage = "domino" | "domino_feedback" | "mc" | "mc_feedback";
 
 export default function ChallengeZone() {
   const { currentScenario, scenarios, isLoading, error, incrementAttempt } = useArceStore();
@@ -28,8 +16,6 @@ export default function ChallengeZone() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [dominoResult, setDominoResult] = useState<{ score: number; feedback: string; accuracy: string } | null>(null);
   const [mcResult, setMcResult] = useState<{ score: number; feedback: string; accuracy: string } | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [retryHint, setRetryHint] = useState("");
 
   if (!currentScenario) return null;
 
@@ -129,19 +115,19 @@ export default function ChallengeZone() {
 
     // Increment attempt count in store
     incrementAttempt(nodeId);
-    const newRetryCount = retryCount + 1;
 
     // Persist current attempt (always — tracks best)
+    const sessionTitle = state.gameSession?.sourceTitle || "Learning Session";
+    const unitName = state.currentUnitName || "Uncategorized";
+    const topicName = state.currentTopicName || sessionTitle;
     saveNodeProgress(nodeId, {
       nodeId, title, heatScore, thermalState: thermalStateVal,
       isIgnited: accuracy === "ignition",
       lastAttempt: new Date().toISOString(),
-      unitName: state.currentUnitName || undefined,
-      unitId: state.currentUnitName ? state.currentUnitName.toLowerCase().replace(/\s+/g, "-") : undefined,
-      topicName: state.currentTopicName || undefined,
-      topicId: state.currentTopicName
-        ? state.currentTopicName.toLowerCase().replace(/\s+/g, "-")
-        : nodeId.split("-").slice(0, 2).join("-"),
+      unitName,
+      unitId: unitName.toLowerCase().replace(/\s+/g, "-"),
+      topicName,
+      topicId: topicName.toLowerCase().replace(/\s+/g, "-"),
       crisisText: currentScenario.crisisText,
       formalMechanism: currentScenario.formalMechanism,
       latexFormula: currentScenario.latexFormula,
@@ -158,22 +144,7 @@ export default function ChallengeZone() {
       [nodeId]: { accuracy, heatScore, feedback: dominoResult?.feedback ?? "", thermalState: thermalStateVal },
     };
 
-    // ── Mastery Gate: block if score < 75 ────────────────────────────────────
-    if (heatScore < 75) {
-      setRetryCount(newRetryCount);
-      setRetryHint(generateRetryHint(accuracy, newRetryCount));
-      // Reset for retry
-      setDominoResponse("");
-      setSelectedChoice(null);
-      setDominoResult(null);
-      setMcResult(null);
-      setStage("blocked");
-      // Still update store results (tracks best score)
-      useArceStore.setState({ nodeResults: updatedNodeResults });
-      return; // Do NOT advance phase
-    }
-
-    // ── Passed: advance to Breakthrough Transition ───────────────────────────
+    // ── Advance to Breakthrough Transition ───────────────────────────────────
     useArceStore.setState({ isLoading: false, currentPhase: "transition", nodeResults: updatedNodeResults });
     state.saveProgressToDatabase(nodeId, heatScore, thermalStateVal as any);
   };
@@ -184,9 +155,7 @@ export default function ChallengeZone() {
   const thermalEmoji = (acc: string) =>
     acc === "ignition" ? "🔥" : acc === "warning" ? "⚠️" : "❄️";
 
-  const roundLabel = stage === "blocked"
-    ? `RETRY ${retryCount}`
-    : stage === "domino" || stage === "domino_feedback" ? "ROUND 1 OF 2" : "ROUND 2 OF 2";
+  const roundLabel = stage === "domino" || stage === "domino_feedback" ? "ROUND 1 OF 2" : "ROUND 2 OF 2";
 
   return (
     <motion.div
@@ -479,52 +448,6 @@ export default function ChallengeZone() {
                 }}
               >
                 {isEvaluating ? "EVALUATING..." : "LOCK IN ANSWER →"}
-              </motion.button>
-            </motion.div>
-          )}
-
-          {/* ── Stage: blocked (mastery gate) ── */}
-          {stage === "blocked" && (
-            <motion.div key="blocked" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ width: "100%" }}>
-              <div style={{
-                padding: "24px", borderRadius: "12px", marginBottom: "24px",
-                backgroundColor: "rgba(239,68,68,0.08)",
-                border: "1px solid rgba(239,68,68,0.25)",
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: "28px", marginBottom: "8px" }}>🔒</div>
-                <div style={{ fontSize: "16px", fontWeight: 700, color: "#ef4444", marginBottom: "12px" }}>
-                  MASTERY NOT YET ACHIEVED
-                </div>
-                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.7)", lineHeight: 1.7, margin: 0 }}>
-                  Score must reach <strong style={{ color: "#ff5c35" }}>75+</strong> to advance. You cannot proceed until this node is bulletproof.
-                </p>
-              </div>
-              <div style={{
-                padding: "20px 24px", borderRadius: "12px", marginBottom: "24px",
-                backgroundColor: "rgba(245,158,11,0.08)",
-                border: "1px solid rgba(245,158,11,0.2)",
-              }}>
-                <p style={{ fontSize: "12px", color: "#f59e0b", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
-                  HINT — ATTEMPT {retryCount + 1}
-                </p>
-                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.75)", lineHeight: 1.7, margin: 0 }}>
-                  {retryHint}
-                </p>
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.02, boxShadow: "0 0 24px rgba(255,92,53,0.3)" }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setStage("domino")}
-                style={{
-                  width: "100%", maxWidth: "300px", display: "block", margin: "0 auto",
-                  padding: "16px 32px", fontSize: "14px", fontWeight: 700,
-                  letterSpacing: "1px", textTransform: "uppercase",
-                  color: "#fff", backgroundColor: "#ff5c35",
-                  border: "none", borderRadius: "10px", cursor: "pointer",
-                }}
-              >
-                TRY AGAIN →
               </motion.button>
             </motion.div>
           )}
