@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import RetryNodeModal from "@/components/RetryNodeModal";
 import { loadAllProgress, NodeProgressData } from "@/utils/progressStorage";
-import ParticleBg from "@/components/ParticleBg";
 
 type ViewLevel = "units" | "topics" | "nodes";
 
@@ -121,9 +120,7 @@ export default function HeatmapPage() {
 
   useEffect(() => { initAuth(); }, [initAuth]);
   useEffect(() => { if (authInitialized && !user) router.push("/signin"); }, [user, authInitialized, router]);
-  // Load on mount and whenever modal closes (after a retry)
-  useEffect(() => { const all = loadAllProgress(); setAllNodes(Object.values(all)); }, []);
-  useEffect(() => { if (!isRetryModalOpen) { const all = loadAllProgress(); setAllNodes(Object.values(all)); } }, [isRetryModalOpen]);
+  useEffect(() => { const all = loadAllProgress(); setAllNodes(Object.values(all)); }, [isRetryModalOpen]);
 
   if (!authInitialized || !user) {
     return (
@@ -228,8 +225,8 @@ export default function HeatmapPage() {
         </div>
 
         {/* Title */}
-        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--t-primary)", lineHeight: 1.35, zIndex: 1, textAlign: "center", wordBreak: "break-word", overflowWrap: "break-word" }}>
-          {(node.title || node.nodeId).replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+        <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--t-primary)", lineHeight: 1.35, zIndex: 1 }}>
+          {(node.title || node.nodeId).replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).substring(0, 26)}
         </div>
 
         {/* Score */}
@@ -385,11 +382,10 @@ export default function HeatmapPage() {
   };
 
   return (
-    <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh", color: "var(--t-mid)", position: "relative" }}>
+    <div style={{ backgroundColor: "var(--p-surface)", minHeight: "100vh", color: "var(--t-mid)" }}>
       <style>{GLOW_CSS}</style>
-      <ParticleBg theme="light" accent="#ef4444" secondary="#ff5c35" />
       <Navbar />
-      <main style={{ padding: "48px 24px 80px", maxWidth: "1200px", margin: "0 auto", position: "relative", zIndex: 1 }}>
+      <main style={{ padding: "48px 24px 80px", maxWidth: "1200px", margin: "0 auto" }}>
 
         {/* Header */}
         <div style={{ marginBottom: "32px", animation: "slideUp 0.4s ease-out" }}>

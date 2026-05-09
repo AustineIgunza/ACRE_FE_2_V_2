@@ -7,9 +7,9 @@ import { useArceStore } from "@/store/arceStore";
 import { usePathname, useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
-  { label: "Learn",      href: "/learn",     icon: "⚡" },
-  { label: "Heatmaps",   href: "/heatmap",   icon: "🗺️" },
-  { label: "Dashboard",  href: "/dashboard", icon: "🏠" },
+  { label: "Learn",     href: "/learn",     icon: "⚡" },
+  { label: "Heatmap",   href: "/heatmap",   icon: "🗺️" },
+  { label: "Dashboard", href: "/dashboard", icon: "🏠" },
 ];
 
 const spring = { type: "spring" as const, stiffness: 500, damping: 40 };
@@ -204,7 +204,7 @@ export default function Navbar() {
                 {[
                   { label: "Profile Settings", icon: "👤", href: "/profile" },
                   { label: "Dashboard",        icon: "🏠", href: "/dashboard" },
-                  { label: "Heatmaps",         icon: "🗺️", href: "/heatmap" },
+                  { label: "Heatmap",          icon: "🗺️", href: "/heatmap" },
                 ].map((item, i) => (
                   <motion.div
                     key={item.href}

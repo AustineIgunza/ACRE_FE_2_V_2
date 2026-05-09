@@ -154,7 +154,13 @@ export const useArceStore = create<ArceStore>((set, get) => ({
           .select('*')
           .eq('user_id', user.id);
 
-        if (!error && data && data.length > 0) {
+        // Silently handle Supabase errors (e.g., table doesn't exist, RLS policy)
+        if (error) {
+          console.warn('Supabase user_progress fetch failed (using local storage):', error.message);
+          return;
+        }
+
+        if (data && data.length > 0) {
           // Merge Supabase records into localStorage, Supabase takes priority
           const merged = { ...localAll };
           for (const row of data) {
@@ -283,10 +289,10 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         scenarios: mappedScenarios,
         currentScenario: mappedScenarios[0],
         isLoading: false,
-        currentPhase: "clarification",
+        currentPhase: "challenge",
         showLogo: false,
-        currentTopicName: sourceTitle || data.inferred_topic || "",
-        currentUnitName: unitName || data.inferred_unit || "",
+        currentTopicName: sourceTitle || "",
+        currentUnitName: unitName || "",
       });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "Failed to extract logic", isLoading: false, currentPhase: "input" });
@@ -754,9 +760,6 @@ export const useArceStore = create<ArceStore>((set, get) => ({
     if (!state.gameSession) return;
 
     // Persist all node results to localStorage
-    const sessionTitle = state.gameSession.sourceTitle || "Learning Session";
-    const unitName = state.currentUnitName || "Uncategorized";
-    const topicName = state.currentTopicName || sessionTitle;
     Object.entries(state.nodeResults).forEach(([nodeId, result]) => {
       const cluster = state.gameSession?.clusters[state.gameSession.currentClusterIndex];
       const clusterNode = cluster?.nodes.find((n: any) => n.id === nodeId);
@@ -768,10 +771,10 @@ export const useArceStore = create<ArceStore>((set, get) => ({
         thermalState: result.accuracy === "ignition" ? "ignition" : result.accuracy === "warning" ? "warning" : "frost",
         isIgnited: result.accuracy === "ignition",
         lastAttempt: new Date().toISOString(),
-        unitName,
-        unitId: unitName.toLowerCase().replace(/\s+/g, '-'),
-        topicName,
-        topicId: topicName.toLowerCase().replace(/\s+/g, '-'),
+        unitName: state.currentUnitName || undefined,
+        unitId: state.currentUnitName ? state.currentUnitName.toLowerCase().replace(/\s+/g, '-') : undefined,
+        topicName: state.currentTopicName || undefined,
+        topicId: state.currentTopicName ? state.currentTopicName.toLowerCase().replace(/\s+/g, '-') : undefined,
       });
     });
   },
@@ -792,13 +795,15 @@ export const useArceStore = create<ArceStore>((set, get) => ({
           thermal_state: thermalState,
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'user_id,node_id' });
 
-      if (error && Object.keys(error).length > 0) {
-        console.warn("Progress sync error (localStorage is primary):", error);
+      if (error) {
+        console.error("Error saving progress:", error);
+      } else {
+        console.log("Progress saved for node:", nodeId, "Heat:", heatScore);
       }
-    } catch {
-      // localStorage is primary — Supabase sync is best-effort
+    } catch (err) {
+      console.warn("Failed to save progress:", err);
     }
   },
 

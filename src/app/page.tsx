@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useArceStore } from "@/store/arceStore";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import ParticleBg from "@/components/ParticleBg";
 
 const spring      = { type: "spring" as const, stiffness: 460, damping: 38 };
 const smoothSpring = { type: "spring" as const, stiffness: 300, damping: 28 };
@@ -52,11 +51,9 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div style={{ backgroundColor: "var(--p-white)", minHeight: "100vh", color: "var(--t-mid)", position: "relative", overflow: "hidden" }}>
-      <ParticleBg theme="light" accent="#ff5c35" secondary="#5878f8" />
+    <div style={{ backgroundColor: "var(--p-white)", minHeight: "100vh", color: "var(--t-mid)" }}>
 
       {/* ── TOP NAV ─────────────────────────────────────────────────────── */}
-      <div style={{ position:"relative", zIndex:1 }}>
       <motion.nav
         role="navigation"
         className={`folio-nav sticky top-0 z-50 ${scrolled ? "nav-glass" : ""}`}
@@ -341,7 +338,6 @@ export default function LandingPage() {
           © {new Date().getFullYear()} ARCÉ Learning System. All rights reserved.
         </p>
       </footer>
-      </div>
     </div>
   );
 }

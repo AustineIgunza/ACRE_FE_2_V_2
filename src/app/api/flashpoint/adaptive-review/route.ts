@@ -189,6 +189,8 @@ IMPORTANT: Replace ALL example values with your real assessment. If sessionCompl
   return result;
 }
 
+export const maxDuration = 120;
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
